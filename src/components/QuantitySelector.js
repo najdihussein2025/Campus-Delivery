@@ -1,0 +1,56 @@
+import React, { useEffect, useRef } from 'react';
+import { Animated, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import PressableScale from './motion/PressableScale';
+import useReduceMotion from './motion/useReduceMotion';
+import { colors, MAX_FONT_SCALE } from '../theme/theme';
+import styles from './QuantitySelector.styles';
+
+// Stepper: the number bumps on change; at the minimum the minus turns into a trash icon
+export default function QuantitySelector({ qty, onIncrease, onDecrease, min = 1, small = false }) {
+  const reduceMotion = useReduceMotion();
+  const bump = useRef(new Animated.Value(1)).current;
+  const first = useRef(true);
+  const atMin = qty <= min;
+  const iconSize = small ? 15 : 18;
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (reduceMotion) return;
+    bump.setValue(1.3);
+    Animated.spring(bump, { toValue: 1, useNativeDriver: true, speed: 18, bounciness: 10 }).start();
+  }, [qty]);
+
+  return (
+    <View style={[styles.row, small && styles.rowSmall]}>
+      <PressableScale
+        onPress={onDecrease}
+        hitSlop={8}
+        haptic
+        accessibilityLabel={atMin ? 'Remove item' : 'Decrease quantity'}
+        style={[styles.btn, small && styles.btnSmall]}
+      >
+        <Ionicons name={atMin ? 'trash-outline' : 'remove'} size={iconSize} color={atMin ? colors.dangerText : colors.primary} />
+      </PressableScale>
+      <Animated.Text
+        style={[styles.qty, small && styles.qtySmall, { transform: [{ scale: bump }] }]}
+        maxFontSizeMultiplier={MAX_FONT_SCALE}
+        accessibilityLabel={`Quantity ${qty}`}
+      >
+        {qty}
+      </Animated.Text>
+      <PressableScale
+        onPress={onIncrease}
+        hitSlop={8}
+        haptic
+        accessibilityLabel="Increase quantity"
+        style={[styles.btn, styles.btnPlus, small && styles.btnSmall]}
+      >
+        <Ionicons name="add" size={iconSize} color={colors.textOnDark} />
+      </PressableScale>
+    </View>
+  );
+}

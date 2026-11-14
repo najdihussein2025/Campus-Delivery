@@ -1,0 +1,35 @@
+import { StyleSheet } from 'react-native';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme/theme';
+
+export default StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl },
+  handleRow: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  handle: { width: 44, height: 5, borderRadius: 3, backgroundColor: colors.border },
+  closeButton: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    zIndex: 5,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadow.card,
+  },
+  content: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: 170 },
+  titleBlock: { marginTop: spacing.xl },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  storeName: typography.micro,
+  name: { ...typography.display, marginTop: spacing.xs },
+  description: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
+  basePrice: { fontFamily: fonts.extrabold, fontSize: 22, color: colors.primary, marginTop: spacing.md },
+  extrasCard: { paddingVertical: spacing.xs },
+  extraRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingVertical: spacing.sm },
+  extraDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+  extraLabel: { ...typography.bodyStrong, flex: 1 },
+  extraPrice: { fontFamily: fonts.bold, fontSize: 14.5, color: colors.textBrand, marginRight: spacing.md },
+  qtyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  unitText: typography.caption,
+});

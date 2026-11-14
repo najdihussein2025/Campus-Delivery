@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "campusgo",
-    "slug": "campusgo",
+    "name": "CampusGo",
+    "slug": "campus",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#005BAA",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -19,6 +19,21 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2ded5807-626a-44c5-8d27-76ddec181fe8"
+      }
+    },
+    "owner": "najdihs-team",
+    "plugins": [
+      "expo-font"
+    ],
+    "backgroundColor": "#005BAA",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#005BAA"
     }
   }
 }

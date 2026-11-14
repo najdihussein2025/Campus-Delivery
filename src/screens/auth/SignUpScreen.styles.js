@@ -1,0 +1,38 @@
+import { StyleSheet } from 'react-native';
+import { colors, fonts, radius, spacing, typography } from '../../theme/theme';
+
+export default StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+  flex: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxl * 2 },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { ...typography.h1, marginTop: spacing.xl },
+  subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.xs },
+  highlight: { fontFamily: fonts.bodyBold, color: colors.primary },
+  steps: { marginTop: spacing.xl, marginBottom: spacing.xl },
+  label: { ...typography.caption, color: colors.text, fontFamily: fonts.semibold, marginBottom: spacing.sm },
+  chips: { paddingRight: spacing.lg },
+  error: { fontFamily: fonts.medium, fontSize: 12.5, color: colors.dangerText, marginTop: 2 },
+  afterChips: { marginTop: spacing.md },
+  passwordInput: { marginBottom: spacing.sm },
+  strength: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
+  strengthBar: { flex: 1, marginRight: spacing.md },
+  strengthLabel: { fontFamily: fonts.medium, fontSize: 12.5, minWidth: 64, textAlign: 'right' },
+  strengthSpacer: { height: spacing.sm },
+  button: { marginTop: spacing.sm },
+  row: { flexDirection: 'row', marginTop: spacing.sm },
+  backButton: { marginRight: spacing.md, paddingHorizontal: spacing.lg },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl, minHeight: 44 },
+  footerText: { ...typography.body, color: colors.textMuted },
+  link: { fontFamily: fonts.bold, fontSize: 15, color: colors.primary, paddingVertical: spacing.sm },
+});

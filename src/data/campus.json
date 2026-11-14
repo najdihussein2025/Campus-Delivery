@@ -1,0 +1,731 @@
+{
+  "campuses": [
+    {
+      "id": "baabda",
+      "name": "Hadat–Baabda",
+      "subtitle": "Main Campus"
+    },
+    {
+      "id": "zahle",
+      "name": "Nabi Ayla–Zahle",
+      "subtitle": "Bekaa Campus"
+    },
+    {
+      "id": "zgharta",
+      "name": "Mejdlaya–Zgharta",
+      "subtitle": "North Campus"
+    }
+  ],
+  "stores": [
+    {
+      "id": "cafeteria",
+      "name": "UA Cafeteria",
+      "category": "Food",
+      "icon": "fast-food",
+      "prepTime": 15,
+      "openTime": "06:30",
+      "closeTime": "20:00",
+      "description": "Fresh sandwiches, manakish and salads made every morning.",
+      "location": {
+        "baabda": "Building G · Ground floor",
+        "zahle": "Building B · Ground floor",
+        "zgharta": "Building B · Ground floor"
+      }
+    },
+    {
+      "id": "coffee",
+      "name": "Coffee Corner",
+      "category": "Drinks",
+      "icon": "cafe",
+      "prepTime": 5,
+      "openTime": "07:00",
+      "closeTime": "17:30",
+      "description": "Espresso, lattes and cold drinks to power your lectures.",
+      "location": {
+        "baabda": "Building A · Ground floor",
+        "zahle": "Building A · Ground floor",
+        "zgharta": "Building A · Ground floor"
+      },
+      "isPlaceholder": true
+    },
+    {
+      "id": "bookstore",
+      "name": "Bookstore & Stationery",
+      "category": "Stationery",
+      "icon": "book",
+      "prepTime": 5,
+      "openTime": "08:00",
+      "closeTime": "15:00",
+      "description": "Notebooks, pens, calculators and everything for class.",
+      "location": {
+        "baabda": "Building B · Ground floor",
+        "zahle": "Building A · Ground floor",
+        "zgharta": "Building A · Ground floor"
+      },
+      "isPlaceholder": true
+    },
+    {
+      "id": "printing",
+      "name": "Printing Office",
+      "category": "Printing",
+      "icon": "print",
+      "prepTime": 20,
+      "openTime": "08:00",
+      "closeTime": "16:30",
+      "description": "Print, staple and bind your reports, delivered to class.",
+      "location": {
+        "baabda": "Building C · Ground floor",
+        "zahle": "Building A · Ground floor",
+        "zgharta": "Building A · Ground floor"
+      },
+      "isPlaceholder": true
+    }
+  ],
+  "products": [
+    {
+      "id": "p01",
+      "storeId": "cafeteria",
+      "category": "Sandwiches",
+      "name": "Chicken Sub",
+      "description": "Grilled chicken, garlic sauce, pickles and lettuce in a toasted sub.",
+      "price": 350,
+      "inStock": true,
+      "options": {
+        "extras": [
+          {
+            "label": "Extra cheese",
+            "extra": 50
+          },
+          {
+            "label": "Fries",
+            "extra": 100
+          }
+        ]
+      }
+    },
+    {
+      "id": "p02",
+      "storeId": "cafeteria",
+      "category": "Sandwiches",
+      "name": "Halloumi",
+      "description": "Grilled halloumi, tomato, mint and cucumber.",
+      "price": 300,
+      "inStock": true,
+      "options": {
+        "extras": [
+          {
+            "label": "Extra cheese",
+            "extra": 50
+          },
+          {
+            "label": "Fries",
+            "extra": 100
+          }
+        ]
+      }
+    },
+    {
+      "id": "p03",
+      "storeId": "cafeteria",
+      "category": "Sandwiches",
+      "name": "Tuna",
+      "description": "Tuna, corn, olives and light mayo.",
+      "price": 300,
+      "inStock": false,
+      "options": {
+        "extras": [
+          {
+            "label": "Extra cheese",
+            "extra": 50
+          },
+          {
+            "label": "Fries",
+            "extra": 100
+          }
+        ]
+      }
+    },
+    {
+      "id": "p04",
+      "storeId": "cafeteria",
+      "category": "Sandwiches",
+      "name": "Turkey & Cheese",
+      "description": "Smoked turkey, cheddar and honey mustard.",
+      "price": 325,
+      "inStock": true,
+      "options": {
+        "extras": [
+          {
+            "label": "Extra cheese",
+            "extra": 50
+          },
+          {
+            "label": "Fries",
+            "extra": 100
+          }
+        ]
+      }
+    },
+    {
+      "id": "p05",
+      "storeId": "cafeteria",
+      "category": "Manakish",
+      "name": "Zaatar",
+      "description": "Classic zaatar and olive oil, baked fresh.",
+      "price": 100,
+      "inStock": true,
+      "options": {
+        "extras": [
+          {
+            "label": "Vegetables",
+            "extra": 25
+          }
+        ]
+      }
+    },
+    {
+      "id": "p06",
+      "storeId": "cafeteria",
+      "category": "Manakish",
+      "name": "Cheese",
+      "description": "Akkawi and mozzarella cheese blend.",
+      "price": 175,
+      "inStock": true
+    },
+    {
+      "id": "p07",
+      "storeId": "cafeteria",
+      "category": "Manakish",
+      "name": "Lahm b'Ajeen",
+      "description": "Spiced minced meat with tomato and onion.",
+      "price": 200,
+      "inStock": true
+    },
+    {
+      "id": "p08",
+      "storeId": "cafeteria",
+      "category": "Salads",
+      "name": "Fattoush",
+      "description": "Crispy bread, sumac, fresh vegetables and pomegranate molasses.",
+      "price": 275,
+      "inStock": true
+    },
+    {
+      "id": "p09",
+      "storeId": "cafeteria",
+      "category": "Salads",
+      "name": "Chicken Caesar",
+      "description": "Romaine, grilled chicken, parmesan and croutons.",
+      "price": 350,
+      "inStock": true
+    },
+    {
+      "id": "p10",
+      "storeId": "cafeteria",
+      "category": "Snacks",
+      "name": "Croissant",
+      "description": "Buttery plain croissant.",
+      "price": 125,
+      "inStock": true
+    },
+    {
+      "id": "p11",
+      "storeId": "cafeteria",
+      "category": "Snacks",
+      "name": "Fruit Cup",
+      "description": "Seasonal fresh fruit, cut daily.",
+      "price": 150,
+      "inStock": true
+    },
+    {
+      "id": "p12",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Espresso",
+      "description": "A rich, single shot of espresso.",
+      "price": 100,
+      "inStock": true,
+      "options": {
+        "sizes": [
+          {
+            "label": "Small",
+            "extra": 0
+          },
+          {
+            "label": "Medium",
+            "extra": 50
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ],
+        "extras": [
+          {
+            "label": "Extra shot",
+            "extra": 50
+          },
+          {
+            "label": "Oat milk",
+            "extra": 50
+          }
+        ]
+      }
+    },
+    {
+      "id": "p13",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Americano",
+      "description": "Espresso topped with hot water.",
+      "price": 150,
+      "inStock": true,
+      "options": {
+        "sizes": [
+          {
+            "label": "Small",
+            "extra": 0
+          },
+          {
+            "label": "Medium",
+            "extra": 50
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ],
+        "extras": [
+          {
+            "label": "Extra shot",
+            "extra": 50
+          },
+          {
+            "label": "Oat milk",
+            "extra": 50
+          }
+        ]
+      }
+    },
+    {
+      "id": "p14",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Cappuccino",
+      "description": "Espresso with steamed milk and thick foam.",
+      "price": 225,
+      "inStock": true,
+      "options": {
+        "sizes": [
+          {
+            "label": "Small",
+            "extra": 0
+          },
+          {
+            "label": "Medium",
+            "extra": 50
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ],
+        "extras": [
+          {
+            "label": "Extra shot",
+            "extra": 50
+          },
+          {
+            "label": "Oat milk",
+            "extra": 50
+          }
+        ]
+      }
+    },
+    {
+      "id": "p15",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Latte",
+      "description": "Espresso with silky steamed milk.",
+      "price": 250,
+      "inStock": true,
+      "options": {
+        "sizes": [
+          {
+            "label": "Small",
+            "extra": 0
+          },
+          {
+            "label": "Medium",
+            "extra": 50
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ],
+        "extras": [
+          {
+            "label": "Extra shot",
+            "extra": 50
+          },
+          {
+            "label": "Oat milk",
+            "extra": 50
+          }
+        ]
+      }
+    },
+    {
+      "id": "p16",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Hot Chocolate",
+      "description": "Creamy cocoa with steamed milk.",
+      "price": 200,
+      "inStock": true,
+      "options": {
+        "sizes": [
+          {
+            "label": "Small",
+            "extra": 0
+          },
+          {
+            "label": "Medium",
+            "extra": 50
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ]
+      }
+    },
+    {
+      "id": "p17",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Tea",
+      "description": "Black or green tea, your choice.",
+      "price": 75,
+      "inStock": true
+    },
+    {
+      "id": "p18",
+      "storeId": "coffee",
+      "category": "Cold Drinks",
+      "name": "Iced Latte",
+      "description": "Espresso and cold milk over ice.",
+      "price": 275,
+      "inStock": true,
+      "options": {
+        "sizes": [
+          {
+            "label": "Small",
+            "extra": 0
+          },
+          {
+            "label": "Medium",
+            "extra": 50
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ],
+        "extras": [
+          {
+            "label": "Extra shot",
+            "extra": 50
+          },
+          {
+            "label": "Oat milk",
+            "extra": 50
+          }
+        ]
+      }
+    },
+    {
+      "id": "p19",
+      "storeId": "coffee",
+      "category": "Cold Drinks",
+      "name": "Fresh Orange Juice",
+      "description": "Squeezed to order.",
+      "price": 250,
+      "inStock": false
+    },
+    {
+      "id": "p20",
+      "storeId": "coffee",
+      "category": "Cold Drinks",
+      "name": "Water",
+      "description": "500 ml bottled water.",
+      "price": 50,
+      "inStock": true
+    },
+    {
+      "id": "p21",
+      "storeId": "bookstore",
+      "category": "Notebooks",
+      "name": "A4 Notebook 100 sheets",
+      "description": "Ruled A4 notebook with a sturdy cover.",
+      "price": 300,
+      "inStock": true
+    },
+    {
+      "id": "p22",
+      "storeId": "bookstore",
+      "category": "Notebooks",
+      "name": "Spiral Notebook A5",
+      "description": "Pocket-size spiral notebook.",
+      "price": 200,
+      "inStock": true
+    },
+    {
+      "id": "p23",
+      "storeId": "bookstore",
+      "category": "Notebooks",
+      "name": "Lab Notebook",
+      "description": "Grid pages for lab reports and experiments.",
+      "price": 450,
+      "inStock": true
+    },
+    {
+      "id": "p24",
+      "storeId": "bookstore",
+      "category": "Writing",
+      "name": "Blue Pens ×3",
+      "description": "Smooth ballpoint pens, pack of three.",
+      "price": 100,
+      "inStock": true
+    },
+    {
+      "id": "p25",
+      "storeId": "bookstore",
+      "category": "Writing",
+      "name": "Highlighters Set",
+      "description": "Five pastel highlighters.",
+      "price": 350,
+      "inStock": true
+    },
+    {
+      "id": "p26",
+      "storeId": "bookstore",
+      "category": "Writing",
+      "name": "Pencil & Eraser",
+      "description": "HB pencil with a soft eraser.",
+      "price": 75,
+      "inStock": true
+    },
+    {
+      "id": "p27",
+      "storeId": "bookstore",
+      "category": "Accessories",
+      "name": "Scientific Calculator",
+      "description": "Exam-approved scientific calculator.",
+      "price": 1800,
+      "inStock": true
+    },
+    {
+      "id": "p28",
+      "storeId": "bookstore",
+      "category": "Accessories",
+      "name": "USB Flash 32GB",
+      "description": "Compact USB 3.0 flash drive.",
+      "price": 900,
+      "inStock": false
+    }
+  ],
+  "buildings": [
+    {
+      "id": "baabda-A",
+      "campusId": "baabda",
+      "code": "A",
+      "name": "Building A",
+      "landmarks": "Library · Administration · HR",
+      "floors": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "baabda-B",
+      "campusId": "baabda",
+      "code": "B",
+      "name": "Building B",
+      "landmarks": "Student Affairs · Health labs",
+      "floors": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "baabda-C",
+      "campusId": "baabda",
+      "code": "C",
+      "name": "Building C",
+      "landmarks": "Media studios · Engineering labs",
+      "floors": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "baabda-D",
+      "campusId": "baabda",
+      "code": "D",
+      "name": "Building D",
+      "landmarks": "Computer & Comms Eng. · Robotics lab",
+      "floors": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "baabda-G",
+      "campusId": "baabda",
+      "code": "G",
+      "name": "Building G",
+      "landmarks": "Business School · Cafeteria · Mac labs",
+      "floors": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    {
+      "id": "baabda-S",
+      "campusId": "baabda",
+      "code": "S",
+      "name": "Sports Complex",
+      "landmarks": "Sport Sciences · Gym · Pools",
+      "floors": [
+        0,
+        1
+      ]
+    },
+    {
+      "id": "zahle-A",
+      "campusId": "zahle",
+      "code": "A",
+      "name": "Building A",
+      "landmarks": "Library · Student Affairs",
+      "floors": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "zahle-B",
+      "campusId": "zahle",
+      "code": "B",
+      "name": "Building B",
+      "landmarks": "Cafeteria · Gymnasium",
+      "floors": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "zgharta-A",
+      "campusId": "zgharta",
+      "code": "A",
+      "name": "Building A",
+      "landmarks": "Engineering office",
+      "floors": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "id": "zgharta-B",
+      "campusId": "zgharta",
+      "code": "B",
+      "name": "Building B",
+      "landmarks": "Classrooms",
+      "floors": [
+        0,
+        1,
+        2
+      ]
+    }
+  ],
+  "deliverySlots": [
+    {
+      "id": "s1",
+      "start": "09:45",
+      "end": "10:00",
+      "label": "09:45–10:00"
+    },
+    {
+      "id": "s2",
+      "start": "11:15",
+      "end": "11:30",
+      "label": "11:15–11:30"
+    },
+    {
+      "id": "s3",
+      "start": "12:45",
+      "end": "13:30",
+      "label": "12:45–13:30"
+    },
+    {
+      "id": "s4",
+      "start": "14:00",
+      "end": "14:15",
+      "label": "14:00–14:15"
+    },
+    {
+      "id": "s5",
+      "start": "15:15",
+      "end": "15:30",
+      "label": "15:15–15:30"
+    },
+    {
+      "id": "s6",
+      "start": "16:15",
+      "end": "16:30",
+      "label": "16:15–16:30"
+    }
+  ],
+  "printPrices": {
+    "bw": 5,
+    "color": 25,
+    "binding": {
+      "none": 0,
+      "staple": 25,
+      "spiral": 150
+    },
+    "maxPages": 200
+  },
+  "couriers": [
+    "Karim",
+    "Rami",
+    "Nour",
+    "Elie",
+    "Maya",
+    "Jad"
+  ],
+  "faculties": [
+    "Antonine School of Business",
+    "Faculty of Engineering and Technology",
+    "Faculty of Information and Communication",
+    "Faculty of Music and Musicology",
+    "Faculty of Public Health",
+    "Faculty of Sport Sciences",
+    "Faculty of Theology"
+  ]
+}

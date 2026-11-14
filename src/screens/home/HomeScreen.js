@@ -1,0 +1,303 @@
+import React, { useEffect, useState } from 'react';
+import { Animated, FlatList, RefreshControl, StatusBar, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useApp } from '../../context/AppContext';
+import AppInput from '../../components/AppInput';
+import Chip from '../../components/Chip';
+import ConfirmModal from '../../components/ConfirmModal';
+import EmptyState from '../../components/EmptyState';
+import ProductImage from '../../components/ProductImage';
+import SectionHeader from '../../components/SectionHeader';
+import SkeletonStoreCard from '../../components/SkeletonStoreCard';
+import StoreCard from '../../components/StoreCard';
+import WalletBanner from '../../components/WalletBanner';
+import { BumpBadge, PressableScale, PulseDot, StaggerItem, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
+import { colors, getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
+import { formatMoney } from '../../utils/money';
+import { getOrderStatus } from '../../utils/orderStatus';
+import { formatTime, getGreeting, getNextSlot, getNow, isStoreOpen, minutesUntil } from '../../utils/time';
+import styles from './HomeScreen.styles';
+
+const CATEGORIES = [
+  { key: 'All', icon: 'apps' },
+  { key: 'Food', icon: 'fast-food' },
+  { key: 'Drinks', icon: 'cafe' },
+  { key: 'Stationery', icon: 'book' },
+  { key: 'Printing', icon: 'print' },
+];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MAX_PREP = 15;
+const SKELETONS = [{ type: 'skeleton', id: 'sk1' }, { type: 'skeleton', id: 'sk2' }, { type: 'skeleton', id: 'sk3' }];
+
+// Home: FlatList with ListHeaderComponent, RefreshControl, skeletons and a re-render timer (useEffect cleanup)
+export default function HomeScreen({ navigation }) {
+  const {
+    campus, user, wallet, orders, cartTotals, timeOffsetMs, refreshCampus,
+    getStore, getStoreLocation, getCampus, reorder,
+  } = useApp();
+  const { showToast } = useToast();
+  const { animatedStyle } = useScreenFocusAnimation();
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('All');
+  const [refreshing, setRefreshing] = useState(false);
+  const [conflict, setConflict] = useState(null);
+  const [, setTick] = useState(0);
+
+  // Re-render every 10 s so the clock, open badges and the active order banner stay live
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshCampus();
+    setRefreshing(false);
+  };
+
+  const selectCategory = (key) => {
+    animateLayout();
+    setCategory(key);
+  };
+
+  const nowMs = Date.now();
+  const now = getNow(timeOffsetMs);
+  const firstName = user?.name.split(' ')[0] || 'there';
+  const campusInfo = getCampus();
+  const query = search.trim().toLowerCase();
+  const inCategory = (storeId) => category === 'All' || getStore(storeId)?.category === category;
+
+  const stores = campus.stores.filter((store) => {
+    if (!inCategory(store.id)) return false;
+    if (!query) return true;
+    return store.name.toLowerCase().includes(query);
+  });
+  const productResults = query
+    ? campus.products.filter((p) => inCategory(p.storeId) && p.name.toLowerCase().includes(query))
+    : [];
+
+  const listData = refreshing
+    ? SKELETONS
+    : [
+        ...stores.map((store) => ({ type: 'store', id: store.id, store })),
+        ...productResults.map((product) => ({ type: 'product', id: product.id, product })),
+      ];
+
+  const nextSlot = getNextSlot(campus.deliverySlots, timeOffsetMs);
+  const minutesLeft = nextSlot ? Math.max(0, minutesUntil(nextSlot.start, timeOffsetMs) - MAX_PREP) : 0;
+  const firstSlot = campus.deliverySlots[0];
+
+  const activeOrder = orders.find((o) => !o.cancelled && getOrderStatus(o, nowMs) !== 'Delivered');
+  const lastDelivered = orders.find((o) => !o.cancelled && getOrderStatus(o, nowMs) === 'Delivered');
+
+  const openStore = (store) => {
+    if (store.id === 'printing') navigation.navigate('Print');
+    else navigation.navigate('StoreMenu', { storeId: store.id });
+  };
+
+  // One-tap reorder from the "Order again" card (one-store rule handled with a confirm sheet)
+  const doReorder = (orderId, force) => {
+    const result = reorder(orderId, force);
+    if (result.conflict) {
+      setConflict({ orderId, storeName: result.storeName });
+      return;
+    }
+    setConflict(null);
+    if (!result.added) {
+      showToast({ message: 'These items are out of stock right now', icon: 'alert-circle', tone: 'error' });
+      return;
+    }
+    const skippedText = result.skipped.length ? ` · skipped ${result.skipped.join(', ')}` : '';
+    showToast({ message: `Added to bag${skippedText}`, icon: 'bag-check', tone: 'success' });
+    navigation.navigate('Cart');
+  };
+
+  const header = (
+    <View>
+      <View style={styles.topRow}>
+        <View style={styles.greetingBox}>
+          <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {DAYS[now.getDay()]} · {formatTime(now)}
+          </Text>
+          <Text style={styles.greeting} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {getGreeting(timeOffsetMs)}, <Text style={styles.name}>{firstName}</Text>
+          </Text>
+          <View style={styles.campusRow}>
+            <Ionicons name="location" size={14} color={colors.primary} />
+            <Text style={styles.campusText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {campusInfo ? `${campusInfo.name} · ${campusInfo.subtitle}` : 'Université Antonine'}
+            </Text>
+          </View>
+        </View>
+        <PressableScale
+          onPress={() => navigation.navigate('Cart')}
+          style={styles.bagButton}
+          accessibilityLabel={`Your bag, ${cartTotals.count} items`}
+        >
+          <Ionicons name="bag-handle-outline" size={24} color={colors.primary} />
+          <BumpBadge value={cartTotals.count} style={styles.bagBadge} />
+        </PressableScale>
+      </View>
+
+      <WalletBanner
+        nextSlot={nextSlot}
+        minutesLeft={minutesLeft}
+        balance={wallet.balance}
+        onTopUp={() => navigation.navigate('Wallet')}
+        emptyText={`No more breaks today – ordering opens tomorrow at ${firstSlot ? firstSlot.start : '09:45'}`}
+      />
+
+      {activeOrder ? (
+        <PressableScale
+          onPress={() => navigation.navigate('Tracking', { orderId: activeOrder.id })}
+          style={styles.activeBanner}
+          accessibilityLabel="Track your active order"
+        >
+          <PulseDot color={colors.accent} size={10} />
+          <View style={styles.activeText}>
+            <Text style={styles.activeTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              Order #{activeOrder.number} · {getOrderStatus(activeOrder, nowMs)}
+            </Text>
+            <Text style={styles.activeSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {getStore(activeOrder.storeId)?.name} · tap to track
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={colors.textOnDark} />
+        </PressableScale>
+      ) : null}
+
+      {lastDelivered && !query ? (
+        <View>
+          <SectionHeader title="Order again" />
+          <PressableScale onPress={() => doReorder(lastDelivered.id, false)} style={styles.againCard} haptic accessibilityLabel="Reorder your last order">
+            <ProductImage category={getStore(lastDelivered.storeId)?.category} size={52} rounded={14} iconSize={24} style={styles.againImage} />
+            <View style={styles.againText}>
+              <Text style={styles.againTitle} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {lastDelivered.items.map((i) => i.name).join(', ')}
+              </Text>
+              <Text style={styles.againSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {getStore(lastDelivered.storeId)?.name} · {formatMoney(lastDelivered.subtotal)}
+              </Text>
+            </View>
+            <View style={styles.againPill}>
+              <Ionicons name="refresh" size={14} color={colors.textOnDark} />
+              <Text style={styles.againPillText}>Reorder</Text>
+            </View>
+          </PressableScale>
+        </View>
+      ) : null}
+
+      <AppInput
+        icon="search"
+        placeholder="Search stores or products"
+        value={search}
+        onChangeText={setSearch}
+        clearable
+        onClear={() => setSearch('')}
+        autoCorrect={false}
+        returnKeyType="search"
+        style={styles.search}
+      />
+
+      <FlatList
+        data={CATEGORIES}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) => (
+          <Chip label={item.key} icon={item.icon} selected={category === item.key} onPress={() => selectCategory(item.key)} />
+        )}
+      />
+
+      <SectionHeader
+        title={query ? `Results · ${stores.length + productResults.length}` : `Stores · ${stores.length}`}
+        style={styles.sectionHeader}
+      />
+    </View>
+  );
+
+  const renderItem = ({ item, index }) => {
+    if (item.type === 'skeleton') return <SkeletonStoreCard />;
+    if (item.type === 'store') {
+      return (
+        <StoreCard
+          store={item.store}
+          index={index}
+          isOpen={isStoreOpen(item.store, timeOffsetMs)}
+          location={getStoreLocation(item.store)}
+          onPress={() => openStore(item.store)}
+        />
+      );
+    }
+    const product = item.product;
+    const store = getStore(product.storeId);
+    return (
+      <StaggerItem index={index}>
+        <PressableScale
+          onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+          style={[styles.productRow, !product.inStock && styles.productRowDimmed]}
+          accessibilityLabel={`${product.name} from ${store?.name}`}
+        >
+          <View style={[styles.productTile, { backgroundColor: getCategoryColors(product.category)[1] }]}>
+            <Ionicons name={getCategoryIcon(product.category)} size={22} color="#FFFFFF" />
+          </View>
+          <View style={styles.productText}>
+            <Text style={styles.productName} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {product.name} <Text style={styles.productStore}>– {store?.name}</Text>
+            </Text>
+            <Text style={styles.productMeta} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {product.inStock ? product.category : 'Out of stock'}
+            </Text>
+          </View>
+          <Text style={styles.productPrice} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {formatMoney(product.price)}
+          </Text>
+        </PressableScale>
+      </StaggerItem>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <Animated.View style={[styles.flex, animatedStyle]}>
+        <FlatList
+          data={listData}
+          keyExtractor={(item) => `${item.type}-${item.id}`}
+          renderItem={renderItem}
+          ListHeaderComponent={header}
+          ListEmptyComponent={
+            <EmptyState
+              icon="search"
+              title="Nothing found"
+              subtitle={`No store or product matches "${search}".`}
+              actionLabel="Clear search"
+              onAction={() => {
+                setSearch('');
+                setCategory('All');
+              }}
+            />
+          }
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+          }
+        />
+      </Animated.View>
+
+      <ConfirmModal
+        visible={!!conflict}
+        tone="warning"
+        icon="swap-horizontal"
+        title="Start a new bag?"
+        message={`Your bag has items from ${conflict?.storeName || 'another store'}. Empty it and reorder?`}
+        confirmLabel="Empty & reorder"
+        onConfirm={() => doReorder(conflict.orderId, true)}
+        onCancel={() => setConflict(null)}
+      />
+    </SafeAreaView>
+  );
+}

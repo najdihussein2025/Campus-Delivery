@@ -1,0 +1,41 @@
+import { StyleSheet } from 'react-native';
+import { colors, fonts, radius, shadow, spacing, typography } from '../../theme/theme';
+
+export default StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  list: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  filters: { marginBottom: spacing.sm },
+  segment: { marginBottom: spacing.md },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    ...shadow.card,
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center' },
+  storeTile: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  cardInfo: { flex: 1, marginHorizontal: spacing.md },
+  storeName: typography.h3,
+  meta: { ...typography.caption, fontSize: 12.5 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.md },
+  cardMiddle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  itemsText: { ...typography.body, color: colors.textBrand },
+  total: { fontFamily: fonts.extrabold, color: colors.text },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: spacing.md },
+  action: { minWidth: 120 },
+  previewBox: { alignSelf: 'stretch', marginTop: spacing.lg },
+  previewRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  previewQty: { fontFamily: fonts.bold, fontSize: 14, color: colors.primary, width: 32 },
+  previewName: { ...typography.body, flex: 1 },
+  previewPrice: { fontFamily: fonts.bold, fontSize: 14, color: colors.text, marginLeft: spacing.sm },
+  skippedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+  },
+  skippedText: { fontFamily: fonts.medium, fontSize: 13, color: colors.warningText, marginLeft: spacing.sm, flex: 1 },
+});
