@@ -3,15 +3,11 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppButton from './AppButton';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './ConfirmModal.styles';
+import { MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './ConfirmModal.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
-const TONE_COLORS = {
-  primary: [colors.primary, colors.primarySoft],
-  danger: [colors.danger, colors.dangerSoft],
-  success: [colors.success, colors.successSoft],
-  warning: [colors.warning, colors.warningSoft],
-};
 
 // Bottom-sheet replacement for Alert.alert (one button when onCancel or cancelLabel is missing)
 export default function ConfirmModal({
@@ -27,8 +23,16 @@ export default function ConfirmModal({
   loading = false,
   children,
 }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [toneColor, toneSoft] = TONE_COLORS[tone] || TONE_COLORS.primary;
+  const toneColors = {
+    primary: [colors.primaryText, colors.primarySoft],
+    danger: [colors.danger, colors.dangerSoft],
+    success: [colors.success, colors.successSoft],
+    warning: [colors.warning, colors.warningSoft],
+  };
+  const [toneColor, toneSoft] = toneColors[tone] || toneColors.primary;
   const showCancel = Boolean(cancelLabel && onCancel);
 
   return (

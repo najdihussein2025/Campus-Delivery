@@ -1,10 +1,12 @@
 import React from 'react';
 import { View } from 'react-native';
 import SkeletonBlock from './motion/SkeletonBlock';
-import styles from './SkeletonStoreCard.styles';
+import { createStyles } from './SkeletonStoreCard.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
 
 // Loading placeholder shaped like a StoreCard
 export default function SkeletonStoreCard() {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.card}>
       <View style={styles.row}>

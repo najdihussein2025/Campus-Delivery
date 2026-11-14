@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, spacing } from '../theme/theme';
+import { fonts, spacing } from '../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center' },
   step: { alignItems: 'center', minWidth: 56, minHeight: 44, justifyContent: 'center' },
   circle: {
@@ -9,24 +9,24 @@ export default StyleSheet.create({
     height: 30,
     borderRadius: 15,
     borderWidth: 2,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: c.border,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circleActive: { borderColor: colors.primary },
-  circleDone: { backgroundColor: colors.primary, borderColor: colors.primary },
-  number: { fontFamily: fonts.bold, fontSize: 13.5, color: colors.textMuted },
-  numberActive: { color: colors.primary },
-  label: { fontFamily: fonts.bold, fontSize: 12.5, color: colors.textMuted, marginTop: 4 },
-  labelActive: { color: colors.text },
+  circleActive: { borderColor: c.primary },
+  circleDone: { backgroundColor: c.primary, borderColor: c.primary },
+  number: { fontFamily: fonts.bold, fontSize: 13.5, color: c.textMuted },
+  numberActive: { color: c.primaryText },
+  label: { fontFamily: fonts.bold, fontSize: 12.5, color: c.textMuted, marginTop: 4 },
+  labelActive: { color: c.text },
   connector: {
     flex: 1,
     height: 2,
     borderRadius: 1,
-    backgroundColor: colors.border,
+    backgroundColor: c.border,
     marginHorizontal: spacing.xs,
     marginBottom: 18,
   },
-  connectorDone: { backgroundColor: colors.primary },
+  connectorDone: { backgroundColor: c.primary },
 });

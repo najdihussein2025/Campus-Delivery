@@ -4,10 +4,12 @@ import PressableScale from './motion/PressableScale';
 import useReduceMotion from './motion/useReduceMotion';
 import { tap } from '../utils/haptics';
 import { MAX_FONT_SCALE } from '../theme/theme';
-import styles from './SegmentedControl.styles';
+import { createStyles } from './SegmentedControl.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
 
 // Segmented control: a white indicator slides (Animated.spring) under the selected option
 export default function SegmentedControl({ options = [], value, onChange, style }) {
+  const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
   const [width, setWidth] = useState(0);
   const index = Math.max(0, options.findIndex((o) => o.value === value));

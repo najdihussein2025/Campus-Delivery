@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../context/AppContext';
@@ -11,15 +11,22 @@ import ProductImage from '../../components/ProductImage';
 import QuantitySelector from '../../components/QuantitySelector';
 import StickyBar from '../../components/StickyBar';
 import { AnimatedProgressBar, PressableScale, StaggerItem, animateLayout, useToast } from '../../components/motion';
-import { colors, getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
+import { getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
 import { FREE_DELIVERY_OVER, formatMoney } from '../../utils/money';
 import { isStoreOpen } from '../../utils/time';
 import * as haptics from '../../utils/haptics';
-import styles from './CartScreen.styles';
+import { createStyles } from './CartScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 // "Your bag": FlatList of items + useContext cart state + toast with Undo after removing
 export default function CartScreen({ navigation }) {
-  const { cart, cartTotals, getStore, changeQty, removeItem, restoreItem, clearCart, timeOffsetMs } = useApp();
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const {
+    cart, cartTotals, getStore, changeQty, removeItem, restoreItem, clearCart, timeOffsetMs,
+    rewardAvailable, rewardApplied, useReward, setUseReward,
+  } = useApp();
   const { showToast } = useToast();
   const [confirmClear, setConfirmClear] = useState(false);
 
@@ -130,6 +137,31 @@ export default function CartScreen({ navigation }) {
           <Text style={styles.warningText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             Minimum order is $2.00. Add {formatMoney(cartTotals.missingForMinimum)} more to check out.
           </Text>
+        </View>
+      ) : null}
+
+      {rewardAvailable ? (
+        <View style={styles.rewardCard}>
+          <Text style={styles.rewardEmoji}>🎁</Text>
+          <View style={styles.rewardText}>
+            <Text style={styles.rewardTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>Use my free coffee</Text>
+            <Text style={styles.rewardSub} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {rewardApplied
+                ? 'Free coffee applied. Minimum order counts what you pay.'
+                : 'Your most expensive coffee in the bag is on us.'}
+            </Text>
+          </View>
+          <Switch
+            value={useReward}
+            onValueChange={(value) => {
+              animateLayout();
+              haptics.tap();
+              setUseReward(value);
+            }}
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.surface}
+            accessibilityLabel="Use my free coffee"
+          />
         </View>
       ) : null}
 

@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   wrapper: { alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute' },
 });

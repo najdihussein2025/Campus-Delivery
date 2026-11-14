@@ -4,13 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
 import useReduceMotion from './motion/useReduceMotion';
 import { tap } from '../utils/haptics';
-import { colors } from '../theme/theme';
-import styles from './StarRating.styles';
+
+import { createStyles } from './StarRating.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 const STARS = [1, 2, 3, 4, 5];
 
 // One star that springs up when tapped
 function Star({ filled, size, disabled, onPress, label }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -33,6 +37,7 @@ function Star({ filled, size, disabled, onPress, label }) {
 }
 
 export default function StarRating({ value = 0, onChange, size = 32, readOnly = false }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row} accessibilityLabel={`Rating ${value} of 5`}>
       {STARS.map((star) => (

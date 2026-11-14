@@ -3,10 +3,12 @@ import { Animated, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BumpBadge from '../components/motion/BumpBadge';
 import useReduceMotion from '../components/motion/useReduceMotion';
-import styles from './TabIcon.styles';
+import { createStyles } from './TabIcon.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
 
 // Tab bar icon: springs up when its tab becomes active; optional bumping badge (cart count)
 export default function TabIcon({ name, focused, color, size, badge }) {
+  const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
 

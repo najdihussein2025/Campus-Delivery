@@ -2,17 +2,20 @@ import React from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './AppButton.styles';
+import { MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './AppButton.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
-const TEXT_COLORS = {
+// Label colour for each button variant, built from the active palette
+const getTextColors = (colors) => ({
   primary: colors.textOnDark,
-  secondary: colors.primary,
-  ghost: colors.primary,
+  secondary: colors.primaryText,
+  ghost: colors.primaryText,
   danger: colors.textOnDark,
   accent: colors.primaryDark,
   dangerOutline: colors.dangerText,
-};
+});
 
 const HAPTIC_VARIANTS = ['primary', 'accent', 'danger'];
 
@@ -30,9 +33,11 @@ export default function AppButton({
   accessibilityLabel,
   style,
 }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
-  const textColor = disabled ? colors.textMuted : TEXT_COLORS[variant] || colors.textOnDark;
-  const spinnerColor = variant === 'primary' || variant === 'danger' ? colors.textOnDark : colors.primary;
+  const textColor = disabled ? colors.textMuted : getTextColors(colors)[variant] || colors.textOnDark;
+  const spinnerColor = variant === 'primary' || variant === 'danger' ? colors.textOnDark : colors.primaryText;
   const useHaptic = haptic === undefined ? HAPTIC_VARIANTS.includes(variant) : haptic;
   const showReason = disabled && reason;
 

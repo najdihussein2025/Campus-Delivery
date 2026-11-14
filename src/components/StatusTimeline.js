@@ -3,15 +3,18 @@ import { Animated, Easing, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PulseDot from './motion/PulseDot';
 import useReduceMotion from './motion/useReduceMotion';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
+import { MAX_FONT_SCALE } from '../theme/theme';
 import { STATUS_STEPS } from '../utils/orderStatus';
 import { formatTime } from '../utils/time';
-import styles from './StatusTimeline.styles';
+import { createStyles } from './StatusTimeline.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 const STEP_ICONS = ['receipt', 'restaurant', 'bicycle', 'checkmark-done'];
 
 // One connector line that fills (Animated.timing) when the order reaches the next step
 function Connector({ filled }) {
+  const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
   const fill = useRef(new Animated.Value(filled ? 1 : 0)).current;
 
@@ -33,6 +36,8 @@ function Connector({ filled }) {
 
 // Vertical order timeline: done = UA blue, current = cyan ring with a pulse, future = muted
 export default function StatusTimeline({ currentIndex = 0, stepTimes = [], cancelled = false }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <View>
       {STATUS_STEPS.map((step, i) => {

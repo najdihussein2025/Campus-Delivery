@@ -6,20 +6,30 @@ import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import Badge from '../../components/Badge';
 import Chip from '../../components/Chip';
+import DietFilterChips from '../../components/DietFilterChips';
+import MyDietChip from '../../components/MyDietChip';
+import SeasonBanner from '../../components/SeasonBanner';
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
 import { BumpBadge, PressableScale } from '../../components/motion';
-import { colors, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
+import { fixedColors, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { isStoreOpen } from '../../utils/time';
-import styles, { HERO_HEIGHT, CHIPS_HEIGHT } from './StoreMenuScreen.styles';
+import { matchesDiet } from '../../utils/diet';
+import { createStyles, HERO_HEIGHT, CHIPS_HEIGHT, FILTERS_HEIGHT } from './StoreMenuScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import useDietFilter from '../../hooks/useDietFilter';
+import { useTheme } from '../../context/ThemeContext';
 
-const HEADER_HEIGHT = HERO_HEIGHT + CHIPS_HEIGHT;
+const HEADER_HEIGHT = HERO_HEIGHT + CHIPS_HEIGHT + FILTERS_HEIGHT;
 
 // Store menu: collapsing hero (Animated.event on scroll), sticky category chips and a "View bag" bar
 export default function StoreMenuScreen({ navigation, route }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const { storeId } = route.params;
-  const { campus, cart, cartTotals, getStore, getStoreLocation, timeOffsetMs, reduceMotion } = useApp();
+  const { campus, cart, cartTotals, getStore, getStoreLocation, timeOffsetMs, reduceMotion, visibleSeasons, dismissSeason } = useApp();
+  const diet = useDietFilter({ useMyDiet: true });
   const insets = useSafeAreaInsets();
   const [active, setActive] = useState(null);
   const listRef = useRef(null);
@@ -64,15 +74,17 @@ export default function StoreMenuScreen({ navigation, route }) {
     return <EmptyState icon="storefront-outline" title="Store not found" actionLabel="Go back" onAction={() => navigation.goBack()} />;
   }
 
-  const products = campus.products.filter((p) => p.storeId === storeId);
+  const storeProducts = campus.products.filter((p) => p.storeId === storeId);
+  const products = storeProducts.filter((p) => matchesDiet(p, diet.selected));
+  // Sections with no matching product are hidden
   const categories = [...new Set(products.map((p) => p.category))];
   const groups = categories.map((c) => ({ category: c, products: products.filter((p) => p.category === c) }));
-  const current = active || categories[0];
+  const current = categories.includes(active) ? active : categories[0];
 
   const jumpTo = (category) => {
     setActive(category);
     const index = categories.indexOf(category);
-    listRef.current?.scrollToIndex({ index, animated: !reduceMotion, viewOffset: CHIPS_HEIGHT + 8 });
+    listRef.current?.scrollToIndex({ index, animated: !reduceMotion, viewOffset: CHIPS_HEIGHT + FILTERS_HEIGHT + 8 });
   };
 
   const headerTranslate = scrollY.interpolate({
@@ -100,6 +112,19 @@ export default function StoreMenuScreen({ navigation, route }) {
     </View>
   ) : null;
 
+  const listHeader = (
+    <View>
+      {closedBanner}
+      <SeasonBanner seasons={visibleSeasons} onSelectTag={diet.turnOn} onDismiss={dismissSeason} />
+      {diet.showMyDiet ? <MyDietChip tags={diet.selected} onRemove={diet.clear} /> : null}
+      {diet.selected.length > 0 ? (
+        <Text style={styles.countLine} accessibilityLiveRegion="polite" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {products.length} {products.length === 1 ? 'item matches' : 'items match'}
+        </Text>
+      ) : null}
+    </View>
+  );
+
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
@@ -107,7 +132,16 @@ export default function StoreMenuScreen({ navigation, route }) {
         ref={listRef}
         data={groups}
         keyExtractor={(item) => item.category}
-        ListHeaderComponent={closedBanner}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={
+          <EmptyState
+            icon="leaf-outline"
+            title="Nothing matches these filters"
+            subtitle="Try removing a filter to see more of the menu."
+            actionLabel="Clear filters"
+            onAction={diet.clear}
+          />
+        }
         contentContainerStyle={[styles.content, { paddingTop: HEADER_HEIGHT + 8, paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
@@ -147,7 +181,7 @@ export default function StoreMenuScreen({ navigation, route }) {
           <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <View style={styles.heroRow}>
               <LinearGradient colors={getCategoryColors(store.category)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconTile}>
-                <Ionicons name={store.icon} size={30} color="#FFFFFF" />
+                <Ionicons name={store.icon} size={30} color={fixedColors.white} />
               </LinearGradient>
               <View style={styles.heroInfo}>
                 <Text style={styles.heroDescription} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -182,6 +216,9 @@ export default function StoreMenuScreen({ navigation, route }) {
             contentContainerStyle={styles.chips}
             renderItem={({ item }) => <Chip label={item} selected={current === item} onPress={() => jumpTo(item)} />}
           />
+        </View>
+        <View style={styles.filtersBar}>
+          <DietFilterChips selected={diet.selected} onToggle={diet.toggle} contentContainerStyle={styles.chips} />
         </View>
       </Animated.View>
 

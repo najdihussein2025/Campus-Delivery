@@ -1,21 +1,27 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/theme';
+
 import useReduceMotion from './useReduceMotion';
-import styles from './AnimatedProgressBar.styles';
+import { createStyles } from './AnimatedProgressBar.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const THUMB = 28;
 
 // Progress bar whose fill animates to `progress` (0..1); optional icon rides on the fill edge
 export default function AnimatedProgressBar({
   progress = 0,
-  color = colors.primary,
-  trackColor = colors.surfaceMuted,
+  color,
+  trackColor,
   height = 8,
   thumbIcon,
   style,
 }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const fillColor = color || colors.primary;
+  const trackBg = trackColor || colors.surfaceMuted;
   const reduceMotion = useReduceMotion();
   const value = useRef(new Animated.Value(progress)).current;
   const [trackWidth, setTrackWidth] = useState(0);
@@ -41,14 +47,14 @@ export default function AnimatedProgressBar({
   return (
     <View style={[styles.wrapper, thumbIcon && styles.wrapperThumb, style]}>
       <View
-        style={[styles.track, { height, borderRadius: height / 2, backgroundColor: trackColor }]}
+        style={[styles.track, { height, borderRadius: height / 2, backgroundColor: trackBg }]}
         onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}
       >
-        <Animated.View style={[styles.fill, { width: fillWidth, borderRadius: height / 2, backgroundColor: color }]} />
+        <Animated.View style={[styles.fill, { width: fillWidth, borderRadius: height / 2, backgroundColor: fillColor }]} />
       </View>
       {thumbIcon && trackWidth > 0 ? (
-        <Animated.View style={[styles.thumb, { left: thumbLeft, borderColor: color }]}>
-          <Ionicons name={thumbIcon} size={15} color={color} />
+        <Animated.View style={[styles.thumb, { left: thumbLeft, borderColor: fillColor }]}>
+          <Ionicons name={thumbIcon} size={15} color={fillColor} />
         </Animated.View>
       ) : null}
     </View>

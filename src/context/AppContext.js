@@ -1,10 +1,18 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadCampusData } from '../services/api';
 import { calcCartTotals } from '../utils/money';
-import { getOrderStatus } from '../utils/orderStatus';
-import { offsetForTime } from '../utils/time';
+import { DEFAULT_SPEED, buildStatusSchedule, getOrderStatus, secondsForSpeed } from '../utils/orderStatus';
+import { getNow, offsetForTime } from '../utils/time';
+import {
+  canUseReward, consumeReward, emptyLoyalty, refundReward, rewardDiscount, settleDeliveredOrders, willCompleteCard,
+} from '../utils/loyalty';
+import { activeSeasons } from '../utils/diet';
+import { buildDemoSeed } from '../utils/demoSeed';
+import {
+  cancelAllNotifications, cancelNotifications, rescheduleBreakReminders, scheduleOrderNotifications,
+} from '../services/notifications';
 
 const AppContext = createContext(null);
 
@@ -13,6 +21,10 @@ const KEYS = {
   session: 'campusgo:session',
   demoOffset: 'campusgo:demoOffset',
   onboarding: 'campusgo:onboardingDone',
+  trackingSpeed: 'campusgo:trackingSpeed',
+  dismissedSeasons: 'campusgo:dismissedSeasons',
+  demoSeeded: 'campusgo:demoSeeded',
+  loyalty: (email) => `campusgo:loyalty:${email.toLowerCase()}`,
   data: (email) => `campusgo:data:${email.toLowerCase()}`,
 };
 
@@ -49,12 +61,22 @@ const migrateUser = (u) => {
   return next;
 };
 
+// Orders saved before the time-based status / loyalty existed get the new fields (no retroactive stamps)
+const migrateOrder = (o) => ({
+  ...o,
+  placedAtMs: o.placedAtMs ?? o.createdAt,
+  placedAt: o.placedAt ?? o.createdAt,
+  gross: o.gross ?? o.subtotal,
+  stampsCredited: o.stampsCredited ?? true,
+  notificationIds: o.notificationIds || [],
+});
+
 const migrateData = (data) => {
   const savedLocations = (data.savedLocations || []).map((loc) => {
     if (loc.id === 'loc1' && loc.buildingId === 'bE' && loc.room === '204') return DEMO_LOCATION;
     return LEGACY_BUILDINGS[loc.buildingId] ? { ...loc, buildingId: LEGACY_BUILDINGS[loc.buildingId] } : loc;
   });
-  return { ...data, savedLocations };
+  return { ...data, savedLocations, orders: (data.orders || []).map(migrateOrder) };
 };
 
 const newUserData = (credit, savedLocations = []) => ({
@@ -64,8 +86,6 @@ const newUserData = (credit, savedLocations = []) => ({
   savedLocations,
 });
 
-const DEMO_DATA = () =>
-  newUserData(2500, [DEMO_LOCATION]);
 
 // Chapter 20: AsyncStorage with async/await and try/catch
 const readJson = async (key, fallback) => {
@@ -86,6 +106,17 @@ const writeJson = async (key, value) => {
   }
 };
 
+const isDemo = (email) => email.toLowerCase() === DEMO_USER.email;
+
+// Demo account data: ~3 weeks of delivered orders + wallet history + a card at 8/10 stamps
+const buildDemoBundle = (campusData, offsetMs) => {
+  const seed = buildDemoSeed(campusData, getNow(offsetMs).getTime(), offsetMs);
+  return {
+    data: { ...newUserData(0, [DEMO_LOCATION]), orders: seed.orders, wallet: seed.wallet },
+    loyalty: seed.loyalty,
+  };
+};
+
 export function AppProvider({ children }) {
   const [campus, setCampus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -94,11 +125,25 @@ export function AppProvider({ children }) {
   const [cart, setCart] = useState(EMPTY_CART);
   const [wallet, setWallet] = useState({ balance: 0, transactions: [] });
   const [orders, setOrders] = useState([]);
+  const [loyalty, setLoyalty] = useState(emptyLoyalty());
+  const [useReward, setUseReward] = useState(false);
+  const [lastSettlement, setLastSettlement] = useState(null);
   const [savedLocations, setSavedLocations] = useState([]);
   const [timeOffsetMs, setTimeOffsetMs] = useState(0);
+  const [trackingSpeed, setTrackingSpeedState] = useState(DEFAULT_SPEED);
+  const [dismissedSeasons, setDismissedSeasons] = useState([]);
   const [dataReady, setDataReady] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [onboardingDone, setOnboardingDone] = useState(true);
+
+  // Always-current copies, so timers and listeners (and settleDeliveredOrders) never read stale state
+  const ordersRef = useRef([]);
+  const loyaltyRef = useRef(emptyLoyalty());
+  const campusRef = useRef(null);
+  const sessionRef = useRef(0); // bumps on logout / demo reset so late async work can be dropped
+  ordersRef.current = orders;
+  loyaltyRef.current = loyalty;
+  campusRef.current = campus;
 
   // Accessibility: read Reduce Motion once and follow changes (listener removed in cleanup)
   useEffect(() => {
@@ -107,36 +152,64 @@ export function AppProvider({ children }) {
     return () => sub.remove();
   }, []);
 
-  const applyUserData = (raw) => {
+  const commitOrders = (next) => {
+    ordersRef.current = next;
+    setOrders(next);
+  };
+  const commitLoyalty = (next) => {
+    loyaltyRef.current = next;
+    setLoyalty(next);
+  };
+
+  const applyUserData = (raw, loyaltyRaw) => {
     const data = migrateData(raw);
     setCart(data.cart || EMPTY_CART);
     setWallet(data.wallet || { balance: 0, transactions: [] });
-    setOrders(data.orders || []);
+    commitOrders(data.orders || []);
+    commitLoyalty(loyaltyRaw || emptyLoyalty());
     setSavedLocations(data.savedLocations || []);
+    setUseReward(false);
     setDataReady(true);
+  };
+
+  // Reads one account's saved data. The demo account is seeded once if it has no orders yet.
+  const loadBundle = async (account, campusData, offsetMs) => {
+    let data = await readJson(KEYS.data(account.email), newUserData(0));
+    let loyaltyData = await readJson(KEYS.loyalty(account.email), emptyLoyalty());
+    const alreadySeeded = await readJson(KEYS.demoSeeded, false);
+    if (isDemo(account.email) && (data.orders || []).length === 0 && !alreadySeeded) {
+      const bundle = buildDemoBundle(campusData, offsetMs);
+      data = { ...data, ...bundle.data, cart: data.cart || EMPTY_CART, savedLocations: data.savedLocations || bundle.data.savedLocations };
+      loyaltyData = bundle.loyalty;
+      await writeJson(KEYS.demoSeeded, true);
+    }
+    return { data, loyalty: loyaltyData };
   };
 
   // Load campus data, accounts and the saved session once on mount
   useEffect(() => {
     const init = async () => {
-      const data = await loadCampusData();
-      setCampus(data);
+      const campusData = await loadCampusData();
+      setCampus(campusData);
+      const offset = await readJson(KEYS.demoOffset, 0);
+      setTimeOffsetMs(offset);
+      setTrackingSpeedState(await readJson(KEYS.trackingSpeed, DEFAULT_SPEED));
+      setDismissedSeasons(await readJson(KEYS.dismissedSeasons, []));
 
       let storedUsers = await readJson(KEYS.users, null);
       if (!storedUsers) {
         storedUsers = [DEMO_USER];
         await writeJson(KEYS.users, storedUsers);
-        await writeJson(KEYS.data(DEMO_USER.email), DEMO_DATA());
       }
       storedUsers = storedUsers.map(migrateUser);
       setUsers(storedUsers);
       setOnboardingDone(await readJson(KEYS.onboarding, false));
-      setTimeOffsetMs(await readJson(KEYS.demoOffset, 0));
 
       const sessionEmail = await readJson(KEYS.session, null);
       const sessionUser = storedUsers.find((u) => u.email === sessionEmail);
       if (sessionUser) {
-        applyUserData(await readJson(KEYS.data(sessionUser.email), newUserData(0)));
+        const bundle = await loadBundle(sessionUser, campusData, offset);
+        applyUserData(bundle.data, bundle.loyalty);
         setUser(sessionUser);
       }
       setLoading(false);
@@ -149,6 +222,11 @@ export function AppProvider({ children }) {
     if (!user || !dataReady) return;
     writeJson(KEYS.data(user.email), { cart, wallet, orders, savedLocations });
   }, [cart, wallet, orders, savedLocations, user, dataReady]);
+
+  useEffect(() => {
+    if (!user || !dataReady) return;
+    writeJson(KEYS.loyalty(user.email), loyalty);
+  }, [loyalty, user, dataReady]);
 
   const refreshCampus = async () => {
     const data = await loadCampusData();
@@ -173,14 +251,91 @@ export function AppProvider({ children }) {
     return `${building.name} · Room ${room}`;
   };
 
+  // ---------- Loyalty settlement ----------
+  // Idempotent: credits every Delivered, not-yet-credited order. Runs on start, on foreground and on a timer
+  // (an order can become Delivered while the app is closed).
+  const settle = useCallback(() => {
+    const result = settleDeliveredOrders(ordersRef.current, loyaltyRef.current, Date.now());
+    if (!result.changed) return [];
+    commitOrders(result.orders);
+    commitLoyalty(result.loyalty);
+    if (result.credited.length) setLastSettlement({ items: result.credited, at: Date.now() });
+    return result.credited;
+  }, []);
+
+  // ---------- Notifications helpers ----------
+  const isActiveOrder = (order, nowMs = Date.now()) =>
+    !order.cancelled && getOrderStatus(order, nowMs) !== 'Delivered';
+
+  // Break reminders are rescheduled from the current settings; today's breaks with an active order are skipped
+  const syncBreakReminders = useCallback(() => {
+    const c = campusRef.current;
+    if (!c) return Promise.resolve(0);
+    const busy = ordersRef.current.filter((o) => isActiveOrder(o)).map((o) => o.slotId);
+    return rescheduleBreakReminders({ slots: c.deliverySlots, busySlotIds: busy });
+  }, []);
+
+  // Hands one order's remaining Preparing / On the way / Delivered notifications to the OS
+  const scheduleNotificationsFor = async (order) => {
+    const c = campusRef.current;
+    if (!c) return;
+    const store = c.stores.find((s) => s.id === order.storeId);
+    const slot = c.deliverySlots.find((s) => s.id === order.slotId);
+    const building = c.buildings.find((b) => b.id === order.building);
+    const session = sessionRef.current;
+    const ids = await scheduleOrderNotifications({
+      order,
+      storeName: store ? store.name : 'The store',
+      slotLabel: slot ? slot.label : '',
+      buildingName: building ? building.name : '',
+      completesCard: willCompleteCard(loyaltyRef.current, ordersRef.current, order),
+    });
+    const current = ordersRef.current.find((o) => o.id === order.id);
+    if (session !== sessionRef.current || !current || current.cancelled) {
+      cancelNotifications(ids);
+      return;
+    }
+    commitOrders(ordersRef.current.map((o) => (o.id === order.id ? { ...o, notificationIds: ids } : o)));
+  };
+
+  // After permission is granted (or after login): schedule every active order again, replacing old ids
+  const syncOrderNotifications = useCallback(async () => {
+    const active = ordersRef.current.filter((o) => isActiveOrder(o));
+    for (const order of active) {
+      await cancelNotifications(order.notificationIds || []);
+      await scheduleNotificationsFor(order);
+    }
+  }, []);
+
+  // Settle on start/foreground/timer + refresh break reminders when the app opens
+  useEffect(() => {
+    if (!user || !dataReady) return undefined;
+    settle();
+    syncBreakReminders();
+    const timer = setInterval(settle, 2000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        settle();
+        syncBreakReminders();
+      }
+    });
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [user, dataReady, settle, syncBreakReminders]);
+
   // ---------- Auth ----------
   const login = async (email) => {
     const account = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
     if (!account) return false;
     setDataReady(false);
-    applyUserData(await readJson(KEYS.data(account.email), newUserData(0)));
+    const bundle = await loadBundle(account, campus, timeOffsetMs);
+    applyUserData(bundle.data, bundle.loyalty);
     await writeJson(KEYS.session, account.email);
     setUser(account);
+    // Logging out cancelled the OS notifications, so schedule this user's active orders again
+    setTimeout(() => syncOrderNotifications(), 500);
     return true;
   };
 
@@ -200,17 +355,21 @@ export function AppProvider({ children }) {
     const data = newUserData(1000);
     await writeJson(KEYS.data(account.email), data);
     setDataReady(false);
-    applyUserData(data);
+    applyUserData(data, emptyLoyalty());
     await writeJson(KEYS.session, account.email);
     setUser(account);
   };
 
   const logout = async () => {
+    sessionRef.current += 1;
+    await cancelAllNotifications();
     await writeJson(KEYS.session, null);
     setDataReady(false);
     setUser(null);
     setCart(EMPTY_CART);
-    setOrders([]);
+    commitOrders([]);
+    commitLoyalty(emptyLoyalty());
+    setUseReward(false);
     setWallet({ balance: 0, transactions: [] });
     setSavedLocations([]);
   };
@@ -263,19 +422,34 @@ export function AppProvider({ children }) {
     });
   };
 
-  const clearCart = () => setCart(EMPTY_CART);
+  const clearCart = () => {
+    setCart(EMPTY_CART);
+    setUseReward(false);
+  };
+
+  // ---------- Loyalty reward in the bag ----------
+  // The switch only counts while the bag still has a coffee and a reward is available
+  const rewardAvailable = canUseReward(cart.items, loyalty);
+  const rewardApplied = useReward && rewardAvailable;
+  const rewardCents = rewardApplied ? rewardDiscount(cart.items) : 0;
+  const cartTotals = calcCartTotals(cart.items, rewardCents);
 
   // ---------- Orders ----------
   const placeOrder = ({ buildingId, room, slotId, payment, saveLocation, locationLabel }) => {
-    const totals = calcCartTotals(cart.items);
+    const totals = calcCartTotals(cart.items, rewardCents);
     if (payment === 'wallet' && wallet.balance < totals.total) return null;
 
     const couriers = campus.couriers;
+    // The status is time-based: these real-time timestamps drive both the app and the phone notifications
+    const placedAtMs = Date.now();
+    const stepSeconds = secondsForSpeed(trackingSpeed);
     const order = {
       id: makeId('o'),
-      number: String(Date.now()).slice(-5),
+      number: String(placedAtMs).slice(-5),
       storeId: cart.storeId,
       items: cart.items,
+      gross: totals.gross,
+      discount: totals.discount,
       subtotal: totals.subtotal,
       deliveryFee: totals.deliveryFee,
       total: totals.total,
@@ -284,10 +458,18 @@ export function AppProvider({ children }) {
       slotId,
       payment,
       courier: couriers[Math.floor(Math.random() * couriers.length)],
-      createdAt: Date.now(),
+      placedAt: getNow(timeOffsetMs).getTime(),
+      placedAtMs,
+      createdAt: placedAtMs,
+      stepSeconds,
+      statusSchedule: buildStatusSchedule(placedAtMs, stepSeconds),
+      notificationIds: [],
+      rewardUsed: rewardApplied,
+      stampsCredited: false,
       cancelled: false,
     };
-    setOrders((prev) => [order, ...prev]);
+    commitOrders([order, ...ordersRef.current]);
+    if (rewardApplied) commitLoyalty(consumeReward(loyaltyRef.current, order.id, placedAtMs));
 
     if (payment === 'wallet') {
       setWallet((prev) => ({
@@ -300,24 +482,29 @@ export function AppProvider({ children }) {
     }
     if (saveLocation) addLocation({ label: locationLabel || 'Saved place', buildingId, room: order.room });
     clearCart();
+    scheduleNotificationsFor(order);
+    syncBreakReminders();
     return order;
   };
 
   const cancelOrder = (orderId) => {
-    const order = orders.find((o) => o.id === orderId);
+    const order = ordersRef.current.find((o) => o.id === orderId);
     if (!order || getOrderStatus(order, Date.now()) !== 'Received') return false;
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, cancelled: true } : o)));
+    commitOrders(ordersRef.current.map((o) => (o.id === orderId ? { ...o, cancelled: true } : o)));
+    cancelNotifications(order.notificationIds || []);
+    if (order.rewardUsed) commitLoyalty(refundReward(loyaltyRef.current, order.id, Date.now()));
     if (order.payment === 'wallet') {
       setWallet((prev) => ({
         balance: prev.balance + order.total,
         transactions: [makeTransaction('refund', order.total, `Refund · Order #${order.number}`), ...prev.transactions],
       }));
     }
+    syncBreakReminders();
     return true;
   };
 
   const rateOrder = (orderId, stars, comment) => {
-    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, rating: stars, comment: comment.trim() } : o)));
+    commitOrders(ordersRef.current.map((o) => (o.id === orderId ? { ...o, rating: stars, comment: comment.trim() } : o)));
   };
 
   // Read-only preview for the reorder confirm sheet: { items, skipped, conflict, storeName }
@@ -335,7 +522,7 @@ export function AppProvider({ children }) {
     return { items, skipped, conflict, storeName: conflict ? getStore(cart.storeId)?.name : '' };
   };
 
-  // Returns { conflict, storeName } or { added, skipped: [names] }
+  // Returns { conflict, storeName } or { added, skipped: [names] }. The loyalty reward is never copied.
   const reorder = (orderId, force = false) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return { added: 0, skipped: [] };
@@ -358,6 +545,7 @@ export function AppProvider({ children }) {
       else items.push({ ...item });
     });
     if (items.length) setCart({ storeId: order.storeId, items });
+    setUseReward(false);
     return { added: available.length, skipped };
   };
 
@@ -380,7 +568,7 @@ export function AppProvider({ children }) {
 
   const removeLocation = (id) => setSavedLocations((prev) => prev.filter((l) => l.id !== id));
 
-  // ---------- Demo clock ----------
+  // ---------- Demo clock & demo settings ----------
   const setDemoTime = (hhmm) => {
     const offset = offsetForTime(hhmm);
     setTimeOffsetMs(offset);
@@ -390,6 +578,36 @@ export function AppProvider({ children }) {
   const resetDemoTime = () => {
     setTimeOffsetMs(0);
     writeJson(KEYS.demoOffset, 0);
+  };
+
+  // Tracking speed: Fast 8 s · Demo 20 s · Slow 60 s per step (applies to orders placed afterwards)
+  const setTrackingSpeed = (speedId) => {
+    setTrackingSpeedState(speedId);
+    writeJson(KEYS.trackingSpeed, speedId);
+  };
+
+  // Demo account only: clears everything and seeds ~3 weeks of orders again, with the card at 8/10
+  const resetDemoData = async () => {
+    sessionRef.current += 1;
+    await cancelAllNotifications();
+    const bundle = buildDemoBundle(campus, timeOffsetMs);
+    setCart(EMPTY_CART);
+    setUseReward(false);
+    setWallet(bundle.data.wallet);
+    commitOrders(bundle.data.orders);
+    commitLoyalty(bundle.loyalty);
+    setSavedLocations([DEMO_LOCATION]);
+    await writeJson(KEYS.demoSeeded, true);
+    syncBreakReminders();
+  };
+
+  // ---------- Seasons ----------
+  const currentSeasons = campus ? activeSeasons(campus.seasons, getNow(timeOffsetMs)) : [];
+  const visibleSeasons = currentSeasons.filter((s) => !dismissedSeasons.includes(`${s.id}:${s.start}`));
+  const dismissSeason = (season) => {
+    const next = [...dismissedSeasons, `${season.id}:${season.start}`];
+    setDismissedSeasons(next);
+    writeJson(KEYS.dismissedSeasons, next);
   };
 
   const completeOnboarding = () => {
@@ -412,12 +630,29 @@ export function AppProvider({ children }) {
     previewReorder,
     users,
     user,
+    isDemoAccount: user ? isDemo(user.email) : false,
     cart,
-    cartTotals: calcCartTotals(cart.items),
+    cartTotals,
     wallet,
     orders,
+    loyalty,
+    lastSettlement,
+    settle,
+    rewardAvailable,
+    rewardApplied,
+    rewardCents,
+    useReward,
+    setUseReward,
     savedLocations,
     timeOffsetMs,
+    trackingSpeed,
+    setTrackingSpeed,
+    resetDemoData,
+    seasons: currentSeasons,
+    visibleSeasons,
+    dismissSeason,
+    syncBreakReminders,
+    syncOrderNotifications,
     refreshCampus,
     getStore,
     getProduct,

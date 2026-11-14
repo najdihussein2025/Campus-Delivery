@@ -2,10 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import useReduceMotion from './useReduceMotion';
-import styles from './BumpBadge.styles';
+import { createStyles } from './BumpBadge.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
 
 // Count pill that "bumps" (1 → 1.35 → 1) whenever its value changes; hidden when the value is 0
 export default function BumpBadge({ value, style, textStyle }) {
+  const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
   const first = useRef(true);

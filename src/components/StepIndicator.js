@@ -2,11 +2,15 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './StepIndicator.styles';
+import { MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './StepIndicator.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Horizontal stepper (e.g. Where → When → Pay): ✓ when complete, UA blue for the current step
 export default function StepIndicator({ steps = [], current = 0, completed = [], onStepPress, style }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <View style={[styles.row, style]}>
       {steps.map((step, i) => {

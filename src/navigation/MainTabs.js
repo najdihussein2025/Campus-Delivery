@@ -8,7 +8,8 @@ import PrintScreen from '../screens/print/PrintScreen';
 import CartScreen from '../screens/cart/CartScreen';
 import OrdersScreen from '../screens/orders/OrdersScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import { colors, fonts, shadow } from '../theme/theme';
+import { fonts, shadow } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 
@@ -22,6 +23,7 @@ const ICONS = {
 
 // Chapter 18: bottom tabs with screenOptions; animated icons and a bumping bag badge
 export default function MainTabs() {
+  const { colors } = useTheme();
   const { cartTotals } = useApp();
   const insets = useSafeAreaInsets();
 
@@ -32,7 +34,7 @@ export default function MainTabs() {
         headerTintColor: colors.textOnDark,
         headerTitleStyle: { fontFamily: fonts.extrabold, fontSize: 18 },
         headerShadowVisible: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.primaryText,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: { fontFamily: fonts.bold, fontSize: 11.5 },
         tabBarAllowFontScaling: false,
@@ -41,7 +43,8 @@ export default function MainTabs() {
           height: 66 + insets.bottom,
           paddingTop: 10,
           paddingBottom: insets.bottom + 6,
-          borderTopWidth: 0,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
           ...shadow.raised,
         },
         tabBarIcon: ({ focused, color, size }) => (

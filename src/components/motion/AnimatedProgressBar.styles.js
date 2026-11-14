@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors } from '../../theme/theme';
 
-export default StyleSheet.create({
+
+export const createStyles = (c) => StyleSheet.create({
   wrapper: { justifyContent: 'center' },
   wrapperThumb: { height: 28 },
   track: { width: '100%', overflow: 'hidden' },
@@ -12,7 +12,7 @@ export default StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 2,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },

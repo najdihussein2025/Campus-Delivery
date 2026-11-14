@@ -1,17 +1,21 @@
 import React, { forwardRef, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './AppInput.styles';
+import { MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './AppInput.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Text field with label, icon, error, password toggle, fixed suffix and clear button (forwardRef for focus chaining)
 const AppInput = forwardRef(function AppInput(
   { label, icon, error, secure = false, suffix, clearable = false, onClear, style, onFocus, onBlur, value, ...inputProps },
   ref
 ) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(secure);
-  const iconColor = error ? colors.danger : focused ? colors.primary : colors.textMuted;
+  const iconColor = error ? colors.danger : focused ? colors.primaryText : colors.textMuted;
   const showClear = clearable && value ? true : false;
 
   return (

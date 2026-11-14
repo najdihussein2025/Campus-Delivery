@@ -1,11 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, View } from 'react-native';
-import { colors } from '../../theme/theme';
+
 import useReduceMotion from './useReduceMotion';
-import styles from './PulseDot.styles';
+import { createStyles } from './PulseDot.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 // "Live" indicator: a solid dot with a ring that grows and fades forever (Animated.loop)
-export default function PulseDot({ color = colors.success, size = 8, style }) {
+export default function PulseDot({ color, size = 8, style }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const dotColor = color || colors.success;
   const reduceMotion = useReduceMotion();
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -26,10 +31,10 @@ export default function PulseDot({ color = colors.success, size = 8, style }) {
     <View style={[styles.wrapper, box, style]}>
       {!reduceMotion ? (
         <Animated.View
-          style={[styles.ring, box, { backgroundColor: color, opacity: ringOpacity, transform: [{ scale: ringScale }] }]}
+          style={[styles.ring, box, { backgroundColor: dotColor, opacity: ringOpacity, transform: [{ scale: ringScale }] }]}
         />
       ) : null}
-      <View style={[box, { backgroundColor: color }]} />
+      <View style={[box, { backgroundColor: dotColor }]} />
     </View>
   );
 }

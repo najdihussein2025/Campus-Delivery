@@ -11,12 +11,14 @@ import DoorSign from '../../components/DoorSign';
 import EmptyState from '../../components/EmptyState';
 import SegmentedControl from '../../components/SegmentedControl';
 import { PressableScale, StaggerItem, animateLayout, useToast } from '../../components/motion';
-import { colors, getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
+import { getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
 import { formatDate } from '../../utils/time';
 import * as haptics from '../../utils/haptics';
-import styles from './OrdersScreen.styles';
+import { createStyles } from './OrdersScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const SHORT_NAMES = { cafeteria: 'Cafeteria', coffee: 'Coffee', bookstore: 'Bookstore', printing: 'Printing' };
 const STATUS_FILTERS = {
@@ -27,6 +29,8 @@ const isPastStatus = (status) => status === 'Delivered' || status === 'Cancelled
 
 // Orders history: Active/Past segmented control + filter chips (horizontal FlatLists) + live status interval with cleanup
 export default function OrdersScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const { orders, campus, getStore, reorder, previewReorder } = useApp();
   const { showToast } = useToast();
   const [tab, setTab] = useState('active');
@@ -56,7 +60,7 @@ export default function OrdersScreen({ navigation }) {
 
   const storeOptions = [{ id: 'all', label: 'All stores' }, ...campus.stores.map((s) => ({ id: s.id, label: SHORT_NAMES[s.id] || s.name }))];
 
-  const sorted = [...orders].sort((a, b) => b.createdAt - a.createdAt);
+  const sorted = [...orders].sort((a, b) => b.placedAtMs - a.placedAtMs);
   const activeCount = sorted.filter((o) => !isPastStatus(getOrderStatus(o, nowMs))).length;
   const filtered = sorted
     .filter((o) => (tab === 'past') === isPastStatus(getOrderStatus(o, nowMs)))
@@ -115,7 +119,7 @@ export default function OrdersScreen({ navigation }) {
             </LinearGradient>
             <View style={styles.cardInfo}>
               <Text style={styles.storeName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store ? store.name : 'Store'}</Text>
-              <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>#{item.number} · {formatDate(item.createdAt)}</Text>
+              <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>#{item.number} · {formatDate(item.placedAt)}</Text>
             </View>
             <Badge status={status} />
           </View>
@@ -126,6 +130,9 @@ export default function OrdersScreen({ navigation }) {
               {count} {count === 1 ? 'item' : 'items'} · <Text style={styles.total}>{formatMoney(item.total)}</Text>
             </Text>
           </View>
+          {item.rewardUsed ? (
+            <Text style={styles.rewardLine} maxFontSizeMultiplier={MAX_FONT_SCALE}>🎁 Free coffee applied</Text>
+          ) : null}
           <View style={styles.actions}>
             {past ? (
               <AppButton title="Reorder" icon="refresh" small style={styles.action} onPress={() => openReorder(item.id)} />

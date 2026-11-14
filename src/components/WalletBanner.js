@@ -3,12 +3,16 @@ import { Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
-import { colors, gradients, MAX_FONT_SCALE } from '../theme/theme';
+import { gradients, MAX_FONT_SCALE } from '../theme/theme';
 import { formatMoney } from '../utils/money';
-import styles from './WalletBanner.styles';
+import { createStyles } from './WalletBanner.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Home hero: next class break with a live countdown, plus wallet balance and a Top up pill
 export default function WalletBanner({ nextSlot, minutesLeft, balance, onTopUp, emptyText }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.card}>
       <View style={styles.circleBig} />

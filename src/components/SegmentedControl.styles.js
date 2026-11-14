@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radius, shadow } from '../theme/theme';
+import { fonts, radius, shadow } from '../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   track: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: c.surfaceMuted,
     borderRadius: radius.md,
     padding: 4,
   },
@@ -13,13 +13,15 @@ export default StyleSheet.create({
     top: 4,
     bottom: 4,
     left: 4,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.sm,
     ...shadow.card,
+    borderWidth: 1,
+    borderColor: c.cardBorder,
   },
   segment: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
-  label: { fontFamily: fonts.bold, fontSize: 14, color: colors.textMuted },
-  labelSelected: { color: colors.primary },
-  subtitle: { fontFamily: fonts.regular, fontSize: 11.5, color: colors.textMuted, marginTop: 1 },
-  subtitleSelected: { color: colors.textBrand },
+  label: { fontFamily: fonts.bold, fontSize: 14, color: c.textMuted },
+  labelSelected: { color: c.primaryText },
+  subtitle: { fontFamily: fonts.regular, fontSize: 11.5, color: c.textMuted, marginTop: 1 },
+  subtitleSelected: { color: c.textBrand },
 });

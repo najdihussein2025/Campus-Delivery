@@ -1,16 +1,16 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radius, spacing } from '../../theme/theme';
+import { fonts, radius, spacing } from '../../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   flex: { flex: 1 },
   topBar: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   skip: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md },
-  skipText: { fontFamily: fonts.bold, fontSize: 15, color: colors.textOnDark },
+  skipText: { fontFamily: fonts.bold, fontSize: 15, color: c.textOnDark },
   slide: { flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'center' },
   logo: { alignSelf: 'center', marginBottom: spacing.xl },
   logoSpacer: { height: 45 + spacing.xl },
   visual: { height: 250, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl },
-  title: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34, color: colors.textOnDark, textAlign: 'center' },
+  title: { fontFamily: fonts.extrabold, fontSize: 28, lineHeight: 34, color: c.textOnDark, textAlign: 'center' },
   text: {
     fontFamily: fonts.regular,
     fontSize: 15.5,
@@ -22,7 +22,7 @@ export default StyleSheet.create({
   tileGrid: { flexDirection: 'row', flexWrap: 'wrap', width: 240, justifyContent: 'space-between' },
   tileWrap: { width: 110, alignItems: 'center', marginBottom: spacing.lg },
   tile: { width: 76, height: 76, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
-  tileLabel: { fontFamily: fonts.bold, fontSize: 14, color: colors.textOnDark, marginTop: spacing.sm },
+  tileLabel: { fontFamily: fonts.bold, fontSize: 14, color: c.textOnDark, marginTop: spacing.sm },
   breakCard: {
     width: 260,
     padding: spacing.lg,
@@ -42,12 +42,12 @@ export default StyleSheet.create({
     marginBottom: spacing.sm,
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  breakRowActive: { backgroundColor: colors.accent },
-  breakText: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.textOnDark, marginLeft: spacing.sm },
-  breakTextActive: { color: colors.primaryDark },
-  breakTag: { fontFamily: fonts.bold, fontSize: 12, color: colors.primaryDark },
+  breakRowActive: { backgroundColor: c.accent },
+  breakText: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: c.textOnDark, marginLeft: spacing.sm },
+  breakTextActive: { color: c.primaryDark },
+  breakTag: { fontFamily: fonts.bold, fontSize: 12, color: c.primaryDark },
   doorWrap: { alignItems: 'center' },
   bottom: { paddingHorizontal: spacing.xl, paddingBottom: spacing.lg },
   dots: { flexDirection: 'row', justifyContent: 'center', marginBottom: spacing.xl },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.textOnDark, marginHorizontal: 8 },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.textOnDark, marginHorizontal: 8 },
 });

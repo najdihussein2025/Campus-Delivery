@@ -5,11 +5,15 @@ import { Ionicons } from '@expo/vector-icons';
 import Badge from './Badge';
 import PressableScale from './motion/PressableScale';
 import StaggerItem from './motion/StaggerItem';
-import { colors, getCategoryColors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './StoreCard.styles';
+import { fixedColors, getCategoryColors, MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './StoreCard.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Store row for Home: location, prep time and live Open/Closed badge; closed stores dimmed but browsable
 export default function StoreCard({ store, isOpen, onPress, location, index = 0 }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <StaggerItem index={index}>
       <PressableScale
@@ -20,7 +24,7 @@ export default function StoreCard({ store, isOpen, onPress, location, index = 0 
       >
         <View style={[styles.inner, !isOpen && styles.dimmed]}>
           <LinearGradient colors={getCategoryColors(store.category)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.tile}>
-            <Ionicons name={store.icon} size={30} color="#FFFFFF" />
+            <Ionicons name={store.icon} size={30} color={fixedColors.white} />
           </LinearGradient>
           <View style={styles.info}>
             <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.name}</Text>

@@ -4,12 +4,16 @@ import { Ionicons } from '@expo/vector-icons';
 import ProductImage from './ProductImage';
 import PressableScale from './motion/PressableScale';
 import StaggerItem from './motion/StaggerItem';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
+import { MAX_FONT_SCALE } from '../theme/theme';
 import { formatMoney } from '../utils/money';
-import styles from './ProductCard.styles';
+import { createStyles } from './ProductCard.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Fixed-width product tile for horizontal lists; out-of-stock items get a grey overlay + pill
 export default function ProductCard({ product, onPress, storeOpen = true, index = 0 }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const addable = product.inStock && storeOpen;
   return (
     <StaggerItem index={index}>
@@ -31,6 +35,7 @@ export default function ProductCard({ product, onPress, storeOpen = true, index 
         <View style={styles.body}>
           <Text style={[styles.name, !product.inStock && styles.muted]} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {product.name}
+            {product.tags && product.tags.includes('siyami') ? ' ✝️' : ''}
           </Text>
           <View style={styles.footer}>
             <Text style={[styles.price, !product.inStock && styles.muted]} maxFontSizeMultiplier={MAX_FONT_SCALE}>

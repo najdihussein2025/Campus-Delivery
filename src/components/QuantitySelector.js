@@ -3,11 +3,15 @@ import { Animated, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
 import useReduceMotion from './motion/useReduceMotion';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './QuantitySelector.styles';
+import { MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './QuantitySelector.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Stepper: the number bumps on change; at the minimum the minus turns into a trash icon
 export default function QuantitySelector({ qty, onIncrease, onDecrease, min = 1, small = false }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const reduceMotion = useReduceMotion();
   const bump = useRef(new Animated.Value(1)).current;
   const first = useRef(true);

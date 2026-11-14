@@ -1,18 +1,19 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radius, shadow, spacing, typography } from '../../theme/theme';
+import { fonts, radius, shadow, spacing, makeTypography } from '../../theme/theme';
 
 export const HERO_HEIGHT = 168;
 export const CHIPS_HEIGHT = 60;
+export const FILTERS_HEIGHT = 52;
 
-export default StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
+export const createStyles = (c) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: c.background },
   content: { paddingHorizontal: spacing.lg },
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: HERO_HEIGHT + CHIPS_HEIGHT,
+    height: HERO_HEIGHT + CHIPS_HEIGHT + FILTERS_HEIGHT,
     zIndex: 10,
     elevation: 6,
   },
@@ -24,28 +25,34 @@ export default StyleSheet.create({
   heroDescription: { fontFamily: fonts.regular, fontSize: 14, lineHeight: 20, color: 'rgba(255,255,255,0.9)', marginBottom: spacing.sm },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap' },
   meta: { flexDirection: 'row', alignItems: 'center', marginRight: spacing.lg, marginTop: 4, maxWidth: '60%' },
-  metaText: { fontFamily: fonts.medium, fontSize: 13, color: colors.textOnDark, marginLeft: 5 },
+  metaText: { fontFamily: fonts.medium, fontSize: 13, color: c.textOnDark, marginLeft: 5 },
   chipsBar: {
     height: CHIPS_HEIGHT,
-    backgroundColor: colors.background,
+    backgroundColor: c.background,
+    justifyContent: 'center',
+  },
+  filtersBar: {
+    height: FILTERS_HEIGHT,
+    backgroundColor: c.background,
     justifyContent: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: c.border,
   },
+  countLine: { ...makeTypography(c).caption, marginTop: spacing.md },
   chips: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   closedBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: c.dangerSoft,
     borderRadius: radius.md,
     padding: spacing.md,
     marginTop: spacing.sm,
   },
-  closedText: { fontFamily: fonts.medium, fontSize: 13.5, color: colors.dangerText, marginLeft: spacing.sm, flex: 1 },
+  closedText: { fontFamily: fonts.medium, fontSize: 13.5, color: c.dangerText, marginLeft: spacing.sm, flex: 1 },
   group: { marginTop: spacing.lg },
   groupHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: spacing.md },
-  groupTitle: typography.h2,
-  groupCount: typography.caption,
+  groupTitle: makeTypography(c).h2,
+  groupCount: makeTypography(c).caption,
   productRow: { paddingRight: spacing.lg, paddingBottom: spacing.sm },
   bagButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   bagBubble: { position: 'absolute', top: 2, right: -2 },
@@ -56,7 +63,7 @@ export default StyleSheet.create({
     bottom: 0,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
     ...shadow.raised,
@@ -66,19 +73,19 @@ export default StyleSheet.create({
     alignItems: 'center',
     height: 54,
     borderRadius: radius.md,
-    backgroundColor: colors.primary,
+    backgroundColor: c.primary,
     paddingHorizontal: spacing.lg,
   },
   bagBarCount: {
     minWidth: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.accentWarm,
+    backgroundColor: c.accentWarm,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
-  bagBarCountText: { fontFamily: fonts.extrabold, fontSize: 14, color: colors.primaryDark },
-  bagBarText: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.textOnDark, marginLeft: spacing.md },
-  bagBarAction: { fontFamily: fonts.bold, fontSize: 15, color: colors.textOnDark, marginRight: 6 },
+  bagBarCountText: { fontFamily: fonts.extrabold, fontSize: 14, color: c.primaryDark },
+  bagBarText: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: c.textOnDark, marginLeft: spacing.md },
+  bagBarAction: { fontFamily: fonts.bold, fontSize: 15, color: c.textOnDark, marginRight: 6 },
 });

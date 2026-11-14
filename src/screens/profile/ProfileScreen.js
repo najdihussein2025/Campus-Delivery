@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, StatusBar, Text, View } from 'react-native';
+import { Animated, FlatList, StatusBar, Switch, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
@@ -11,17 +11,25 @@ import ConfirmModal from '../../components/ConfirmModal';
 import UALogo from '../../components/UALogo';
 import DoorSign from '../../components/DoorSign';
 import RoomPicker from '../../components/RoomPicker';
+import SegmentedControl from '../../components/SegmentedControl';
+import DietFilterChips from '../../components/DietFilterChips';
 import { FadeInView, PressableScale, ShakeView, StaggerItem, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/money';
 import { formatFloorLong, formatTime, getNow, isValidTime } from '../../utils/time';
 import { makeRoomCode, validateRoomParts } from '../../utils/validation';
+import { tagLabel } from '../../utils/diet';
 import * as haptics from '../../utils/haptics';
-import { colors, gradients, MAX_FONT_SCALE } from '../../theme/theme';
-import styles from './ProfileScreen.styles';
+import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
+import { createStyles } from './ProfileScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
+import { useNetwork } from '../../context/NetworkContext';
+import { TRACKING_SPEEDS } from '../../utils/orderStatus';
 
 const EMPTY_ROOM = { buildingId: '', floor: null, roomNumber: '' };
 const APP_VERSION = '2.0.0';
+const APPEARANCE_LABELS = { system: 'System', light: 'Light', dark: 'Dark' };
 
 const getInitials = (name) =>
   name
@@ -33,10 +41,14 @@ const getInitials = (name) =>
 
 // Chapter 19: FlatList with header/footer sections, useEffect interval with cleanup for the demo clock
 export default function ProfileScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors, mode, setMode } = useTheme();
   const {
     user, wallet, campus, savedLocations, timeOffsetMs, campusBuildings, getBuilding, getCampus,
-    formatLocation, updateProfile, addLocation, removeLocation, setDemoTime, resetDemoTime, logout,
+    formatLocation, updateProfile, addLocation, removeLocation, setDemoTime, resetDemoTime, logout, loyalty,
+    trackingSpeed, setTrackingSpeed, resetDemoData, isDemoAccount,
   } = useApp();
+  const { simulateOffline, setSimulateOffline } = useNetwork();
   const { showToast } = useToast();
   const { animatedStyle } = useScreenFocusAnimation();
   const listRef = useRef(null);
@@ -53,6 +65,7 @@ export default function ProfileScreen({ navigation }) {
   const [locationErrors, setLocationErrors] = useState({});
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showLogout, setShowLogout] = useState(false);
+  const [showReset, setShowReset] = useState(false);
 
   useEffect(() => {
     setClock(formatTime(getNow(timeOffsetMs)));
@@ -88,6 +101,21 @@ export default function ProfileScreen({ navigation }) {
     setDemoInput('');
     resetDemoTime();
     showToast({ message: 'Back to the real time', icon: 'refresh' });
+  };
+
+  // My diet: default dietary filters, saved on the user's account
+  const toggleMyDiet = (tag) => {
+    const current = user.myDiet || [];
+    animateLayout();
+    haptics.tap();
+    updateProfile({ myDiet: current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag] });
+  };
+
+  const handleResetDemo = async () => {
+    setShowReset(false);
+    await resetDemoData();
+    haptics.success();
+    showToast({ message: 'Demo data reset: 12 orders, card at 8/10', icon: 'refresh', tone: 'success' });
   };
 
   const handleCampus = (campusId) => {
@@ -162,6 +190,15 @@ export default function ProfileScreen({ navigation }) {
       <Card style={styles.menu}>
         <MenuRow icon="wallet" label="Campus wallet" value={formatMoney(wallet.balance)} onPress={() => navigation.navigate('Wallet')} />
         <View style={styles.divider} />
+        <MenuRow
+          icon="cafe"
+          label="Coffee stamps"
+          value={loyalty.rewards > 0 ? '🎁 Free coffee' : `${loyalty.stamps} / 10`}
+          onPress={() => navigation.navigate('Loyalty')}
+        />
+        <View style={styles.divider} />
+        <MenuRow icon="notifications" label="Notifications" onPress={() => navigation.navigate('Notifications')} />
+        <View style={styles.divider} />
         <MenuRow icon="bookmark" label="Saved locations" value={`${savedLocations.length}`} onPress={scrollToLocations} />
         <View style={styles.divider} />
         <MenuRow
@@ -193,8 +230,46 @@ export default function ProfileScreen({ navigation }) {
         ) : null}
         <View style={styles.divider} />
         <MenuRow
+          icon="leaf"
+          label="My diet"
+          value={(user.myDiet || []).length ? (user.myDiet || []).map(tagLabel).join(', ') : 'None'}
+          open={openSection === 'diet'}
+          onPress={() => toggleSection('diet')}
+        />
+        {openSection === 'diet' ? (
+          <View style={styles.expand}>
+            <DietFilterChips selected={user.myDiet || []} onToggle={toggleMyDiet} />
+            <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              These filters are turned on when you open a menu. You can remove them for a single visit.
+            </Text>
+          </View>
+        ) : null}
+        <View style={styles.divider} />
+        <MenuRow
+          icon="contrast"
+          label="Appearance"
+          value={APPEARANCE_LABELS[mode]}
+          open={openSection === 'appearance'}
+          onPress={() => toggleSection('appearance')}
+        />
+        {openSection === 'appearance' ? (
+          <View style={styles.expand}>
+            <SegmentedControl
+              options={[
+                { value: 'system', label: 'System' },
+                { value: 'light', label: 'Light' },
+                { value: 'dark', label: 'Dark' },
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
+            <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>System follows your phone's dark mode setting.</Text>
+          </View>
+        ) : null}
+        <View style={styles.divider} />
+        <MenuRow
           icon="time"
-          label="Demo time"
+          label="Demo settings"
           value={timeOffsetMs !== 0 ? `${clock} · demo` : clock}
           open={openSection === 'demo'}
           onPress={() => toggleSection('demo')}
@@ -220,6 +295,41 @@ export default function ProfileScreen({ navigation }) {
               <AppButton title="Set time" small onPress={handleSetTime} style={styles.flex} />
               <AppButton title="Reset" small variant="secondary" onPress={handleReset} style={[styles.flex, styles.resetButton]} />
             </View>
+
+            <Text style={styles.subLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>Tracking speed (new orders)</Text>
+            <SegmentedControl
+              options={TRACKING_SPEEDS.map((s) => ({ value: s.id, label: s.label, subtitle: `${s.seconds} s per step` }))}
+              value={trackingSpeed}
+              onChange={setTrackingSpeed}
+            />
+            <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              Demo (20 s) leaves time to lock the phone and watch the notifications arrive.
+            </Text>
+
+            <View style={styles.switchRow}>
+              <View style={styles.flex}>
+                <Text style={styles.switchLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>Simulate offline</Text>
+                <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>Shows the offline banner without turning off Wi-Fi.</Text>
+              </View>
+              <Switch
+                value={simulateOffline}
+                onValueChange={setSimulateOffline}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.surface}
+                accessibilityLabel="Simulate offline"
+              />
+            </View>
+
+            {isDemoAccount ? (
+              <AppButton
+                title="Reset demo data"
+                icon="refresh"
+                small
+                variant="secondary"
+                onPress={() => setShowReset(true)}
+                style={styles.resetData}
+              />
+            ) : null}
           </View>
         ) : null}
         <View style={styles.divider} />
@@ -310,7 +420,7 @@ export default function ProfileScreen({ navigation }) {
         ListEmptyComponent={
           showAdd ? null : (
             <PressableScale onPress={toggleAdd} accessibilityLabel="Add a saved location" style={styles.emptyCard}>
-              <Ionicons name="add-circle-outline" size={22} color={colors.primary} />
+              <Ionicons name="add-circle-outline" size={22} color={colors.primaryText} />
               <Text style={styles.emptyText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 Add your lab or classroom for one-tap checkout.
               </Text>
@@ -331,6 +441,17 @@ export default function ProfileScreen({ navigation }) {
       />
 
       <ConfirmModal
+        visible={showReset}
+        title="Reset demo data?"
+        message="Orders, wallet and stamps go back to the demo starting point: 3 weeks of orders and a card at 8/10."
+        icon="refresh"
+        tone="warning"
+        confirmLabel="Reset"
+        onCancel={() => setShowReset(false)}
+        onConfirm={handleResetDemo}
+      />
+
+      <ConfirmModal
         visible={showLogout}
         title="Log out?"
         message="Your bag, wallet and orders stay saved on this phone."
@@ -348,6 +469,7 @@ export default function ProfileScreen({ navigation }) {
 }
 
 function HeroItem({ icon, label, value, half }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={[styles.heroItem, half && styles.heroItemHalf]}>
       <Ionicons name={icon} size={16} color="rgba(255,255,255,0.75)" />
@@ -360,10 +482,12 @@ function HeroItem({ icon, label, value, half }) {
 }
 
 function MenuRow({ icon, label, value, onPress, open }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <PressableScale onPress={onPress} accessibilityLabel={label} scaleTo={0.98} style={styles.menuRow}>
       <View style={styles.menuIcon}>
-        <Ionicons name={icon} size={19} color={colors.primary} />
+        <Ionicons name={icon} size={19} color={colors.primaryText} />
       </View>
       <Text style={styles.menuLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
       {value ? (

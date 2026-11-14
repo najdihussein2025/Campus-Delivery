@@ -2,11 +2,15 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
-import styles from './Chip.styles';
+import { MAX_FONT_SCALE } from '../theme/theme';
+import { createStyles } from './Chip.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Selectable pill (filters, options); optional subtitle line and count bubble
 export default function Chip({ label, selected = false, onPress, icon, disabled = false, subtitle, count, style }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <PressableScale
       onPress={onPress}

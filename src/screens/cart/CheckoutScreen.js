@@ -13,20 +13,26 @@ import RoomPicker from '../../components/RoomPicker';
 import StepIndicator from '../../components/StepIndicator';
 import StickyBar from '../../components/StickyBar';
 import { PressableScale, ShakeView, animateLayout } from '../../components/motion';
-import { colors, MAX_FONT_SCALE } from '../../theme/theme';
+import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
 import { makeRoomCode, validateCheckoutSteps, validateRoomParts } from '../../utils/validation';
 import * as haptics from '../../utils/haptics';
-import styles from './CheckoutScreen.styles';
+import { createStyles } from './CheckoutScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
+import { useNetwork } from '../../context/NetworkContext';
 
 const STEPS = ['Where', 'When', 'Pay'];
 
 // Checkout: 3-step flow (Where → When → Pay) in ONE FlatList (slots are the data, steps are header/footer)
 export default function CheckoutScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const { isOnline } = useNetwork();
   const {
     campus, cart, cartTotals, wallet, savedLocations, timeOffsetMs, userCampusId, campusBuildings,
-    getStore, getBuilding, getSlot, placeOrder, formatLocation,
+    getStore, getBuilding, getSlot, placeOrder, formatLocation, rewardApplied,
   } = useApp();
 
   const campusLocations = savedLocations.filter((loc) => getBuilding(loc.buildingId)?.campusId === userCampusId);
@@ -149,7 +155,8 @@ export default function CheckoutScreen({ navigation }) {
 
   // Hard blocks disable the button (with a reason); missing steps keep it enabled and shake on press
   let blockReason = '';
-  if (!storeOpen) blockReason = `${store ? store.name : 'The store'} opens at ${store ? store.openTime : ''}`;
+  if (!isOnline) blockReason = "You're offline. Reconnect to place your order.";
+  else if (!storeOpen) blockReason = `${store ? store.name : 'The store'} opens at ${store ? store.openTime : ''}`;
   else if (cartTotals.missingForMinimum > 0) blockReason = `Add ${formatMoney(cartTotals.missingForMinimum)} more to reach the $2.00 minimum`;
   else if (walletShort) blockReason = `Top up ${formatMoney(missing)} or choose cash on delivery`;
 
@@ -348,7 +355,7 @@ export default function CheckoutScreen({ navigation }) {
               {state.disabled ? state.reason : `Order by ${orderByTime(item, store)}`}
             </Text>
           </View>
-          {selected ? <Ionicons name="checkmark-circle" size={24} color={colors.primary} /> : null}
+          {selected ? <Ionicons name="checkmark-circle" size={24} color={colors.primaryText} /> : null}
         </PressableScale>
       </View>
     );
@@ -396,14 +403,20 @@ export default function CheckoutScreen({ navigation }) {
       <Text style={styles.sectionTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>Review</Text>
       <View style={styles.reviewCard}>
         <View style={styles.reviewRow}>
-          <Ionicons name="bag-handle-outline" size={18} color={colors.primary} />
+          <Ionicons name="bag-handle-outline" size={18} color={colors.primaryText} />
           <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {cartTotals.count} {cartTotals.count === 1 ? 'item' : 'items'} from {store ? store.name : 'the store'}
           </Text>
         </View>
+        {rewardApplied ? (
+          <View style={styles.reviewRow}>
+            <Text style={styles.rewardEmoji}>🎁</Text>
+            <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Free coffee applied</Text>
+          </View>
+        ) : null}
         {whereDone ? (
           <View style={styles.reviewRow}>
-            <Ionicons name="location-outline" size={18} color={colors.primary} />
+            <Ionicons name="location-outline" size={18} color={colors.primaryText} />
             <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{whereSummary}</Text>
           </View>
         ) : null}
@@ -456,6 +469,7 @@ export default function CheckoutScreen({ navigation }) {
           <SummaryRow label="Deliver to" value={whereDone ? formatLocation(buildingId, room) : ''} />
           <SummaryRow label="Break" value={slot ? slot.label : ''} />
           <SummaryRow label="Payment" value={payment === 'wallet' ? 'Campus wallet' : 'Cash on delivery'} />
+          {rewardApplied ? <SummaryRow label="Free coffee" value={`−${formatMoney(cartTotals.discount)}`} /> : null}
           <SummaryRow label="Total" value={formatMoney(cartTotals.total)} strong />
         </View>
       </ConfirmModal>
@@ -464,6 +478,7 @@ export default function CheckoutScreen({ navigation }) {
 }
 
 function SummaryRow({ label, value, strong }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.summaryRow}>
       <Text style={styles.summaryLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>

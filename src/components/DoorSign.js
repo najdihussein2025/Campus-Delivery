@@ -1,10 +1,12 @@
 import React from 'react';
 import { Text, View } from 'react-native';
 import { MAX_FONT_SCALE } from '../theme/theme';
-import styles from './DoorSign.styles';
+import { createStyles } from './DoorSign.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
 
 // Room code styled like a campus door plate: "G.2.15" on UA blue, with an optional subtitle
 export default function DoorSign({ code, subtitle, size = 'md', style }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={[styles.wrapper, style]} accessibilityLabel={`Room ${code}${subtitle ? `, ${subtitle}` : ''}`}>
       <View style={[styles.plate, styles[`plate_${size}`]]}>

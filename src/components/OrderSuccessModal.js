@@ -7,10 +7,12 @@ import FadeInView from './motion/FadeInView';
 import SuccessCheck from './motion/SuccessCheck';
 import { success } from '../utils/haptics';
 import { MAX_FONT_SCALE } from '../theme/theme';
-import styles from './OrderSuccessModal.styles';
+import { createStyles } from './OrderSuccessModal.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
 
 // Full-screen "Order placed" moment shown before tracking (fade Modal + SuccessCheck + success haptic)
 export default function OrderSuccessModal({ visible, orderNumber, slotLabel, roomCode, onTrack }) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {

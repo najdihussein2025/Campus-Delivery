@@ -15,7 +15,7 @@ CampusGo is a React Native (Expo) app for ordering food, drinks, stationery and 
 - Printing service: live price, colour/B&W, double-sided, binding
 - Cart limited to one store, minimum order, free-delivery threshold
 - Checkout in 3 steps (Where → When → Pay): real campus buildings and room codes (`G.2.15`), delivery break slots with rules, campus wallet or cash
-- Live order tracking (status advances every 12 seconds), cancel with refund, rating
+- Live order tracking (status advances every 8 / 20 / 60 seconds, even when the app is closed), cancel with refund, rating
 - Order history with filters and reorder
 - Profile: campus choice (3 UA campuses), saved locations with door-sign room codes, demo clock, campus wallet with top-ups and transactions grouped by day
 - Motion and feedback: press animations, staggered lists, skeletons, toasts with Undo, haptics
@@ -31,25 +31,29 @@ CampusGo is a React Native (Expo) app for ordering food, drinks, stationery and 
 | `AccessibilityInfo` (Reduce Motion), `accessibilityLabel` | Accessibility | — |
 | `FlatList` (`horizontal`, `ListHeaderComponent`, `ListEmptyComponent`), `RefreshControl` | Every data list | Lists |
 | `StyleSheet.create` in `*.styles.js` files, style arrays | Styling | Styling |
-| `useState`, `useEffect` (mount, dependencies, cleanup), `useContext` | State, timers | Hooks |
+| `useState`, `useEffect` (mount, dependencies, cleanup), `useContext`, custom hooks (`useTheme`, `useThemedStyles`) | State, timers, theme | Hooks, Context API |
 | `async/await`, `Promise`, `fetch` (`src/services/api.js`) | Loading data | Chapter 19 |
 | `@react-native-async-storage/async-storage` | Persistence | Storage |
 | React Navigation: native stack + bottom tabs, route params | Navigation | Navigation |
 | `expo-linear-gradient`, `@expo/vector-icons`, Karla + Roboto (`@expo-google-fonts`) | Design | — |
 | `expo-haptics` | Haptic feedback | — |
+| `expo-notifications`, `expo-document-picker`, `expo-file-system`, `@react-native-community/netinfo` | Notifications, file pick, offline detection | Native modules |
 
 No Redux, no Expo Router, no TypeScript, no `Alert.alert` (all messages use our own `ConfirmModal`).
 
 ## Code structure for styles
 
-Every screen and component keeps its styles in a separate file next to it, like a CSS file:
+Every screen and component keeps its styles in a separate file next to it, like a CSS file. Since dark mode, the
+style file exports a **factory** that receives the colour palette:
 
 ```
-LoginScreen.js         ← the component (JSX + logic)
-LoginScreen.styles.js  ← export default StyleSheet.create({ ... })
+LoginScreen.js         <- the component (JSX + logic)
+LoginScreen.styles.js  <- export const createStyles = (c) => StyleSheet.create({ ... })
 ```
 
-All colours, spacing, radius, fonts and shadows come from `src/theme/theme.js` (the design system).
+In the screen: `const styles = useThemedStyles(createStyles);` (a small hook that runs the factory with
+`useMemo`, so it only re-runs when the palette changes). Spacing, radius, fonts and typography come from
+`src/theme/theme.js`; colours come from the `c` argument.
 
 ## How to run
 
@@ -74,13 +78,13 @@ All colours, spacing, radius, fonts and shadows come from `src/theme/theme.js` (
 | --- | --- |
 | `student@ua.edu.lb` | `campus123` |
 
-The demo account starts with **$25.00** in the wallet and a saved location **"My Lab – Building D, Room D.2.8"** (the Robotics Lab) on the Hadat–Baabda campus. On the Welcome screen, **Use demo account** fills the login for you. New accounts get a **$10.00** welcome credit.
+The demo account starts with a wallet of about **$33** (after its seeded orders), 12 past delivered orders, a coffee card at **8 / 10 stamps** and a saved location **"My Lab – Building D, Room D.2.8"** (the Robotics Lab) on the Hadat–Baabda campus. On the Welcome screen, **Use demo account** fills the login for you. New accounts get a **$10.00** welcome credit.
 
 ## Demo clock
 
 Store hours and delivery breaks depend on the time. Because a presentation can happen at any hour, the app has a **demo clock**:
 
-1. Open **Profile → Demo time**.
+1. Open **Profile → Demo settings**.
 2. Type a time such as `11:00` and press **Set time**. All stores, slots and greetings now use this time (it keeps ticking from there).
 3. Press **Reset** to go back to the real phone time.
 
@@ -98,8 +102,8 @@ Tip: `11:00` makes every store open and most delivery breaks available. The UA C
 - Quantity minimum is 1; pressing − at 1 asks to remove the item.
 
 **Totals** (money is stored in cents)
-- Subtotal = sum of unit price × quantity.
-- Minimum order is **$2.00**; below it, checkout is disabled and the app shows how much is missing.
+- Subtotal = sum of unit price × quantity, minus the loyalty reward if used.
+- Minimum order is **$2.00** (counted on what you pay, after the loyalty reward); below it, checkout is disabled and the app shows how much is missing.
 - Delivery fee is **free above $10.00**, otherwise **$0.50**. The app shows how much more is needed for free delivery.
 
 **Printing**
@@ -119,7 +123,7 @@ Tip: `11:00` makes every store open and most delivery breaks available. The UA C
 - Wallet payment is refused if the balance is lower than the total (the app shows the missing amount and a Top up button). Cash on delivery is always allowed.
 
 **Tracking**
-- Status steps: Received → Preparing → On the way → Delivered, one step every **12 seconds**. The status is computed from the order time, so it is correct even after closing the app.
+- Status steps: Received → Preparing → On the way → Delivered, one step every **8 / 20 / 60 seconds** (Fast / **Demo, the default** / Slow, set in Demo settings when the order is placed). The status is computed from timestamps stored on the order, so it is correct even after closing the app.
 - An order can be cancelled only while it is "Received". Wallet orders are refunded.
 - After delivery the order can be rated 1–5 stars with an optional comment.
 
@@ -137,8 +141,10 @@ db.json                 copy of the mock data for json-server
 src/
   data/campus.json      mock data
   services/api.js       loadCampusData() – fetch with timeout, fallback to local JSON
-  context/AppContext.js shared state (user, cart, wallet, orders) + AsyncStorage
-  utils/                money, time, validation, orderStatus, haptics helpers
+  context/               AppContext (user, cart, wallet, orders, loyalty), ThemeContext, NetworkContext
+  hooks/                 useThemedStyles, useDietFilter, useNotificationNavigation
+  services/              api (fetch + catalog cache), notifications (local scheduled notifications)
+  utils/                 money, time, validation, orderStatus, loyalty, diet, spending, pdfPages, notificationPlan, demoSeed (pure functions), haptics
   theme/theme.js        colours, spacing, radius, fonts, typography, shadows
   navigation/           RootNavigator, AuthStack, MainTabs
   components/           reusable UI (AppButton, AppInput, Card, Badge, Chip, DoorSign, RoomPicker, …)
@@ -150,7 +156,7 @@ assets/brand/           official UA logos (blue and white)
     print/              Print
     cart/               Cart, Checkout
     orders/             Orders, Tracking
-    profile/            Profile, Wallet
+    profile/            Profile, Wallet, Loyalty, Notifications
 ```
 
 ## Mock data summary
@@ -232,6 +238,90 @@ UX decisions:
 - **Haptics** (`expo-haptics`): tap on main buttons and add to bag, success for orders/top-ups/delivery, error on failed forms, warning on cancel.
 - **Onboarding** shows only once (saved in AsyncStorage as `campusgo:onboardingDone`).
 - Touch targets are at least 44×44 and icon-only buttons have accessibility labels.
+
+## Loyalty stamps
+
+Every 10th coffee is free. The pure rules live in `src/utils/loyalty.js`.
+
+- Only products with `"loyalty": "coffee"` count (espresso, americano, cappuccino, latte, iced latte; not tea, juice, water or hot chocolate). **1 stamp per cup** (2 cappuccinos = 2 stamps).
+- Stamps are credited **only when the order reaches Delivered**, never when it is placed, so cancelled orders earn nothing. `settleDeliveredOrders` is idempotent (it flags each order `stampsCredited`) and runs on app start, when the app returns to the foreground, every 2 s while logged in and on every tracking tick. This matters because an order can be delivered while the app is closed.
+- 10 stamps = 1 reward; the remainder carries over.
+- In the bag, **"Use my free coffee"** discounts the **most expensive single coffee** (size included, extras paid). One reward per order. The free coffee does not earn a stamp.
+- The reward is consumed when the order is placed and **given back if the order is cancelled** (history entry "refunded").
+- The **minimum order and the free-delivery threshold use the subtotal after the reward** ("Free coffee applied. Minimum order counts what you pay.").
+- Reorder never copies the reward.
+- Data: `campusgo:loyalty:<email>` in AsyncStorage (`{ stamps, rewards, history }`). The demo account starts at **8 / 10**.
+
+## Printing files
+
+The Print screen uses `expo-document-picker`.
+
+- Supported types: PDF, Word (`.doc`, `.docx`) and images. Maximum size **25 MB** ("This file is 31 MB, the limit is 25 MB").
+- Page count is **best effort** (`src/utils/pdfPages.js`) and never blocks: images count as 1 page; a PDF of up to 10 MB is read with `expo-file-system` (`expo-file-system/legacy`, base64) and the largest `/Count` of a `/Type /Pages` node is used (otherwise the `/Type /Page` objects are counted; accepted range 1-2000). Word files, bigger PDFs and compressed PDFs leave the field empty: "Enter the number of pages".
+- The existing 200-page rule and the live price are unchanged.
+- **Nothing is uploaded.** The cart item stores only `{ fileName, fileSize, mimeType, pages }`.
+- "Use a sample document" remains as a demo fallback.
+
+## Dietary filters & seasons
+
+Every product has `tags` (`vegetarian`, `vegan`, `siyami`, `halal`, `iftar`) and optional `allergens` (info only, shown on the product sheet).
+
+| Tag | Meaning |
+| --- | --- |
+| `vegetarian` | No meat or fish (vegan products are also vegetarian) |
+| `vegan` | No animal products |
+| `siyami` | Lenten fasting food: no meat, dairy or eggs |
+| `halal` | Only for products with meat |
+| `iftar` | Travels well for breaking the fast at sunset (juices, packed sandwiches, sweets) |
+
+- Filters are multi-select and a product must have **all** the selected tags (`matchesDiet`). They appear on every store menu and on Home. Empty sections are hidden and a count line ("12 items match") is shown.
+- **My diet** (Profile) saves default filters per user. They are applied when a menu opens and shown as a removable chip; removing it only clears it for that visit.
+- **Seasons** are in `src/data/campus.json` (`seasons`). The banners use the **demo clock**, so move the demo time into a season to show them. **The dates are approximate (2027 Lent 8 Feb - 27 Mar, Ramadan 8 Feb - 9 Mar): verify and edit them before the demo.** Both can be active at once. Each banner can be dismissed and stays dismissed for that season.
+
+## Dark mode
+
+- `src/theme/theme.js` exports `lightColors` and `darkColors` (same token names). `primaryText` is the primary colour to use for **text and icons** (`#005BAA` light, `#6CB4F0` dark); `primary` stays `#005BAA` for filled surfaces with white text. `successSolid` / `dangerSolid` are fills that carry white text.
+- `src/context/ThemeContext.js` (**Context API + custom hook**) holds the mode (System / Light / Dark, saved in `campusgo:themeMode`) and exposes `{ colors, isDark, mode, setMode }` through `useTheme()`.
+- Every `Screen.styles.js` exports `createStyles(colors)`; screens call `useThemedStyles(createStyles)`. There are no hardcoded colours in components (only white-on-gradient overlays).
+- The navigation theme is built from React Navigation's `DefaultTheme` / `DarkTheme`. Change the mode in Profile -> Appearance.
+
+## Spending insights
+
+In the Wallet: spending = every **non-cancelled** order (wallet **and** cash), dated by the order's `placedAt` (demo clock). Week shows 7 daily bars compared with the previous 7 days; Month shows 4 weekly bars (28 days) compared with the previous 28. The logic is in `src/utils/spending.js`. The **demo account** is seeded with 12 delivered orders over about 3 weeks (`isSeed: true`, matching wallet transactions) and a card at 8/10. Profile -> Demo settings -> **Reset demo data** clears and re-seeds.
+
+## Offline mode
+
+`NetworkContext` uses `@react-native-community/netinfo` (`null` counts as online, listener removed in cleanup). An offline banner slides down ("You're offline - showing saved data") and turns green for 2 s when the connection returns.
+
+- Works offline: stores, menus, bag, orders, wallet history, stamps (all stored on the phone). With json-server, the last successful catalog load is cached in `campusgo:catalogCache`.
+- Blocked offline, with the reason under the button: **Place order** ("You're offline. Reconnect to place your order."), **Wallet top-up** ("Top-ups need a connection."), and **pull-to-refresh** (toast).
+- Profile -> Demo settings -> **Simulate offline** shows all of this on stage without turning off Wi-Fi (which would also cut Expo Go off from the dev server).
+
+## Notifications
+
+**Why local scheduled notifications:** there is no backend, so no server can send push messages. When an order is placed the app already knows when each status will change, so it hands the three notifications (Preparing, On the way, Delivered) to the phone's OS right away. The OS delivers them even if the app is in the background, the phone is locked or the app was swiped away.
+
+**Why the status is time-based:** a `setInterval` stops when the app is closed. Each order stores `placedAtMs` and `statusSchedule` (absolute real-time timestamps), and `getOrderStatus(order, now)` returns the latest step whose time has passed. The Tracking screen still runs its 1 s `setInterval` (with cleanup), but it only refreshes `now`, so the app always matches the phone after reopening.
+
+- Permission is never asked on first launch: after the first order a bottom sheet explains the benefit and only "Turn on" shows the system prompt. If denied, Profile -> Notifications shows "Notifications are off for CampusGo" with **Open settings**.
+- Android channels: `orders` (high importance) and `reminders`.
+- Foreground rule: no banner or sound for the order you are already watching on Tracking.
+- Cancelling an order cancels its pending notifications; opening Tracking clears that order's notifications from the tray; tapping one opens Tracking for that order (warm and cold start; after login if logged out).
+- **Break reminders** (off by default, 10/15/20 min before): date-triggered notifications for each delivery slot on the next 5 weekdays, in real time (the OS does not know the demo clock). `rescheduleBreakReminders()` cancels every `kind: "break"` notification and schedules again (on setting change, login and app open). A break with an active order is skipped.
+- Log out cancels all scheduled notifications.
+
+**Limits (Expo Go):**
+- Remote push is not available in Expo Go on Android (SDK 53+); **local scheduled notifications work**. A console warning about push in Expo Go is about remote push only.
+- Android **Force stop** in system settings cancels scheduled alarms. Swiping the app away is fine.
+- True iOS Live Activities and Android progress-style ongoing notifications need native code, so one clear notification per step is sent instead.
+- iOS keeps at most 64 scheduled notifications per app, plenty here (3 per order + at most 30 reminders).
+- The step times in the notifications use the tracking speed chosen when the order was placed.
+
+**How to demo it:** Profile -> Demo settings -> Tracking speed **Demo** (20 s per step, the default). Open Profile -> Notifications and tap **Send a test notification** to check the phone first. Then place an order, **lock the phone** and wait about 20 s: Preparing arrives, then On the way, then Delivered. Tap one to open the order. To show stamps: the demo account has 8/10; order 2 coffees from the Coffee Corner and the card completes when the order is delivered.
+
+## New packages
+
+`expo-notifications`, `expo-document-picker`, `expo-file-system`, `@react-native-community/netinfo` (all work in Expo Go; installed with `npx expo install`).
 
 ## Optional: load data from json-server
 

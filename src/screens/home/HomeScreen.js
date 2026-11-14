@@ -6,6 +6,8 @@ import { useApp } from '../../context/AppContext';
 import AppInput from '../../components/AppInput';
 import Chip from '../../components/Chip';
 import ConfirmModal from '../../components/ConfirmModal';
+import DietFilterChips from '../../components/DietFilterChips';
+import SeasonBanner from '../../components/SeasonBanner';
 import EmptyState from '../../components/EmptyState';
 import ProductImage from '../../components/ProductImage';
 import SectionHeader from '../../components/SectionHeader';
@@ -13,11 +15,16 @@ import SkeletonStoreCard from '../../components/SkeletonStoreCard';
 import StoreCard from '../../components/StoreCard';
 import WalletBanner from '../../components/WalletBanner';
 import { BumpBadge, PressableScale, PulseDot, StaggerItem, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
-import { colors, getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
+import { fixedColors, getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
+import { matchesDiet } from '../../utils/diet';
 import { formatTime, getGreeting, getNextSlot, getNow, isStoreOpen, minutesUntil } from '../../utils/time';
-import styles from './HomeScreen.styles';
+import { createStyles } from './HomeScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import useDietFilter from '../../hooks/useDietFilter';
+import { useTheme } from '../../context/ThemeContext';
+import { useNetwork } from '../../context/NetworkContext';
 
 const CATEGORIES = [
   { key: 'All', icon: 'apps' },
@@ -32,10 +39,14 @@ const SKELETONS = [{ type: 'skeleton', id: 'sk1' }, { type: 'skeleton', id: 'sk2
 
 // Home: FlatList with ListHeaderComponent, RefreshControl, skeletons and a re-render timer (useEffect cleanup)
 export default function HomeScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors, isDark } = useTheme();
   const {
     campus, user, wallet, orders, cartTotals, timeOffsetMs, refreshCampus,
-    getStore, getStoreLocation, getCampus, reorder,
+    getStore, getStoreLocation, getCampus, reorder, loyalty, visibleSeasons, dismissSeason,
   } = useApp();
+  const diet = useDietFilter();
+  const { isOnline } = useNetwork();
   const { showToast } = useToast();
   const { animatedStyle } = useScreenFocusAnimation();
   const [search, setSearch] = useState('');
@@ -51,6 +62,10 @@ export default function HomeScreen({ navigation }) {
   }, []);
 
   const onRefresh = async () => {
+    if (!isOnline) {
+      showToast({ message: "Can't refresh while offline", icon: 'cloud-offline', tone: 'error' });
+      return;
+    }
     setRefreshing(true);
     await refreshCampus();
     setRefreshing(false);
@@ -73,8 +88,12 @@ export default function HomeScreen({ navigation }) {
     if (!query) return true;
     return store.name.toLowerCase().includes(query);
   });
-  const productResults = query
-    ? campus.products.filter((p) => inCategory(p.storeId) && p.name.toLowerCase().includes(query))
+  // Products show up when searching or when a dietary filter is on
+  const showProducts = Boolean(query) || diet.selected.length > 0;
+  const productResults = showProducts
+    ? campus.products.filter(
+        (p) => inCategory(p.storeId) && (!query || p.name.toLowerCase().includes(query)) && matchesDiet(p, diet.selected)
+      )
     : [];
 
   const listData = refreshing
@@ -124,7 +143,7 @@ export default function HomeScreen({ navigation }) {
             {getGreeting(timeOffsetMs)}, <Text style={styles.name}>{firstName}</Text>
           </Text>
           <View style={styles.campusRow}>
-            <Ionicons name="location" size={14} color={colors.primary} />
+            <Ionicons name="location" size={14} color={colors.primaryText} />
             <Text style={styles.campusText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {campusInfo ? `${campusInfo.name} · ${campusInfo.subtitle}` : 'Université Antonine'}
             </Text>
@@ -135,7 +154,7 @@ export default function HomeScreen({ navigation }) {
           style={styles.bagButton}
           accessibilityLabel={`Your bag, ${cartTotals.count} items`}
         >
-          <Ionicons name="bag-handle-outline" size={24} color={colors.primary} />
+          <Ionicons name="bag-handle-outline" size={24} color={colors.primaryText} />
           <BumpBadge value={cartTotals.count} style={styles.bagBadge} />
         </PressableScale>
       </View>
@@ -147,6 +166,20 @@ export default function HomeScreen({ navigation }) {
         onTopUp={() => navigation.navigate('Wallet')}
         emptyText={`No more breaks today – ordering opens tomorrow at ${firstSlot ? firstSlot.start : '09:45'}`}
       />
+
+      {/* Loyalty strip: opens the stamp card */}
+      <PressableScale
+        onPress={() => navigation.navigate('Loyalty')}
+        style={styles.loyaltyStrip}
+        accessibilityLabel={loyalty.rewards > 0 ? 'Coffee stamps, you have a free coffee' : `Coffee stamps, ${loyalty.stamps} of 10`}
+      >
+        <Text style={styles.loyaltyText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {loyalty.rewards > 0 ? '🎁 Free coffee ready' : `☕ ${loyalty.stamps}/10 · ${10 - loyalty.stamps} to go`}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+      </PressableScale>
+
+      <SeasonBanner seasons={visibleSeasons} onSelectTag={diet.turnOn} onDismiss={dismissSeason} />
 
       {activeOrder ? (
         <PressableScale
@@ -209,9 +242,10 @@ export default function HomeScreen({ navigation }) {
           <Chip label={item.key} icon={item.icon} selected={category === item.key} onPress={() => selectCategory(item.key)} />
         )}
       />
+      <DietFilterChips selected={diet.selected} onToggle={diet.toggle} />
 
       <SectionHeader
-        title={query ? `Results · ${stores.length + productResults.length}` : `Stores · ${stores.length}`}
+        title={showProducts ? `Results · ${stores.length + productResults.length}` : `Stores · ${stores.length}`}
         style={styles.sectionHeader}
       />
     </View>
@@ -240,7 +274,7 @@ export default function HomeScreen({ navigation }) {
           accessibilityLabel={`${product.name} from ${store?.name}`}
         >
           <View style={[styles.productTile, { backgroundColor: getCategoryColors(product.category)[1] }]}>
-            <Ionicons name={getCategoryIcon(product.category)} size={22} color="#FFFFFF" />
+            <Ionicons name={getCategoryIcon(product.category)} size={22} color={fixedColors.white} />
           </View>
           <View style={styles.productText}>
             <Text style={styles.productName} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -260,7 +294,7 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       <Animated.View style={[styles.flex, animatedStyle]}>
         <FlatList
           data={listData}
@@ -271,11 +305,16 @@ export default function HomeScreen({ navigation }) {
             <EmptyState
               icon="search"
               title="Nothing found"
-              subtitle={`No store or product matches "${search}".`}
-              actionLabel="Clear search"
+              subtitle={
+                diet.selected.length > 0
+                  ? 'No store or product matches your search and filters.'
+                  : `No store or product matches "${search}".`
+              }
+              actionLabel={diet.selected.length > 0 ? 'Clear filters' : 'Clear search'}
               onAction={() => {
                 setSearch('');
                 setCategory('All');
+                diet.clear();
               }}
             />
           }
@@ -283,7 +322,7 @@ export default function HomeScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} colors={[colors.primary]} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primaryText} colors={[colors.primary]} />
           }
         />
       </Animated.View>

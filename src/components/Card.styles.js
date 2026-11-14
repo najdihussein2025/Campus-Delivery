@@ -1,11 +1,13 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, shadow, spacing } from '../theme/theme';
+import { radius, shadow, spacing } from '../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     ...shadow.card,
+    borderWidth: 1,
+    borderColor: c.cardBorder,
   },
 });

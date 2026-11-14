@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radius, spacing, typography } from '../theme/theme';
+import { fonts, radius, spacing, makeTypography } from '../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   card: {
     borderRadius: radius.xl,
     padding: spacing.xl,
@@ -27,11 +27,11 @@ export default StyleSheet.create({
   },
   topRow: { flexDirection: 'row', alignItems: 'flex-start' },
   flex: { flex: 1 },
-  micro: { ...typography.micro, color: colors.accentWarm },
-  slot: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 37, color: colors.textOnDark, marginTop: spacing.xs },
+  micro: { ...makeTypography(c).micro, color: c.accentWarm },
+  slot: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 37, color: c.textOnDark, marginTop: spacing.xs },
   slotNone: { fontSize: 19, lineHeight: 26 },
   countdown: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,255,255,0.88)', marginTop: 2 },
-  countdownStrong: { fontFamily: fonts.bodyBold, color: colors.textOnDark },
+  countdownStrong: { fontFamily: fonts.bodyBold, color: c.textOnDark },
   clock: {
     width: 46,
     height: 46,
@@ -46,19 +46,19 @@ export default StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.accentWarm,
+    backgroundColor: c.accentWarm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   walletLabel: { fontFamily: fonts.regular, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginLeft: spacing.sm },
-  balance: { fontFamily: fonts.extrabold, fontSize: 19, color: colors.textOnDark, marginLeft: spacing.sm, flex: 1 },
+  balance: { fontFamily: fonts.extrabold, fontSize: 19, color: c.textOnDark, marginLeft: spacing.sm, flex: 1 },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 40,
-    backgroundColor: colors.accentWarm,
+    backgroundColor: c.accentWarm,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.md,
   },
-  pillText: { fontFamily: fonts.extrabold, fontSize: 13.5, color: colors.primaryDark, marginLeft: 2 },
+  pillText: { fontFamily: fonts.extrabold, fontSize: 13.5, color: c.primaryDark, marginLeft: 2 },
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { AppState, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../context/AppContext';
@@ -9,16 +9,21 @@ import Badge from '../../components/Badge';
 import Card from '../../components/Card';
 import Chip from '../../components/Chip';
 import ConfirmModal from '../../components/ConfirmModal';
+import NotificationPrompt from '../../components/NotificationPrompt';
 import DoorSign from '../../components/DoorSign';
 import EmptyState from '../../components/EmptyState';
 import StarRating from '../../components/StarRating';
 import StatusTimeline from '../../components/StatusTimeline';
 import { AnimatedProgressBar, FadeInView, PulseDot, SuccessCheck, useToast } from '../../components/motion';
-import { colors, gradients, MAX_FONT_SCALE } from '../../theme/theme';
+import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { STATUS_STEPS, STEP_SECONDS, getOrderStatus, getStepProgress } from '../../utils/orderStatus';
+import { getOrderStatus, getRouteProgress, getStepProgress } from '../../utils/orderStatus';
+import { stampsForOrder } from '../../utils/loyalty';
+import { dismissOrderNotifications, setViewing } from '../../services/notifications';
 import * as haptics from '../../utils/haptics';
-import styles from './TrackingScreen.styles';
+import { createStyles } from './TrackingScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const QUICK_TAGS = ['Fast', 'Hot', 'Friendly courier', 'Accurate'];
 
@@ -48,8 +53,10 @@ const headlineFor = (status, order, storeName, itemCount) => {
 
 // Tracking: route params + status computed from elapsed time + 1 s interval with cleanup
 export default function TrackingScreen({ route, navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const { orderId } = route.params;
-  const { orders, getStore, getSlot, cancelOrder, rateOrder, formatLocation } = useApp();
+  const { orders, getStore, getSlot, cancelOrder, rateOrder, formatLocation, settle, lastSettlement } = useApp();
   const { showToast } = useToast();
   const [nowMs, setNowMs] = useState(Date.now());
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -57,12 +64,50 @@ export default function TrackingScreen({ route, navigation }) {
   const [tags, setTags] = useState([]);
   const [comment, setComment] = useState('');
   const [ratingError, setRatingError] = useState('');
+  const [earnedReward, setEarnedReward] = useState(false);
+  const feedbackShown = useRef(false);
 
-  // Chapter 19: the brief's required timer — setInterval every second, cleared in the cleanup
+  // Chapter 19: the brief's required timer — setInterval every second, cleared in the cleanup.
+  // The status itself comes from timestamps, so the timer only refreshes `now` (and settles loyalty stamps).
   useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    const id = setInterval(() => {
+      setNowMs(Date.now());
+      settle();
+    }, 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [settle]);
+
+  // Back from the background: recompute right away (the order may have moved on while the app was closed)
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        setNowMs(Date.now());
+        settle();
+      }
+    });
+    return () => sub.remove();
+  }, [settle]);
+
+  // Tell the notification handler which order is on screen (no banner for it) and clear its tray entries
+  useEffect(() => {
+    setViewing('Tracking', orderId);
+    dismissOrderNotifications(orderId);
+    return () => setViewing(null);
+  }, [orderId]);
+
+  // Stamp feedback: "+2 stamps ☕", and a celebration when this order completed the card
+  useEffect(() => {
+    // Only react to a fresh settlement (not an old one when the screen is reopened later)
+    if (!lastSettlement || feedbackShown.current || Date.now() - lastSettlement.at > 60000) return;
+    const mine = lastSettlement.items.find((i) => i.orderId === orderId);
+    if (!mine) return;
+    feedbackShown.current = true;
+    showToast({ message: `+${mine.stamps} ${mine.stamps === 1 ? 'stamp' : 'stamps'} ☕`, icon: 'cafe', tone: 'success' });
+    if (mine.completed) {
+      setEarnedReward(true);
+      haptics.success();
+    }
+  }, [lastSettlement]);
 
   const order = orders.find((o) => o.id === orderId);
   const status = order ? getOrderStatus(order, nowMs) : null;
@@ -89,8 +134,8 @@ export default function TrackingScreen({ route, navigation }) {
   const progress = getStepProgress(order, nowMs);
   const itemCount = order.items.reduce((sum, i) => sum + i.qty, 0);
   const headline = headlineFor(status, order, storeName, itemCount);
-  const totalMs = (STATUS_STEPS.length - 1) * STEP_SECONDS * 1000;
-  const routeProgress = order.cancelled ? 0 : Math.min(1, Math.max(0, (nowMs - order.createdAt) / totalMs));
+  const routeProgress = getRouteProgress(order, nowMs);
+  const stampCount = stampsForOrder(order);
   const roomParts = String(order.room).split('.');
   const floorLabel = roomParts.length === 3 ? (roomParts[1] === '0' ? 'Ground floor' : `Floor ${roomParts[1]}`) : '';
 
@@ -172,6 +217,13 @@ export default function TrackingScreen({ route, navigation }) {
           <FadeInView style={styles.deliveredBox}>
             <SuccessCheck size={84} />
             <Text style={styles.deliveredText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Your order has arrived</Text>
+            {earnedReward ? (
+              <Text style={styles.rewardText} maxFontSizeMultiplier={MAX_FONT_SCALE}>🎁 You earned a free coffee!</Text>
+            ) : stampCount > 0 && order.stampsCredited ? (
+              <Text style={styles.stampText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                +{stampCount} {stampCount === 1 ? 'stamp' : 'stamps'} ☕ added to your card
+              </Text>
+            ) : null}
           </FadeInView>
         ) : null}
 
@@ -207,6 +259,12 @@ export default function TrackingScreen({ route, navigation }) {
             label="Payment"
             value={`${order.payment === 'wallet' ? 'Campus wallet' : 'Cash on delivery'} · ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}
           />
+          {order.rewardUsed ? (
+            <>
+              <View style={styles.divider} />
+              <InfoRow icon="gift" label="Loyalty" value={`🎁 Free coffee applied · −${formatMoney(order.discount)}`} />
+            </>
+          ) : null}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>Total</Text>
@@ -269,6 +327,8 @@ export default function TrackingScreen({ route, navigation }) {
         ) : null}
       </ScrollView>
 
+      <NotificationPrompt />
+
       <ConfirmModal
         visible={confirmCancel}
         title="Cancel this order?"
@@ -289,10 +349,12 @@ export default function TrackingScreen({ route, navigation }) {
 }
 
 function InfoRow({ icon, label, value }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIcon}>
-        <Ionicons name={icon} size={18} color={colors.primary} />
+        <Ionicons name={icon} size={18} color={colors.primaryText} />
       </View>
       <View style={styles.flex}>
         <Text style={styles.micro} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>

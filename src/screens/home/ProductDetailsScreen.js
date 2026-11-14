@@ -13,13 +13,18 @@ import SectionHeader from '../../components/SectionHeader';
 import SegmentedControl from '../../components/SegmentedControl';
 import StickyBar from '../../components/StickyBar';
 import { FadeInView, PressableScale, useToast } from '../../components/motion';
-import { colors, MAX_FONT_SCALE } from '../../theme/theme';
+import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { isStoreOpen } from '../../utils/time';
-import styles from './ProductDetailsScreen.styles';
+import { allergenLine, tagMeta } from '../../utils/diet';
+import { createStyles } from './ProductDetailsScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 // Product sheet (modal presentation): useState for options, SegmentedControl sizes, Switch extras, live total
 export default function ProductDetailsScreen({ navigation, route }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const { productId } = route.params;
   const { cart, getProduct, getStore, addToCart, replaceCart, timeOffsetMs } = useApp();
   const { showToast } = useToast();
@@ -63,6 +68,7 @@ export default function ProductDetailsScreen({ navigation, route }) {
       qty,
       details,
       category: product.category,
+      loyalty: product.loyalty || null,
     };
   };
 
@@ -114,7 +120,21 @@ export default function ProductDetailsScreen({ navigation, route }) {
             {!product.inStock ? <Badge variant="outOfStock" label="Out of stock" /> : null}
           </View>
           <Text style={styles.name} maxFontSizeMultiplier={MAX_FONT_SCALE}>{product.name}</Text>
+          {product.tags && product.tags.length > 0 ? (
+            <View style={styles.tagRow}>
+              {product.tags.map((tag) => (
+                <View key={tag} style={styles.tagPill}>
+                  <Text style={styles.tagText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    {tagMeta(tag) ? `${tagMeta(tag).emoji} ${tagMeta(tag).label}` : tag}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
           <Text style={styles.description} maxFontSizeMultiplier={MAX_FONT_SCALE}>{product.description}</Text>
+          {allergenLine(product) ? (
+            <Text style={styles.allergens} maxFontSizeMultiplier={MAX_FONT_SCALE}>{allergenLine(product)}</Text>
+          ) : null}
           <Text style={styles.basePrice} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatMoney(product.price)}</Text>
         </FadeInView>
 

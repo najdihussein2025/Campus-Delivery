@@ -9,22 +9,27 @@ import AppButton from '../../components/AppButton';
 import SectionHeader from '../../components/SectionHeader';
 import EmptyState from '../../components/EmptyState';
 import ConfirmModal from '../../components/ConfirmModal';
+import SpendingCard from '../../components/SpendingCard';
 import { FadeInView, ShakeView, StaggerItem, SuccessCheck, animateLayout, useToast } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/money';
-import { dayLabel, formatTime } from '../../utils/time';
+import { dayLabel, formatTime, getNow } from '../../utils/time';
 import * as haptics from '../../utils/haptics';
-import { colors, gradients, logos, MAX_FONT_SCALE } from '../../theme/theme';
-import styles from './WalletScreen.styles';
+import { gradients, logos, MAX_FONT_SCALE } from '../../theme/theme';
+import { createStyles } from './WalletScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
+import { useNetwork } from '../../context/NetworkContext';
 
 const PRESETS = [500, 1000, 2000];
 const MAX_TOPUP = 20000;
 
-const TYPE_STYLES = {
+// Icon, colours and sign for each transaction type, from the active palette
+const makeTypeStyles = (colors) => ({
   topup: { icon: 'add-circle', color: colors.success, soft: colors.successSoft, sign: '+' },
-  payment: { icon: 'bag-handle', color: colors.primary, soft: colors.primarySoft, sign: '−' },
+  payment: { icon: 'bag-handle', color: colors.primaryText, soft: colors.primarySoft, sign: '−' },
   refund: { icon: 'return-up-back', color: colors.warningText, soft: colors.warningSoft, sign: '+' },
-};
+});
 
 // Group transactions by day: a flat list of header rows and transaction rows for one FlatList
 const groupByDay = (transactions, timeOffsetMs) => {
@@ -43,7 +48,10 @@ const groupByDay = (transactions, timeOffsetMs) => {
 
 // Chapter 19: async/await simulated top-up with loading state; transactions in a grouped FlatList
 export default function WalletScreen() {
-  const { wallet, topUp, timeOffsetMs } = useApp();
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
+  const { wallet, topUp, timeOffsetMs, orders, campus } = useApp();
+  const { isOnline } = useNetwork();
   const { showToast } = useToast();
   const [preset, setPreset] = useState(1000);
   const [custom, setCustom] = useState('');
@@ -62,6 +70,7 @@ export default function WalletScreen() {
   const amountValid = !!amount && !Number.isNaN(amount) && amount > 0 && amount <= MAX_TOPUP;
 
   const handleTopUp = async () => {
+    if (!isOnline) return;
     if (!amount || Number.isNaN(amount) || amount <= 0) {
       setError('Enter a valid amount, e.g. 15 or 7.50');
       shakeRef.current?.shake();
@@ -99,6 +108,10 @@ export default function WalletScreen() {
           <Text style={styles.balance} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatMoney(wallet.balance)}</Text>
           <Text style={styles.balanceHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>Available balance · Université Antonine</Text>
         </LinearGradient>
+      </FadeInView>
+
+      <FadeInView delay={60}>
+        <SpendingCard orders={orders} stores={campus.stores} now={getNow(timeOffsetMs)} />
       </FadeInView>
 
       <SectionHeader title="Top up" />
@@ -142,6 +155,8 @@ export default function WalletScreen() {
               icon="add-circle-outline"
               onPress={handleTopUp}
               loading={loading}
+              disabled={!isOnline}
+              reason="Top-ups need a connection."
             />
             <Text style={styles.note} maxFontSizeMultiplier={MAX_FONT_SCALE}>Simulated payment for the demo – no card is charged.</Text>
           </Card>
@@ -156,7 +171,8 @@ export default function WalletScreen() {
     if (item.kind === 'day') {
       return <Text style={styles.dayLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.label}</Text>;
     }
-    const type = TYPE_STYLES[item.type] || TYPE_STYLES.payment;
+    const typeStyles = makeTypeStyles(colors);
+    const type = typeStyles[item.type] || typeStyles.payment;
     return (
       <StaggerItem index={index}>
         <View style={styles.txRow}>
@@ -169,7 +185,7 @@ export default function WalletScreen() {
               {formatTime(new Date(item.date))} · {item.type === 'topup' ? 'Top-up' : item.type === 'refund' ? 'Refund' : 'Payment'}
             </Text>
           </View>
-          <Text style={[styles.txAmount, { color: item.type === 'payment' ? colors.text : colors.success }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Text style={[styles.txAmount, { color: item.type === 'payment' ? colors.text : colors.successText }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {type.sign}
             {formatMoney(item.amount)}
           </Text>

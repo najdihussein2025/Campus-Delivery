@@ -5,12 +5,13 @@ import WelcomeScreen from '../screens/auth/WelcomeScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import SignUpScreen from '../screens/auth/SignUpScreen';
 import { useApp } from '../context/AppContext';
-import { colors } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Stack = createNativeStackNavigator();
 
 // Onboarding is shown only on first launch (flag saved in AsyncStorage)
 export default function AuthStack() {
+  const { colors } = useTheme();
   const { onboardingDone } = useApp();
   return (
     <Stack.Navigator

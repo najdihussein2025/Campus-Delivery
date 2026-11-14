@@ -10,8 +10,10 @@ import StepIndicator from '../../components/StepIndicator';
 import { AnimatedProgressBar, FadeInView, PressableScale, ShakeView, animateLayout } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { normalizeEmail, passwordStrength, validateSignUp } from '../../utils/validation';
-import { colors, MAX_FONT_SCALE } from '../../theme/theme';
-import styles from './SignUpScreen.styles';
+import { MAX_FONT_SCALE } from '../../theme/theme';
+import { createStyles } from './SignUpScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const EMPTY_FORM = {
   name: '',
@@ -29,8 +31,6 @@ const STEP_FIELDS = [
   ['studentId', 'faculty', 'phone'],
 ];
 
-const STRENGTH_COLORS = [colors.danger, colors.danger, colors.warning, colors.accent, colors.success];
-
 const pick = (errors, fields) => {
   const result = {};
   fields.forEach((f) => {
@@ -41,6 +41,8 @@ const pick = (errors, fields) => {
 
 // Chapter 17: a 2-step form with one state object, refs for "next" focus and per-step validation
 export default function SignUpScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors, isDark } = useTheme();
   const { campus, users, signUp } = useApp();
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -160,8 +162,8 @@ export default function SignUpScreen({ navigation }) {
       />
       {form.password ? (
         <View style={styles.strength}>
-          <AnimatedProgressBar progress={Math.max(0.08, strength.score / 4)} color={STRENGTH_COLORS[strength.score]} height={6} style={styles.strengthBar} />
-          <Text style={[styles.strengthLabel, { color: strength.score >= 3 ? colors.success : colors.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <AnimatedProgressBar progress={Math.max(0.08, strength.score / 4)} color={[colors.danger, colors.danger, colors.warning, colors.accent, colors.success][strength.score]} height={6} style={styles.strengthBar} />
+          <Text style={[styles.strengthLabel, { color: strength.score >= 3 ? colors.successText : colors.textMuted }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {strength.label}
           </Text>
         </View>
@@ -269,12 +271,12 @@ export default function SignUpScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scrollRef} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.topRow}>
             <PressableScale onPress={handleBack} accessibilityLabel="Go back" style={styles.back}>
-              <Ionicons name="arrow-back" size={22} color={colors.primary} />
+              <Ionicons name="arrow-back" size={22} color={colors.primaryText} />
             </PressableScale>
             <UALogo variant="blue" width={120} />
           </View>

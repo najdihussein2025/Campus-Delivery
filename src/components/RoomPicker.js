@@ -6,13 +6,17 @@ import Chip from './Chip';
 import DoorSign from './DoorSign';
 import PressableScale from './motion/PressableScale';
 import { animateLayout } from './motion/layout';
-import { colors, MAX_FONT_SCALE } from '../theme/theme';
+import { MAX_FONT_SCALE } from '../theme/theme';
 import { formatFloor, formatFloorLong } from '../utils/time';
 import { makeRoomCode } from '../utils/validation';
-import styles from './RoomPicker.styles';
+import { createStyles } from './RoomPicker.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 // Guided room input in the real UA format Building.Floor.Room with a live door-sign preview
 export default function RoomPicker({ buildings = [], value, onChange, errors = {} }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const { buildingId, floor, roomNumber } = value;
   const building = buildings.find((b) => b.id === buildingId);
   const floors = building ? building.floors : [];
@@ -45,7 +49,7 @@ export default function RoomPicker({ buildings = [], value, onChange, errors = {
         <Text style={styles.landmarks} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.landmarks}</Text>
         {selected ? (
           <View style={styles.check}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+            <Ionicons name="checkmark-circle" size={20} color={colors.primaryText} />
           </View>
         ) : null}
       </PressableScale>

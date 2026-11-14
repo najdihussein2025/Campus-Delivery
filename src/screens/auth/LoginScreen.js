@@ -8,13 +8,17 @@ import UALogo from '../../components/UALogo';
 import { FadeInView, PressableScale, ShakeView } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { normalizeEmail, validateLogin } from '../../utils/validation';
-import { colors, MAX_FONT_SCALE } from '../../theme/theme';
-import styles from './LoginScreen.styles';
+import { MAX_FONT_SCALE } from '../../theme/theme';
+import { createStyles } from './LoginScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const DEMO = { email: 'student@ua.edu.lb', password: 'campus123' };
 
 // Chapter 17: controlled TextInputs, refs to move focus, validation on blur and on submit
 export default function LoginScreen({ navigation, route }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors, isDark } = useTheme();
   const { users, login } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,11 +66,11 @@ export default function LoginScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <PressableScale onPress={() => navigation.goBack()} accessibilityLabel="Go back" style={styles.back}>
-            <Ionicons name="arrow-back" size={22} color={colors.primary} />
+            <Ionicons name="arrow-back" size={22} color={colors.primaryText} />
           </PressableScale>
 
           <FadeInView>

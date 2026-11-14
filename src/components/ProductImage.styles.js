@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   box: { width: '100%', overflow: 'hidden' },
   dimmed: { opacity: 0.45 },
   gradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -2,11 +2,14 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from './Card';
-import { colors } from '../theme/theme';
+
 import { formatMoney } from '../utils/money';
-import styles from './PriceSummary.styles';
+import { createStyles } from './PriceSummary.styles';
+import useThemedStyles from '../hooks/useThemedStyles';
+import { useTheme } from '../context/ThemeContext';
 
 function Row({ label, value, strong, free }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
       <Text style={[styles.label, strong && styles.labelStrong]}>{label}</Text>
@@ -16,6 +19,8 @@ function Row({ label, value, strong, free }) {
 }
 
 function Hint({ icon, text, danger }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const color = danger ? colors.danger : colors.info;
   return (
     <View style={[styles.hint, danger ? styles.hintDanger : styles.hintInfo]}>
@@ -27,10 +32,12 @@ function Hint({ icon, text, danger }) {
 
 // Subtotal / delivery fee / total with the minimum-order and free-delivery hints
 export default function PriceSummary({ totals, showHints = true, style }) {
-  const { subtotal, deliveryFee, total, missingForMinimum, missingForFreeDelivery } = totals;
+  const styles = useThemedStyles(createStyles);
+  const { gross, discount = 0, subtotal, deliveryFee, total, missingForMinimum, missingForFreeDelivery } = totals;
   return (
     <Card style={style}>
-      <Row label="Subtotal" value={formatMoney(subtotal)} />
+      <Row label="Subtotal" value={formatMoney(discount > 0 ? gross : subtotal)} />
+      {discount > 0 ? <Row label="Free coffee (loyalty)" value={`−${formatMoney(discount)}`} free /> : null}
       <Row label="Delivery fee" value={deliveryFee === 0 ? 'Free' : formatMoney(deliveryFee)} free={deliveryFee === 0} />
       <View style={styles.divider} />
       <Row label="Total" value={formatMoney(total)} strong />

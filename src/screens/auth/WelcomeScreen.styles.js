@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radius, spacing } from '../../theme/theme';
+import { fonts, radius, spacing } from '../../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   gradient: { flex: 1 },
   safe: { flex: 1, paddingHorizontal: spacing.xl },
   glow: {
@@ -15,10 +15,10 @@ export default StyleSheet.create({
   },
   top: { flex: 1, justifyContent: 'center' },
   logo: { marginBottom: spacing.xxl },
-  title: { fontFamily: fonts.extrabold, fontSize: 44, lineHeight: 50, color: colors.textOnDark },
-  titleAccent: { color: colors.accent },
+  title: { fontFamily: fonts.extrabold, fontSize: 44, lineHeight: 50, color: c.textOnDark },
+  titleAccent: { color: c.accent },
   by: { fontFamily: fonts.medium, fontSize: 13.5, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  tagline: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: colors.textOnDark, marginTop: spacing.lg },
+  tagline: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24, color: c.textOnDark, marginTop: spacing.lg },
   points: { marginTop: spacing.xxl },
   point: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.md },
   pointIcon: {
@@ -30,9 +30,9 @@ export default StyleSheet.create({
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  pointText: { fontFamily: fonts.medium, fontSize: 15, color: colors.textOnDark },
+  pointText: { fontFamily: fonts.medium, fontSize: 15, color: c.textOnDark },
   bottom: { paddingBottom: spacing.lg },
-  secondary: { marginTop: spacing.sm, borderColor: colors.surface },
+  secondary: { marginTop: spacing.sm, borderColor: c.surface },
   demoCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -45,6 +45,6 @@ export default StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.14)',
   },
   demoTextWrap: { flex: 1, marginLeft: spacing.md },
-  demoTitle: { fontFamily: fonts.bold, fontSize: 14, color: colors.textOnDark },
+  demoTitle: { fontFamily: fonts.bold, fontSize: 14, color: c.textOnDark },
   demoText: { fontFamily: fonts.regular, fontSize: 12.5, color: 'rgba(255,255,255,0.75)', marginTop: 1 },
 });

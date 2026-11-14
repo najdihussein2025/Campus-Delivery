@@ -2,18 +2,21 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { Animated, Easing, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, MAX_FONT_SCALE } from '../../theme/theme';
+import { darkColors, MAX_FONT_SCALE } from '../../theme/theme';
 import PressableScale from './PressableScale';
 import useReduceMotion from './useReduceMotion';
-import styles from './Toast.styles';
+import { createStyles } from './Toast.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
 
 const ToastContext = createContext({ showToast: () => {} });
 
 const TONE_ICONS = { default: 'information-circle', success: 'checkmark-circle', error: 'alert-circle' };
-const TONE_COLORS = { default: colors.accent, success: '#3DDC84', error: '#FF6B70' };
+// The toast is always a dark surface, so its accents come from the dark palette in both modes
+const TONE_COLORS = { default: darkColors.accent, success: darkColors.success, error: darkColors.danger };
 
 // Context provider: any screen calls showToast(...) and a toast slides up above the tab bar
 export function ToastProvider({ children }) {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const [toast, setToast] = useState(null);
@@ -58,7 +61,7 @@ export function ToastProvider({ children }) {
             style={[styles.container, { bottom: insets.bottom + 84, opacity: anim, transform: [{ translateY }] }]}
           >
             <View style={styles.toast} accessibilityLiveRegion="polite" accessibilityRole="alert">
-              <Ionicons name={toast.icon || TONE_ICONS[toast.tone]} size={20} color={TONE_COLORS[toast.tone] || colors.accent} />
+              <Ionicons name={toast.icon || TONE_ICONS[toast.tone]} size={20} color={TONE_COLORS[toast.tone] || darkColors.accent} />
               <Text style={styles.message} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {toast.message}
               </Text>

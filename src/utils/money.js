@@ -7,11 +7,16 @@ export const formatMoney = (cents) => {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 };
 
-// Business rules: minimum order $2, free delivery above $10, otherwise $0.50
-export const calcCartTotals = (items) => {
-  const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
+// Business rules: minimum order $2, free delivery above $10, otherwise $0.50.
+// `discount` is the loyalty reward: the minimum and the free-delivery threshold use the subtotal AFTER it.
+export const calcCartTotals = (items, discount = 0) => {
+  const gross = items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
+  const applied = Math.min(Math.max(0, discount), gross);
+  const subtotal = gross - applied;
   const deliveryFee = subtotal === 0 || subtotal > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   return {
+    gross,
+    discount: applied,
     subtotal,
     deliveryFee,
     total: subtotal + deliveryFee,

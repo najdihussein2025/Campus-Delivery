@@ -1,13 +1,13 @@
 import { StyleSheet } from 'react-native';
-import { colors, radius, shadow, spacing } from '../theme/theme';
+import { radius, shadow, spacing } from '../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   bar: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     borderTopLeftRadius: radius.lg,

@@ -101,7 +101,14 @@
             "extra": 100
           }
         ]
-      }
+      },
+      "tags": [
+        "halal",
+        "iftar"
+      ],
+      "allergens": [
+        "gluten"
+      ]
     },
     {
       "id": "p02",
@@ -122,7 +129,15 @@
             "extra": 100
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian",
+        "iftar"
+      ],
+      "allergens": [
+        "gluten",
+        "dairy"
+      ]
     },
     {
       "id": "p03",
@@ -143,7 +158,14 @@
             "extra": 100
           }
         ]
-      }
+      },
+      "tags": [
+        "iftar"
+      ],
+      "allergens": [
+        "gluten",
+        "eggs"
+      ]
     },
     {
       "id": "p04",
@@ -164,7 +186,15 @@
             "extra": 100
           }
         ]
-      }
+      },
+      "tags": [
+        "halal",
+        "iftar"
+      ],
+      "allergens": [
+        "gluten",
+        "dairy"
+      ]
     },
     {
       "id": "p05",
@@ -181,7 +211,17 @@
             "extra": 25
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami",
+        "iftar"
+      ],
+      "allergens": [
+        "gluten",
+        "sesame"
+      ]
     },
     {
       "id": "p06",
@@ -190,7 +230,16 @@
       "name": "Cheese",
       "description": "Akkawi and mozzarella cheese blend.",
       "price": 175,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "vegetarian",
+        "iftar"
+      ],
+      "allergens": [
+        "gluten",
+        "dairy",
+        "sesame"
+      ]
     },
     {
       "id": "p07",
@@ -199,7 +248,13 @@
       "name": "Lahm b'Ajeen",
       "description": "Spiced minced meat with tomato and onion.",
       "price": 200,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "halal"
+      ],
+      "allergens": [
+        "gluten"
+      ]
     },
     {
       "id": "p08",
@@ -208,7 +263,16 @@
       "name": "Fattoush",
       "description": "Crispy bread, sumac, fresh vegetables and pomegranate molasses.",
       "price": 275,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami"
+      ],
+      "allergens": [
+        "gluten",
+        "sesame"
+      ]
     },
     {
       "id": "p09",
@@ -217,7 +281,15 @@
       "name": "Chicken Caesar",
       "description": "Romaine, grilled chicken, parmesan and croutons.",
       "price": 350,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "halal"
+      ],
+      "allergens": [
+        "gluten",
+        "dairy",
+        "eggs"
+      ]
     },
     {
       "id": "p10",
@@ -226,7 +298,16 @@
       "name": "Croissant",
       "description": "Buttery plain croissant.",
       "price": 125,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "vegetarian",
+        "iftar"
+      ],
+      "allergens": [
+        "gluten",
+        "dairy",
+        "eggs"
+      ]
     },
     {
       "id": "p11",
@@ -235,7 +316,13 @@
       "name": "Fruit Cup",
       "description": "Seasonal fresh fruit, cut daily.",
       "price": 150,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami",
+        "iftar"
+      ]
     },
     {
       "id": "p12",
@@ -270,7 +357,13 @@
             "extra": 50
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami"
+      ],
+      "loyalty": "coffee"
     },
     {
       "id": "p13",
@@ -305,7 +398,13 @@
             "extra": 50
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami"
+      ],
+      "loyalty": "coffee"
     },
     {
       "id": "p14",
@@ -340,7 +439,14 @@
             "extra": 50
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian"
+      ],
+      "allergens": [
+        "dairy"
+      ],
+      "loyalty": "coffee"
     },
     {
       "id": "p15",
@@ -375,7 +481,14 @@
             "extra": 50
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian"
+      ],
+      "allergens": [
+        "dairy"
+      ],
+      "loyalty": "coffee"
     },
     {
       "id": "p16",
@@ -400,7 +513,13 @@
             "extra": 100
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian"
+      ],
+      "allergens": [
+        "dairy"
+      ]
     },
     {
       "id": "p17",
@@ -409,7 +528,12 @@
       "name": "Tea",
       "description": "Black or green tea, your choice.",
       "price": 75,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami"
+      ]
     },
     {
       "id": "p18",
@@ -444,7 +568,14 @@
             "extra": 50
           }
         ]
-      }
+      },
+      "tags": [
+        "vegetarian"
+      ],
+      "allergens": [
+        "dairy"
+      ],
+      "loyalty": "coffee"
     },
     {
       "id": "p19",
@@ -453,7 +584,13 @@
       "name": "Fresh Orange Juice",
       "description": "Squeezed to order.",
       "price": 250,
-      "inStock": false
+      "inStock": false,
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami",
+        "iftar"
+      ]
     },
     {
       "id": "p20",
@@ -462,7 +599,13 @@
       "name": "Water",
       "description": "500 ml bottled water.",
       "price": 50,
-      "inStock": true
+      "inStock": true,
+      "tags": [
+        "vegetarian",
+        "vegan",
+        "siyami",
+        "iftar"
+      ]
     },
     {
       "id": "p21",
@@ -471,7 +614,8 @@
       "name": "A4 Notebook 100 sheets",
       "description": "Ruled A4 notebook with a sturdy cover.",
       "price": 300,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p22",
@@ -480,7 +624,8 @@
       "name": "Spiral Notebook A5",
       "description": "Pocket-size spiral notebook.",
       "price": 200,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p23",
@@ -489,7 +634,8 @@
       "name": "Lab Notebook",
       "description": "Grid pages for lab reports and experiments.",
       "price": 450,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p24",
@@ -498,7 +644,8 @@
       "name": "Blue Pens ×3",
       "description": "Smooth ballpoint pens, pack of three.",
       "price": 100,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p25",
@@ -507,7 +654,8 @@
       "name": "Highlighters Set",
       "description": "Five pastel highlighters.",
       "price": 350,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p26",
@@ -516,7 +664,8 @@
       "name": "Pencil & Eraser",
       "description": "HB pencil with a soft eraser.",
       "price": 75,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p27",
@@ -525,7 +674,8 @@
       "name": "Scientific Calculator",
       "description": "Exam-approved scientific calculator.",
       "price": 1800,
-      "inStock": true
+      "inStock": true,
+      "tags": []
     },
     {
       "id": "p28",
@@ -534,7 +684,8 @@
       "name": "USB Flash 32GB",
       "description": "Compact USB 3.0 flash drive.",
       "price": 900,
-      "inStock": false
+      "inStock": false,
+      "tags": []
     }
   ],
   "buildings": [
@@ -727,5 +878,21 @@
     "Faculty of Public Health",
     "Faculty of Sport Sciences",
     "Faculty of Theology"
+  ],
+  "seasons": [
+    {
+      "id": "lent",
+      "name": "Lent",
+      "start": "2027-02-08",
+      "end": "2027-03-27",
+      "highlightTag": "siyami"
+    },
+    {
+      "id": "ramadan",
+      "name": "Ramadan",
+      "start": "2027-02-08",
+      "end": "2027-03-09",
+      "highlightTag": "iftar"
+    }
   ]
 }

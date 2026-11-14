@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Animated, FlatList, StatusBar, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, StatusBar, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,8 +8,9 @@ import UALogo from '../../components/UALogo';
 import DoorSign from '../../components/DoorSign';
 import { FadeInView, PressableScale } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
-import { gradients, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
-import styles from './OnboardingScreen.styles';
+import { fixedColors, gradients, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
+import { createStyles } from './OnboardingScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
 
 const SLIDES = [
   {
@@ -40,6 +41,7 @@ const BREAKS = ['09:45', '11:15', '12:45'];
 
 // Chapter 16/20: horizontal paging FlatList + Animated dots driven by the scroll position
 export default function OnboardingScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
   const { completeOnboarding } = useApp();
   const { width } = useWindowDimensions();
   const listRef = useRef(null);
@@ -64,7 +66,7 @@ export default function OnboardingScreen({ navigation }) {
           {CATEGORY_TILES.map((tile, i) => (
             <FadeInView key={tile.label} delay={120 + i * 80} style={styles.tileWrap}>
               <LinearGradient colors={getCategoryColors(tile.label)} style={styles.tile}>
-                <Ionicons name={tile.icon} size={30} color="#FFFFFF" />
+                <Ionicons name={tile.icon} size={30} color={fixedColors.white} />
               </LinearGradient>
               <Text style={styles.tileLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{tile.label}</Text>
             </FadeInView>
@@ -81,7 +83,7 @@ export default function OnboardingScreen({ navigation }) {
           </View>
           {BREAKS.map((time, i) => (
             <View key={time} style={[styles.breakRow, i === 1 && styles.breakRowActive]}>
-              <Ionicons name={i === 1 ? 'bicycle' : 'time-outline'} size={18} color={i === 1 ? '#0C2640' : '#FFFFFF'} />
+              <Ionicons name={i === 1 ? 'bicycle' : 'time-outline'} size={18} color={i === 1 ? fixedColors.ink : fixedColors.white} />
               <Text style={[styles.breakText, i === 1 && styles.breakTextActive]}>Break {time}</Text>
               {i === 1 ? <Text style={styles.breakTag}>Delivery</Text> : null}
             </View>

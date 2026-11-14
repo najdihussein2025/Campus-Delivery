@@ -1,13 +1,15 @@
 import { StyleSheet } from 'react-native';
-import { colors, fonts, radius, shadow, spacing, typography } from '../theme/theme';
+import { fonts, radius, shadow, spacing, makeTypography } from '../theme/theme';
 
-export default StyleSheet.create({
+export const createStyles = (c) => StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
+    backgroundColor: c.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
     ...shadow.card,
+    borderWidth: 1,
+    borderColor: c.cardBorder,
   },
   inner: { flexDirection: 'row', alignItems: 'center' },
   dimmed: { opacity: 0.55 },
@@ -20,11 +22,11 @@ export default StyleSheet.create({
     marginRight: spacing.lg,
   },
   info: { flex: 1, marginRight: spacing.sm },
-  name: typography.h3,
-  category: { ...typography.caption, marginTop: 2 },
+  name: makeTypography(c).h3,
+  category: { ...makeTypography(c).caption, marginTop: 2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  meta: { fontFamily: fonts.regular, fontSize: 12.5, color: colors.textMuted, marginLeft: 4, flexShrink: 1 },
-  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: colors.textMuted, marginHorizontal: 6 },
+  meta: { fontFamily: fonts.regular, fontSize: 12.5, color: c.textMuted, marginLeft: 4, flexShrink: 1 },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: c.textMuted, marginHorizontal: 6 },
   badgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -32,7 +34,7 @@ export default StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: c.border,
   },
-  browse: { fontFamily: fonts.bold, fontSize: 13, color: colors.primary },
+  browse: { fontFamily: fonts.bold, fontSize: 13, color: c.primaryText },
 });

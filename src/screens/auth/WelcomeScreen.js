@@ -6,8 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import AppButton from '../../components/AppButton';
 import UALogo from '../../components/UALogo';
 import { FadeInView, PressableScale } from '../../components/motion';
-import { colors, gradients, MAX_FONT_SCALE } from '../../theme/theme';
-import styles from './WelcomeScreen.styles';
+import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
+import { createStyles } from './WelcomeScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const POINTS = [
   { icon: 'flash', text: 'Order in seconds' },
@@ -17,6 +19,8 @@ const POINTS = [
 
 // Chapter 18: stack navigation with navigation.navigate and route params
 export default function WelcomeScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   return (
     <LinearGradient colors={gradients.hero} style={styles.gradient}>
       <StatusBar barStyle="light-content" />

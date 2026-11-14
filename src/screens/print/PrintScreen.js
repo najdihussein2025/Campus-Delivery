@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, ScrollView, StatusBar, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
 import AppInput from '../../components/AppInput';
@@ -12,11 +14,15 @@ import SectionHeader from '../../components/SectionHeader';
 import SegmentedControl from '../../components/SegmentedControl';
 import StickyBar from '../../components/StickyBar';
 import { PressableScale, ShakeView, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
-import { colors, MAX_FONT_SCALE } from '../../theme/theme';
+import { MAX_FONT_SCALE } from '../../theme/theme';
 import { calcPrintPrice, formatMoney } from '../../utils/money';
 import { isStoreOpen } from '../../utils/time';
 import { validatePrintJob } from '../../utils/validation';
-import styles from './PrintScreen.styles';
+import { PICKER_TYPES, detectPages, fileKind, formatFileSize, validateFile } from '../../utils/pdfPages';
+import * as haptics from '../../utils/haptics';
+import { createStyles } from './PrintScreen.styles';
+import useThemedStyles from '../../hooks/useThemedStyles';
+import { useTheme } from '../../context/ThemeContext';
 
 const SAMPLE_FILES = ['Lab_Report_3.pdf', 'Thesis_Draft_v2.pdf', 'Marketing_Case_Study.pdf', 'Circuit_Analysis_HW4.pdf', 'Lecture_Notes_Week6.pdf'];
 const BINDINGS = [
@@ -24,10 +30,22 @@ const BINDINGS = [
   { key: 'staple', label: 'Staple' },
   { key: 'spiral', label: 'Spiral' },
 ];
-const EMPTY_FORM = { docName: '', pages: '', copies: '1', color: false, doubleSided: false, binding: 'none' };
+const EMPTY_FORM = { docName: '', file: null, pages: '', copies: '1', color: false, doubleSided: false, binding: 'none' };
+
+// Icon, label and colour token for each file type in the file chip
+const FILE_KINDS = {
+  pdf: { icon: 'document-text', label: 'PDF', tone: 'dangerSolid' },
+  word: { icon: 'document', label: 'DOC', tone: 'primary' },
+  image: { icon: 'image', label: 'IMG', tone: 'successSolid' },
+};
+
+// Reads a picked file as base64 (expo-file-system legacy API, the one that still has readAsStringAsync)
+const readBase64 = (uri) => FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
 
 // Print: controlled inputs, SegmentedControl/Switch/Chips and a live price that pulses when it changes
 export default function PrintScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { colors } = useTheme();
   const { campus, cart, getStore, addToCart, replaceCart, timeOffsetMs, reduceMotion } = useApp();
   const { showToast } = useToast();
   const { animatedStyle } = useScreenFocusAnimation();
@@ -36,6 +54,10 @@ export default function PrintScreen({ navigation }) {
   const [expanded, setExpanded] = useState(false);
   const [conflictVisible, setConflictVisible] = useState(false);
   const shakeRef = useRef(null);
+  const fileShakeRef = useRef(null);
+  const [fileError, setFileError] = useState('');
+  const [detectedPages, setDetectedPages] = useState(null);
+  const [detecting, setDetecting] = useState(false);
   const totalScale = useRef(new Animated.Value(1)).current;
   const totalFlash = useRef(new Animated.Value(0)).current;
 
@@ -66,7 +88,7 @@ export default function PrintScreen({ navigation }) {
     ]).start();
   }, [price.total]);
 
-  const totalColor = totalFlash.interpolate({ inputRange: [0, 1], outputRange: [colors.text, colors.primary] });
+  const totalColor = totalFlash.interpolate({ inputRange: [0, 1], outputRange: [colors.text, colors.primaryText] });
 
   const update = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -75,11 +97,64 @@ export default function PrintScreen({ navigation }) {
     update(field, value);
   };
 
-  const chooseFile = () => {
+  // Real file pick: validates type and size, then tries to detect the page count (never blocks)
+  const pickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: PICKER_TYPES,
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      const file = { name: asset.name, size: asset.size, mimeType: asset.mimeType, uri: asset.uri };
+      const problem = validateFile(file);
+      if (problem) {
+        setFileError(problem);
+        fileShakeRef.current?.shake();
+        haptics.error();
+        return;
+      }
+      setFileError('');
+      animateLayout();
+      setDetectedPages(null);
+      setForm((prev) => ({ ...prev, docName: file.name, file, pages: '' }));
+      setDetecting(true);
+      const found = await detectPages(file, readBase64);
+      setDetecting(false);
+      if (found) {
+        setDetectedPages(found);
+        // Only fill the field if the student has not typed a number in the meantime
+        setForm((prev) => (prev.file && prev.file.uri === file.uri && prev.pages === '' ? { ...prev, pages: String(found) } : prev));
+      }
+    } catch (error) {
+      console.log('File pick failed', error.message);
+      setDetecting(false);
+      setFileError('Could not open that file. Try another one.');
+    }
+  };
+
+  // Demo fallback: pretend a file was picked
+  const useSample = () => {
     const name = SAMPLE_FILES[Math.floor(Math.random() * SAMPLE_FILES.length)];
     const randomPages = 2 + Math.floor(Math.random() * 39);
     animateLayout();
-    setForm((prev) => ({ ...prev, docName: name, pages: String(randomPages) }));
+    setFileError('');
+    setDetectedPages(null);
+    setForm((prev) => ({
+      ...prev,
+      docName: name,
+      file: { name, size: randomPages * 48 * 1024, mimeType: 'application/pdf', uri: null },
+      pages: String(randomPages),
+    }));
+  };
+
+  const removeFile = () => {
+    animateLayout();
+    setFileError('');
+    setDetectedPages(null);
+    setDetecting(false);
+    setForm((prev) => ({ ...prev, docName: '', file: null, pages: '' }));
   };
 
   const bindingLabel = (key) => {
@@ -105,11 +180,17 @@ export default function PrintScreen({ navigation }) {
       qty: 1,
       details,
       category: 'Printing',
+      // Only these four fields are kept: the file itself is never uploaded
+      file: form.file
+        ? { fileName: form.file.name, fileSize: form.file.size, mimeType: form.file.mimeType, pages }
+        : null,
     };
   };
 
   const resetForm = () => {
     setForm(EMPTY_FORM);
+    setFileError('');
+    setDetectedPages(null);
     setSubmitted(false);
   };
 
@@ -166,26 +247,43 @@ export default function PrintScreen({ navigation }) {
           <ShakeView ref={shakeRef}>
             <SectionHeader title="1 · Document" style={styles.firstHeader} />
             <Card>
-              {form.docName ? (
-                <PressableScale onPress={chooseFile} style={styles.fileChip} accessibilityLabel={`Change file, currently ${form.docName}`}>
-                  <View style={styles.pdfIcon}>
-                    <Ionicons name="document-text" size={22} color={colors.textOnDark} />
-                    <Text style={styles.pdfText}>PDF</Text>
+              <ShakeView ref={fileShakeRef}>
+                {form.file ? (
+                  <View style={styles.fileChip}>
+                    <View style={[styles.fileIcon, { backgroundColor: colors[FILE_KINDS[fileKind(form.file) || 'pdf'].tone] }]}>
+                      <Ionicons name={FILE_KINDS[fileKind(form.file) || 'pdf'].icon} size={22} color={colors.textOnDark} />
+                      <Text style={styles.pdfText}>{FILE_KINDS[fileKind(form.file) || 'pdf'].label}</Text>
+                    </View>
+                    <View style={styles.fileText}>
+                      <Text style={styles.fileName} numberOfLines={1} ellipsizeMode="middle" maxFontSizeMultiplier={MAX_FONT_SCALE}>{form.file.name}</Text>
+                      <Text style={styles.fileMeta} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                        {[formatFileSize(form.file.size), detectedPages ? `${detectedPages} ${detectedPages === 1 ? 'page' : 'pages'}` : null]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                      <PressableScale onPress={pickFile} hitSlop={8} style={styles.changeLink} accessibilityLabel={`Change file, currently ${form.file.name}`}>
+                        <Text style={styles.changeText}>Change</Text>
+                      </PressableScale>
+                    </View>
+                    <PressableScale onPress={removeFile} hitSlop={10} style={styles.removeButton} accessibilityLabel={`Remove ${form.file.name}`}>
+                      <Ionicons name="close" size={20} color={colors.textMuted} />
+                    </PressableScale>
                   </View>
-                  <View style={styles.fileText}>
-                    <Text style={styles.fileName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{form.docName}</Text>
-                    <Text style={styles.fileMeta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{pages || '–'} pages · tap to change</Text>
-                  </View>
-                  <Ionicons name="swap-horizontal" size={20} color={colors.primary} />
-                </PressableScale>
-              ) : (
-                <PressableScale onPress={chooseFile} style={[styles.dropZone, errors.docName && styles.dropZoneError]} accessibilityLabel="Choose a file">
-                  <Ionicons name="cloud-upload-outline" size={30} color={colors.primary} />
-                  <Text style={styles.dropTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>Choose a file</Text>
-                  <Text style={styles.dropHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>PDF · up to {prices.maxPages} printed pages</Text>
-                </PressableScale>
-              )}
-              {errors.docName ? <Text style={styles.errorText}>Choose a document to print</Text> : null}
+                ) : (
+                  <>
+                    <PressableScale onPress={pickFile} style={[styles.dropZone, (errors.docName || fileError) && styles.dropZoneError]} accessibilityLabel="Choose a file">
+                      <Ionicons name="cloud-upload-outline" size={30} color={colors.primaryText} />
+                      <Text style={styles.dropTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>Choose a file</Text>
+                      <Text style={styles.dropHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>PDF, Word or image · up to 25 MB</Text>
+                    </PressableScale>
+                    <PressableScale onPress={useSample} hitSlop={8} style={styles.sampleLink} accessibilityLabel="Use a sample document">
+                      <Text style={styles.changeText}>Use a sample document</Text>
+                    </PressableScale>
+                  </>
+                )}
+              </ShakeView>
+              {fileError ? <Text style={styles.errorText} accessibilityLiveRegion="polite">{fileError}</Text> : null}
+              {errors.docName && !fileError ? <Text style={styles.errorText}>Choose a document to print</Text> : null}
 
               <AppInput
                 label="Pages to print"
@@ -198,6 +296,17 @@ export default function PrintScreen({ navigation }) {
                 maxLength={3}
                 style={styles.pagesInput}
               />
+              {form.file ? (
+                <Text style={styles.pagesHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {detecting
+                    ? 'Checking the page count…'
+                    : detectedPages && Number(form.pages) === detectedPages
+                      ? `Detected ${detectedPages} ${detectedPages === 1 ? 'page' : 'pages'} · edit if wrong`
+                      : form.pages
+                        ? 'Page count edited by you'
+                        : 'Enter the number of pages'}
+                </Text>
+              ) : null}
             </Card>
 
             <SectionHeader title="2 · Options" />
