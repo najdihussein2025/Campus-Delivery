@@ -1,5 +1,7 @@
 // Local scheduled notifications (no backend): the OS delivers them even when the app is closed.
 // Every OS call is wrapped so a notification problem can never crash the app (e.g. on web or in Expo Go quirks).
+// Only LOCAL notifications are used. Never call getExpoPushTokenAsync / getDevicePushTokenAsync here: remote push is not
+// available in Expo Go since SDK 53, and nothing in this app needs a push token.
 import { Linking, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -110,7 +112,17 @@ export const requestPermission = async () => {
   }
 };
 
-export const openSystemSettings = () => Linking.openSettings();
+// Returns true when the system settings opened (false on web or when the OS refuses)
+export const openSystemSettings = async () => {
+  if (Platform.OS === 'web') return false;
+  try {
+    await Linking.openSettings();
+    return true;
+  } catch (error) {
+    console.log('Could not open settings', error.message);
+    return false;
+  }
+};
 
 // ---------- Orders ----------
 // Hands the Preparing / On the way / Delivered notifications to the OS. Returns the scheduled ids.

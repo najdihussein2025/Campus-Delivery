@@ -35,6 +35,8 @@ export default function NotificationPrompt() {
     if (granted) {
       await syncOrderNotifications();
       showToast({ message: 'Notifications are on', icon: 'notifications', tone: 'success' });
+    } else {
+      showToast({ message: "Notifications stay off. You can allow them in your phone's Settings.", icon: 'notifications-off', tone: 'error' });
     }
   };
 

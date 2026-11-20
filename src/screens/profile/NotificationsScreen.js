@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AppState, ScrollView, Switch, Text, View } from 'react-native';
+import { AppState, FlatList, ScrollView, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
@@ -33,10 +33,26 @@ export default function NotificationsScreen() {
     loadPrefs().then(setPrefs);
     // Coming back from the system settings: read the permission again (listener removed in cleanup)
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') refreshPermission();
+      if (state === 'active') {
+        // Permission may have been granted in the phone's Settings meanwhile: schedule what was missed
+        refreshPermission().then(async () => {
+          const p = await getPermission();
+          if (p.granted) {
+            await syncOrderNotifications();
+            await syncBreakReminders();
+          }
+        });
+      }
     });
     return () => sub.remove();
   }, [refreshPermission]);
+
+  const openSettings = async () => {
+    const opened = await openSystemSettings();
+    if (!opened) {
+      showToast({ message: "Open your phone's Settings → CampusGo → Notifications", icon: 'settings-outline' });
+    }
+  };
 
   const turnOn = async () => {
     const granted = await requestPermission();
@@ -45,6 +61,8 @@ export default function NotificationsScreen() {
       await syncOrderNotifications();
       await syncBreakReminders();
       showToast({ message: 'Notifications are on', icon: 'notifications', tone: 'success' });
+    } else {
+      showToast({ message: "Notifications stay off. You can allow them in your phone's Settings.", icon: 'notifications-off', tone: 'error' });
     }
   };
 
@@ -111,7 +129,7 @@ export default function NotificationsScreen() {
           permission.status !== 'denied' && permission.canAskAgain ? (
             <AppButton title="Turn on notifications" icon="notifications" onPress={turnOn} style={styles.statusButton} />
           ) : (
-            <AppButton title="Open settings" icon="settings-outline" onPress={openSystemSettings} style={styles.statusButton} />
+            <AppButton title="Open settings" icon="settings-outline" onPress={openSettings} style={styles.statusButton} />
           )
         ) : null}
       </FadeInView>
@@ -147,11 +165,17 @@ export default function NotificationsScreen() {
         {prefs.breaks ? (
           <View style={styles.leadBlock}>
             <Text style={styles.leadLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>Remind me this long before</Text>
-            <View style={styles.leadRow}>
-              {LEAD_OPTIONS.map((minutes) => (
-                <Chip key={minutes} label={`${minutes} min`} selected={prefs.lead === minutes} onPress={() => chooseLead(minutes)} />
-              ))}
-            </View>
+            <FlatList
+              data={LEAD_OPTIONS}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(minutes) => String(minutes)}
+              extraData={prefs.lead}
+              style={styles.leadRow}
+              renderItem={({ item: minutes }) => (
+                <Chip label={`${minutes} min`} selected={prefs.lead === minutes} onPress={() => chooseLead(minutes)} />
+              )}
+            />
           </View>
         ) : null}
       </Card>

@@ -83,10 +83,10 @@ export default function LoginScreen({ navigation, route }) {
             <ShakeView ref={shakeRef} style={styles.form}>
               <AppInput
                 ref={emailRef}
-                label="University email"
+                label="University email or UA ID"
                 icon="mail-outline"
                 placeholder="your.name"
-                suffix={email.includes('@') ? undefined : '@ua.edu.lb'}
+                suffix={email.includes('@') || /^\d+$/.test(email) ? undefined : '@ua.edu.lb'}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}

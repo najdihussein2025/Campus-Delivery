@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import PressableScale from './motion/PressableScale';
 import { SEASON_BANNERS, tagLabel } from '../utils/diet';
@@ -13,16 +13,14 @@ export default function SeasonBanner({ seasons, onSelectTag, onDismiss }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   if (!seasons || seasons.length === 0) return null;
-  return (
-    <View>
-      {seasons.map((season) => {
+  const renderSeason = ({ item: season }) => {
         const banner = SEASON_BANNERS[season.id] || {
           text: `${season.name} – ${tagLabel(season.highlightTag)} options`,
           icon: 'sparkles',
         };
         const lent = season.id === 'lent';
         return (
-          <View key={season.id} style={[styles.banner, lent ? styles.bannerLent : styles.bannerInfo]}>
+          <View style={[styles.banner, lent ? styles.bannerLent : styles.bannerInfo]}>
             <PressableScale
               onPress={() => onSelectTag(season.highlightTag)}
               style={styles.main}
@@ -43,7 +41,6 @@ export default function SeasonBanner({ seasons, onSelectTag, onDismiss }) {
             </PressableScale>
           </View>
         );
-      })}
-    </View>
-  );
+  };
+  return <FlatList data={seasons} keyExtractor={(season) => season.id} renderItem={renderSeason} scrollEnabled={false} />;
 }

@@ -16,7 +16,7 @@ import StickyBar from '../../components/StickyBar';
 import { PressableScale, ShakeView, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { calcPrintPrice, formatMoney } from '../../utils/money';
-import { isStoreOpen } from '../../utils/time';
+import { closedReason, isStoreOpen } from '../../utils/time';
 import { validatePrintJob } from '../../utils/validation';
 import { PICKER_TYPES, detectPages, fileKind, formatFileSize, validateFile } from '../../utils/pdfPages';
 import * as haptics from '../../utils/haptics';
@@ -57,6 +57,8 @@ export default function PrintScreen({ navigation }) {
   const fileShakeRef = useRef(null);
   const [fileError, setFileError] = useState('');
   const [detectedPages, setDetectedPages] = useState(null);
+  // The page count the app filled in by itself (detected or sample); "edited by you" shows only after a change
+  const [autoPages, setAutoPages] = useState(null);
   const [detecting, setDetecting] = useState(false);
   const totalScale = useRef(new Animated.Value(1)).current;
   const totalFlash = useRef(new Animated.Value(0)).current;
@@ -105,12 +107,16 @@ export default function PrintScreen({ navigation }) {
         copyToCacheDirectory: true,
         multiple: false,
       });
-      if (result.canceled) return;
+      if (result.canceled || !result.assets || !result.assets.length) {
+        showToast({ message: 'No file selected', icon: 'document-outline' });
+        return;
+      }
       const asset = result.assets[0];
       const file = { name: asset.name, size: asset.size, mimeType: asset.mimeType, uri: asset.uri };
       const problem = validateFile(file);
       if (problem) {
         setFileError(problem);
+        showToast({ message: problem, icon: 'alert-circle', tone: 'error' });
         fileShakeRef.current?.shake();
         haptics.error();
         return;
@@ -118,12 +124,14 @@ export default function PrintScreen({ navigation }) {
       setFileError('');
       animateLayout();
       setDetectedPages(null);
+      setAutoPages(null);
       setForm((prev) => ({ ...prev, docName: file.name, file, pages: '' }));
       setDetecting(true);
       const found = await detectPages(file, readBase64);
       setDetecting(false);
       if (found) {
         setDetectedPages(found);
+        setAutoPages(found);
         // Only fill the field if the student has not typed a number in the meantime
         setForm((prev) => (prev.file && prev.file.uri === file.uri && prev.pages === '' ? { ...prev, pages: String(found) } : prev));
       }
@@ -131,6 +139,7 @@ export default function PrintScreen({ navigation }) {
       console.log('File pick failed', error.message);
       setDetecting(false);
       setFileError('Could not open that file. Try another one.');
+      showToast({ message: 'Could not open that file. Try another one.', icon: 'alert-circle', tone: 'error' });
     }
   };
 
@@ -141,6 +150,7 @@ export default function PrintScreen({ navigation }) {
     animateLayout();
     setFileError('');
     setDetectedPages(null);
+    setAutoPages(randomPages);
     setForm((prev) => ({
       ...prev,
       docName: name,
@@ -153,6 +163,7 @@ export default function PrintScreen({ navigation }) {
     animateLayout();
     setFileError('');
     setDetectedPages(null);
+    setAutoPages(null);
     setDetecting(false);
     setForm((prev) => ({ ...prev, docName: '', file: null, pages: '' }));
   };
@@ -191,6 +202,7 @@ export default function PrintScreen({ navigation }) {
     setForm(EMPTY_FORM);
     setFileError('');
     setDetectedPages(null);
+    setAutoPages(null);
     setSubmitted(false);
   };
 
@@ -214,6 +226,7 @@ export default function PrintScreen({ navigation }) {
     }
     const result = addToCart(buildItem(), 'printing');
     if (result === 'conflict') setConflictVisible(true);
+    else if (result === 'closed') showToast({ message: 'UA is closed – ordering is paused', icon: 'moon', tone: 'error' });
     else confirmAdded();
   };
 
@@ -224,8 +237,16 @@ export default function PrintScreen({ navigation }) {
   };
 
   let blockReason = '';
-  if (!isOpen) blockReason = `The Printing Office opens at ${store.openTime}`;
+  if (!isOpen) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
   else if (overLimit) blockReason = `Max ${prices.maxPages} printed pages per order (you have ${printedPages})`;
+
+  // Hint under the page field: "edited by you" only after the student changed the auto-filled number
+  let pagesHint = '';
+  if (detecting) pagesHint = 'Checking the page count…';
+  else if (!form.pages) pagesHint = 'Enter the number of pages';
+  else if (autoPages && Number(form.pages) === autoPages) {
+    pagesHint = `${detectedPages ? 'Detected' : 'Sample document:'} ${autoPages} ${autoPages === 1 ? 'page' : 'pages'} · edit if wrong`;
+  } else if (autoPages) pagesHint = 'Page count edited by you';
 
   const bindingText = form.binding !== 'none' ? ` + ${form.binding} ${formatMoney(price.bindingTotal)}` : '';
   const summaryLine = `${pages} pages × ${copies} ${copies === 1 ? 'copy' : 'copies'} × ${formatMoney(price.rate)}${bindingText}`;
@@ -239,7 +260,7 @@ export default function PrintScreen({ navigation }) {
             <View style={styles.closedCard}>
               <Ionicons name="moon-outline" size={20} color={colors.dangerText} />
               <Text style={styles.closedText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                The Printing Office is closed. It opens at {store.openTime} — you can prepare your job now.
+                {closedReason(store, campus.deliverySlots, timeOffsetMs)} — you can prepare your job now.
               </Text>
             </View>
           ) : null}
@@ -296,16 +317,8 @@ export default function PrintScreen({ navigation }) {
                 maxLength={3}
                 style={styles.pagesInput}
               />
-              {form.file ? (
-                <Text style={styles.pagesHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  {detecting
-                    ? 'Checking the page count…'
-                    : detectedPages && Number(form.pages) === detectedPages
-                      ? `Detected ${detectedPages} ${detectedPages === 1 ? 'page' : 'pages'} · edit if wrong`
-                      : form.pages
-                        ? 'Page count edited by you'
-                        : 'Enter the number of pages'}
-                </Text>
+              {form.file && pagesHint ? (
+                <Text style={styles.pagesHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>{pagesHint}</Text>
               ) : null}
             </Card>
 
@@ -350,14 +363,15 @@ export default function PrintScreen({ navigation }) {
 
             <SectionHeader title="3 · Copies" />
             <Card style={styles.copiesCard}>
-              <View>
+              <View style={styles.copiesInfo}>
                 <Text style={styles.switchLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>Number of copies</Text>
                 <Text style={[styles.switchHint, overLimit && styles.limitError]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  {printedPages} of {prices.maxPages} printed pages
+                  {pages} pages × {copies || 1} {copies === 1 ? 'copy' : 'copies'} = {printedPages} of {prices.maxPages} max printed pages
                 </Text>
               </View>
               <QuantitySelector
                 qty={copies || 1}
+                allowRemove={false}
                 onIncrease={() => update('copies', String((copies || 1) + 1))}
                 onDecrease={() => update('copies', String(Math.max(1, (copies || 1) - 1)))}
               />

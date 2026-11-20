@@ -34,6 +34,9 @@ export const createStyles = (c) => StyleSheet.create({
   rewardText: { ...makeTypography(c).h3, color: c.primaryText, marginTop: spacing.sm },
   stampText: { ...makeTypography(c).bodyStrong, color: c.textMuted, marginTop: spacing.xs },
   etaCard: { flexDirection: 'row', alignItems: 'center' },
+  demoNote: { fontFamily: fonts.medium, fontSize: 12.5, color: 'rgba(255,255,255,0.8)', marginTop: spacing.md },
+  etaCancelled: { fontSize: 20, color: c.dangerText },
+  refundText: { ...makeTypography(c).bodyStrong, color: c.successText, marginBottom: 2 },
   etaTime: { fontFamily: fonts.extrabold, fontSize: 24, color: c.text, marginVertical: 2 },
   avatar: {
     width: 52,
@@ -66,7 +69,7 @@ export const createStyles = (c) => StyleSheet.create({
   cancelBtn: { borderColor: c.danger },
   cancelHint: { ...makeTypography(c).caption, textAlign: 'center', marginTop: spacing.sm },
   starsRow: { marginTop: spacing.md, marginBottom: spacing.sm },
-  tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm, marginBottom: spacing.sm },
+  tagsList: { marginTop: spacing.sm, marginBottom: spacing.sm, flexGrow: 0 },
   comment: { ...makeTypography(c).body, fontStyle: 'italic', color: c.textBrand, marginTop: spacing.sm },
   error: { fontFamily: fonts.medium, fontSize: 12.5, color: c.dangerText, marginBottom: spacing.sm },
   commentInput: { marginTop: spacing.sm },

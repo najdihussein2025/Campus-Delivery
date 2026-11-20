@@ -54,14 +54,19 @@ export default function LoyaltyScreen() {
         <LoyaltyCard stamps={loyalty.stamps} rewards={loyalty.rewards} />
       </FadeInView>
       <Card style={styles.how}>
-        {HOW_IT_WORKS.map((row) => (
-          <View key={row.icon} style={styles.howRow}>
-            <View style={styles.howIcon}>
-              <Ionicons name={row.icon} size={18} color={colors.primaryText} />
+        <FlatList
+          data={HOW_IT_WORKS}
+          scrollEnabled={false}
+          keyExtractor={(row) => row.icon}
+          renderItem={({ item: row }) => (
+            <View style={styles.howRow}>
+              <View style={styles.howIcon}>
+                <Ionicons name={row.icon} size={18} color={colors.primaryText} />
+              </View>
+              <Text style={styles.howText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{row.text}</Text>
             </View>
-            <Text style={styles.howText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{row.text}</Text>
-          </View>
-        ))}
+          )}
+        />
       </Card>
       <SectionHeader title="History" />
     </View>

@@ -11,7 +11,7 @@ export const createStyles = (c) => StyleSheet.create({
   contactless: { transform: [{ rotate: '90deg' }] },
   balance: { fontFamily: fonts.extrabold, fontSize: 42, color: c.textOnDark, marginTop: spacing.xl },
   balanceHint: { fontFamily: fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: spacing.xs },
-  presets: { flexDirection: 'row', marginBottom: spacing.md },
+  presets: { marginBottom: spacing.md, flexGrow: 0 },
   presetChip: { flex: 1, justifyContent: 'center' },
   note: { ...makeTypography(c).caption, textAlign: 'center', marginTop: spacing.md },
   dayLabel: { ...makeTypography(c).micro, marginTop: spacing.md, marginBottom: spacing.sm },

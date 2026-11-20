@@ -13,7 +13,7 @@ import StickyBar from '../../components/StickyBar';
 import { AnimatedProgressBar, PressableScale, StaggerItem, animateLayout, useToast } from '../../components/motion';
 import { getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
 import { FREE_DELIVERY_OVER, formatMoney } from '../../utils/money';
-import { isStoreOpen } from '../../utils/time';
+import { closedReason, isStoreOpen } from '../../utils/time';
 import * as haptics from '../../utils/haptics';
 import { createStyles } from './CartScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
@@ -24,7 +24,7 @@ export default function CartScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const {
-    cart, cartTotals, getStore, changeQty, removeItem, restoreItem, clearCart, timeOffsetMs,
+    campus, cart, cartTotals, getStore, changeQty, removeItem, restoreItem, clearCart, timeOffsetMs,
     rewardAvailable, rewardApplied, useReward, setUseReward,
   } = useApp();
   const { showToast } = useToast();
@@ -71,7 +71,7 @@ export default function CartScreen({ navigation }) {
     <StaggerItem index={index}>
       <View style={styles.itemCard}>
         <View style={styles.thumb}>
-          <ProductImage category={item.category || (item.type === 'print' ? 'Printing' : null)} size={60} rounded={12} />
+          <ProductImage category={item.category || (item.type === 'print' ? 'Printing' : null)} productId={item.productId} size={60} rounded={12} />
         </View>
         <View style={styles.itemInfo}>
           <View style={styles.itemTop}>
@@ -121,7 +121,7 @@ export default function CartScreen({ navigation }) {
     <View>
       <View style={[styles.deliveryCard, freeUnlocked && styles.deliveryCardDone]}>
         <Text style={[styles.deliveryText, freeUnlocked && styles.deliveryTextDone]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-          {freeUnlocked ? '🎉 Free delivery unlocked' : `Add ${formatMoney(cartTotals.missingForFreeDelivery)} more for free delivery`}
+          {freeUnlocked ? '🎉 Free delivery unlocked' : `Free delivery on orders over ${formatMoney(FREE_DELIVERY_OVER)} · you're ${formatMoney(FREE_DELIVERY_OVER - cartTotals.subtotal)} away`}
         </Text>
         <AnimatedProgressBar
           progress={Math.min(1, cartTotals.subtotal / (FREE_DELIVERY_OVER + 1))}
@@ -170,7 +170,7 @@ export default function CartScreen({ navigation }) {
   );
 
   let blockReason = '';
-  if (!storeOpen) blockReason = `${store ? store.name : 'This store'} is closed now — opens at ${store ? store.openTime : ''}`;
+  if (!storeOpen) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
   else if (belowMinimum) blockReason = `Add ${formatMoney(cartTotals.missingForMinimum)} more to reach the $2.00 minimum`;
 
   return (

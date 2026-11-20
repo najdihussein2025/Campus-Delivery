@@ -5,10 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AppButton from '../../components/AppButton';
 import UALogo from '../../components/UALogo';
+import CampusBackground from '../../components/CampusBackground';
 import DoorSign from '../../components/DoorSign';
 import { FadeInView, PressableScale } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
-import { fixedColors, gradients, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
+import { fixedColors, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
 import { createStyles } from './OnboardingScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 
@@ -37,6 +38,7 @@ const CATEGORY_TILES = [
   { label: 'Printing', icon: 'print' },
 ];
 
+// Real UA breaks (see deliverySlots in campus.json); the middle one is highlighted as the delivery
 const BREAKS = ['09:45', '11:15', '12:45'];
 
 // Chapter 16/20: horizontal paging FlatList + Animated dots driven by the scroll position
@@ -63,6 +65,7 @@ export default function OnboardingScreen({ navigation }) {
     if (key === 'stores') {
       return (
         <View style={styles.tileGrid}>
+          {/* Not a FlatList: four fixed, decorative tiles in a static grid (the slides themselves are a FlatList) */}
           {CATEGORY_TILES.map((tile, i) => (
             <FadeInView key={tile.label} delay={120 + i * 80} style={styles.tileWrap}>
               <LinearGradient colors={getCategoryColors(tile.label)} style={styles.tile}>
@@ -79,8 +82,9 @@ export default function OnboardingScreen({ navigation }) {
         <View style={styles.breakCard}>
           <View style={styles.classRow}>
             <Ionicons name="school" size={18} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.classText}>Class 08:00–09:45</Text>
+            <Text style={styles.classText}>Class 08:30–09:45</Text>
           </View>
+          {/* Not a FlatList: three fixed, decorative rows of an illustration */}
           {BREAKS.map((time, i) => (
             <View key={time} style={[styles.breakRow, i === 1 && styles.breakRowActive]}>
               <Ionicons name={i === 1 ? 'bicycle' : 'time-outline'} size={18} color={i === 1 ? fixedColors.ink : fixedColors.white} />
@@ -108,7 +112,7 @@ export default function OnboardingScreen({ navigation }) {
   );
 
   return (
-    <LinearGradient colors={gradients.hero} style={styles.flex}>
+    <CampusBackground style={styles.flex}>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.flex}>
         <View style={styles.topBar}>
@@ -133,6 +137,7 @@ export default function OnboardingScreen({ navigation }) {
 
         <View style={styles.bottom}>
           <View style={styles.dots}>
+            {/* Not a FlatList: the pager dots are decoration driven by scroll position, not a list of data */}
             {SLIDES.map((slide, i) => {
               const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
               const scaleX = scrollX.interpolate({ inputRange, outputRange: [1, 3, 1], extrapolate: 'clamp' });
@@ -143,6 +148,6 @@ export default function OnboardingScreen({ navigation }) {
           <AppButton title={isLast ? 'Get started' : 'Next'} variant="accent" icon={isLast ? 'checkmark' : 'arrow-forward'} onPress={goNext} />
         </View>
       </SafeAreaView>
-    </LinearGradient>
+    </CampusBackground>
   );
 }

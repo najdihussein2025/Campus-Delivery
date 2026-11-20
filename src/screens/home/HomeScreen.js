@@ -15,11 +15,11 @@ import SkeletonStoreCard from '../../components/SkeletonStoreCard';
 import StoreCard from '../../components/StoreCard';
 import WalletBanner from '../../components/WalletBanner';
 import { BumpBadge, PressableScale, PulseDot, StaggerItem, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
-import { fixedColors, getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
+import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
 import { matchesDiet } from '../../utils/diet';
-import { formatTime, getGreeting, getNextSlot, getNow, isStoreOpen, minutesUntil } from '../../utils/time';
+import { formatTime, getGreeting, getNextAvailableSlot, getNow, getOrderingBlock, isStoreOpen, nextOrderingText, storeStatusLabel } from '../../utils/time';
 import { createStyles } from './HomeScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import useDietFilter from '../../hooks/useDietFilter';
@@ -34,7 +34,6 @@ const CATEGORIES = [
   { key: 'Printing', icon: 'print' },
 ];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MAX_PREP = 15;
 const SKELETONS = [{ type: 'skeleton', id: 'sk1' }, { type: 'skeleton', id: 'sk2' }, { type: 'skeleton', id: 'sk3' }];
 
 // Home: FlatList with ListHeaderComponent, RefreshControl, skeletons and a re-render timer (useEffect cleanup)
@@ -42,7 +41,7 @@ export default function HomeScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors, isDark } = useTheme();
   const {
-    campus, user, wallet, orders, cartTotals, timeOffsetMs, refreshCampus,
+    campus, user, wallet, orders, cart, cartTotals, timeOffsetMs, refreshCampus,
     getStore, getStoreLocation, getCampus, reorder, loyalty, visibleSeasons, dismissSeason,
   } = useApp();
   const diet = useDietFilter();
@@ -103,9 +102,15 @@ export default function HomeScreen({ navigation }) {
         ...productResults.map((product) => ({ type: 'product', id: product.id, product })),
       ];
 
-  const nextSlot = getNextSlot(campus.deliverySlots, timeOffsetMs);
-  const minutesLeft = nextSlot ? Math.max(0, minutesUntil(nextSlot.start, timeOffsetMs) - MAX_PREP) : 0;
-  const firstSlot = campus.deliverySlots[0];
+  // Banner: the first break that is still possible. Uses the cart's store if the bag is not empty,
+  // otherwise every store that is open right now (the one with the shortest prep time decides).
+  const cartStore = cart.items.length ? getStore(cart.storeId) : null;
+  const bannerStores = cartStore ? [cartStore] : campus.stores.filter((s) => isStoreOpen(s, timeOffsetMs));
+  const available = getNextAvailableSlot(campus.deliverySlots, bannerStores, timeOffsetMs);
+  const nextSlot = available ? available.slot : null;
+  const minutesLeft = available ? available.minutesLeft : 0;
+  const missedNote = available?.skipped ? `${available.skipped.label.split('–')[0]} break is too close to order` : '';
+  const closedBlock = getOrderingBlock(timeOffsetMs, campus.deliverySlots);
 
   const activeOrder = orders.find((o) => !o.cancelled && getOrderStatus(o, nowMs) !== 'Delivered');
   const lastDelivered = orders.find((o) => !o.cancelled && getOrderStatus(o, nowMs) === 'Delivered');
@@ -123,6 +128,10 @@ export default function HomeScreen({ navigation }) {
       return;
     }
     setConflict(null);
+    if (result.closed) {
+      showToast({ message: `${result.reason} · ordering opens ${result.opensText}`, icon: 'moon', tone: 'error' });
+      return;
+    }
     if (!result.added) {
       showToast({ message: 'These items are out of stock right now', icon: 'alert-circle', tone: 'error' });
       return;
@@ -162,9 +171,11 @@ export default function HomeScreen({ navigation }) {
       <WalletBanner
         nextSlot={nextSlot}
         minutesLeft={minutesLeft}
+        missedNote={missedNote}
         balance={wallet.balance}
         onTopUp={() => navigation.navigate('Wallet')}
-        emptyText={`No more breaks today – ordering opens tomorrow at ${firstSlot ? firstSlot.start : '09:45'}`}
+        emptyText={`No more breaks today – ordering opens ${nextOrderingText(campus.deliverySlots, timeOffsetMs)}`}
+        closedInfo={closedBlock}
       />
 
       {/* Loyalty strip: opens the stamp card */}
@@ -204,7 +215,7 @@ export default function HomeScreen({ navigation }) {
         <View>
           <SectionHeader title="Order again" />
           <PressableScale onPress={() => doReorder(lastDelivered.id, false)} style={styles.againCard} haptic accessibilityLabel="Reorder your last order">
-            <ProductImage category={getStore(lastDelivered.storeId)?.category} size={52} rounded={14} iconSize={24} style={styles.againImage} />
+            <ProductImage category={getStore(lastDelivered.storeId)?.category} productId={lastDelivered.items.find((i) => i.productId)?.productId} storeId={lastDelivered.storeId} size={52} rounded={14} iconSize={24} style={styles.againImage} />
             <View style={styles.againText}>
               <Text style={styles.againTitle} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 {lastDelivered.items.map((i) => i.name).join(', ')}
@@ -259,6 +270,7 @@ export default function HomeScreen({ navigation }) {
           store={item.store}
           index={index}
           isOpen={isStoreOpen(item.store, timeOffsetMs)}
+          statusLabel={storeStatusLabel(item.store, timeOffsetMs)}
           location={getStoreLocation(item.store)}
           onPress={() => openStore(item.store)}
         />
@@ -273,9 +285,7 @@ export default function HomeScreen({ navigation }) {
           style={[styles.productRow, !product.inStock && styles.productRowDimmed]}
           accessibilityLabel={`${product.name} from ${store?.name}`}
         >
-          <View style={[styles.productTile, { backgroundColor: getCategoryColors(product.category)[1] }]}>
-            <Ionicons name={getCategoryIcon(product.category)} size={22} color={fixedColors.white} />
-          </View>
+          <ProductImage category={product.category} productId={product.id} size={44} rounded={12} iconSize={22} style={styles.productTile} dimmed={!product.inStock} />
           <View style={styles.productText}>
             <Text style={styles.productName} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {product.name} <Text style={styles.productStore}>– {store?.name}</Text>

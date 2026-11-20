@@ -1,25 +1,55 @@
 const EMAIL_REGEX = /^[^\s@]+@ua\.edu\.lb$/i;
 const PHONE_REGEX = /^(03|7[0-9]|81)\d{6}$/;
 
+// UA student/staff ID: 8 digits, first 4 = year of enrolment (1996 → current year). Change here if UA's format differs.
+export const UA_ID_REGEX = /^(199[6-9]|20\d{2})\d{4}$/;
+
+// UA records are mock data (campus.json → uaRegistry): the app cannot reach UA's real student system
+export const lookupUaId = (registry, id) => (registry || []).find((r) => r.id === id) || null;
+
+// Titles (Dr., Pr.) are ignored: the first name must match, case-insensitive
+const firstName = (name) => name.trim().toLowerCase().replace(/^(dr|pr|prof)\.?\s+/, '').split(/\s+/)[0] || '';
+
+// '' when the ID is fine, otherwise the message to show under the field
+export const checkUaId = (id, name, registry, users, currentYear = new Date().getFullYear()) => {
+  if (!/^\d{8}$/.test(id)) return 'Student/staff ID must be exactly 8 digits';
+  if (!UA_ID_REGEX.test(id) || Number(id.slice(0, 4)) > currentYear) {
+    return `UA IDs start with the year you joined (1996–${currentYear}), e.g. 20231234`;
+  }
+  if (users.some((u) => u.studentId === id)) return 'An account already exists for this ID';
+  const record = lookupUaId(registry, id);
+  if (!record) return "This ID isn't in Antonine University's records. Check your student card.";
+  if (name.trim() && firstName(name) !== firstName(record.name)) return "Name doesn't match the UA record for this ID";
+  return '';
+};
+
 const isUaEmail = (email) => EMAIL_REGEX.test(email.trim());
+
+// The login field takes the university email or the 8-digit UA ID
+export const isUaIdInput = (value) => /^\d{8}$/.test(value.trim());
+export const findAccount = (users, identifier) => {
+  const value = identifier.trim().toLowerCase();
+  return users.find((u) => u.email.toLowerCase() === value || (isUaIdInput(value) && u.studentId === value));
+};
 
 // Each validator returns an object of field -> error message (empty object = valid)
 export const validateLogin = ({ email, password }, users) => {
   const errors = {};
-  if (!isUaEmail(email)) errors.email = 'Use your university email (name@ua.edu.lb)';
+  if (!isUaEmail(email) && !isUaIdInput(email)) errors.email = 'Use your university email (name@ua.edu.lb) or your 8-digit UA ID';
   if (password.length < 6) errors.password = 'Password must be at least 6 characters';
   if (Object.keys(errors).length) return errors;
 
-  const account = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
-  if (!account) errors.email = 'No account with this email';
+  const account = findAccount(users, email);
+  if (!account) errors.email = isUaIdInput(email) ? 'No account for this UA ID' : 'No account with this email';
   else if (account.password !== password) errors.password = 'Wrong password';
   return errors;
 };
 
-export const validateSignUp = (form, users) => {
+export const validateSignUp = (form, users, registry = [], currentYear = new Date().getFullYear()) => {
   const errors = {};
   if (form.name.trim().length < 3) errors.name = 'Full name must be at least 3 characters';
-  if (!/^\d{8}$/.test(form.studentId)) errors.studentId = 'Student/staff ID must be exactly 8 digits';
+  const idError = checkUaId(form.studentId, form.name, registry, users, currentYear);
+  if (idError) errors.studentId = idError;
   if (!form.faculty) errors.faculty = 'Choose your faculty';
   if (!PHONE_REGEX.test(form.phone)) errors.phone = 'Enter a Lebanese number, e.g. 71123456';
   if (!isUaEmail(form.email)) errors.email = 'Use your university email (name@ua.edu.lb)';
@@ -56,7 +86,7 @@ export const validateCheckout = ({ buildingId, room, slotId, payment }) => {
 // If the user typed only the username, append the university domain
 export const normalizeEmail = (input) => {
   const value = input.trim().toLowerCase();
-  if (!value) return value;
+  if (!value || isUaIdInput(value)) return value; // a UA ID stays as typed
   return value.includes('@') ? value : `${value}@ua.edu.lb`;
 };
 

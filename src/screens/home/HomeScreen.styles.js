@@ -88,7 +88,7 @@ export const createStyles = (c) => StyleSheet.create({
     borderColor: c.cardBorder,
   },
   productRowDimmed: { opacity: 0.55 },
-  productTile: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  productTile: { width: 44 },
   productText: { flex: 1, marginHorizontal: spacing.md },
   productName: { fontFamily: fonts.bold, fontSize: 15, color: c.text },
   productStore: { fontFamily: fonts.regular, fontSize: 13.5, color: c.textMuted },

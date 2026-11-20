@@ -31,6 +31,7 @@ export const createStyles = (c) => StyleSheet.create({
   slot: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 37, color: c.textOnDark, marginTop: spacing.xs },
   slotNone: { fontSize: 19, lineHeight: 26 },
   countdown: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,255,255,0.88)', marginTop: 2 },
+  missed: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
   countdownStrong: { fontFamily: fonts.bodyBold, color: c.textOnDark },
   clock: {
     width: 46,

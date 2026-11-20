@@ -1,5 +1,6 @@
 // What to notify and when. Pure functions: the OS scheduling lives in services/notifications.js.
 import { toMinutes } from './time';
+import { getDayStatus } from './calendar';
 
 // Three order notifications (Preparing, On the way, Delivered), only those still in the future.
 // `at` is an absolute real-time timestamp, the same one the order's statusSchedule uses.
@@ -22,8 +23,9 @@ export const buildOrderPlan = ({ order, storeName, slotLabel, buildingName, comp
     {
       step: 'delivered',
       at: order.statusSchedule.delivered,
-      title: `✅ Delivered to ${order.room}`,
-      body: `Enjoy! Tap to rate your order.${completesCard ? ' You also earned a free coffee 🎁' : ''}`,
+      title: `✅ Delivered to ${buildingName ? `${buildingName}, ` : ''}Room ${order.room}`,
+      // The break is the promised delivery window; the fast timer is only a demo
+      body: `${slotLabel ? `Scheduled for the ${slotLabel} break (demo speed). ` : ''}Tap to rate your order.${completesCard ? ' You also earned a free coffee 🎁' : ''}`,
     },
   ];
   return steps
@@ -31,13 +33,12 @@ export const buildOrderPlan = ({ order, storeName, slotLabel, buildingName, comp
     .filter((s) => s.seconds >= 1);
 };
 
-// Weekdays (Mon–Fri) starting today, `count` of them
+// Open university days (no weekends, holidays or semester breaks) starting today, `count` of them
 export const nextWeekdays = (now, count = 5) => {
   const days = [];
   const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  while (days.length < count) {
-    const dow = cursor.getDay();
-    if (dow !== 0 && dow !== 6) days.push(new Date(cursor));
+  for (let guard = 0; days.length < count && guard < 400; guard += 1) {
+    if (getDayStatus(cursor).open) days.push(new Date(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
   return days;

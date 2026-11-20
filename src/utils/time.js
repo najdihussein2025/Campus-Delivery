@@ -1,3 +1,8 @@
+import { addDays, describeDay, getDayStatus, getTeachingPeriod, nextOpenDay, parseKey } from './calendar';
+
+// Shown when no open day exists in the calendar any more (e.g. after the last teaching period)
+export const REOPENS_TEXT = 'when the next semester starts';
+
 export const toMinutes = (hhmm) => {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
@@ -31,13 +36,89 @@ export const offsetForTime = (hhmm) => {
   return target.getTime() - Date.now();
 };
 
+// Offset so that getNow() shows the given date (YYYY-MM-DD) and time (HH:MM)
+export const offsetForDateTime = (dateStr, hhmm) => {
+  const day = parseKey(dateStr);
+  const [h, m] = hhmm.split(':').map(Number);
+  day.setHours(h, m, 0, 0);
+  return day.getTime() - Date.now();
+};
+
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const opensOnDay = (store, date) => (store.days || ALL_DAYS).includes(date.getDay());
+
+// Open = the university is open today, the store works on this weekday, and the time is inside its hours
 export const isStoreOpen = (store, timeOffsetMs) => {
-  const now = nowMinutes(timeOffsetMs);
+  const date = getNow(timeOffsetMs);
+  if (!getDayStatus(date).open || !opensOnDay(store, date)) return false;
+  const now = date.getHours() * 60 + date.getMinutes();
   return toMinutes(store.openTime) <= now && now < toMinutes(store.closeTime);
+};
+
+// When the store opens next, e.g. "07:30" (later today), "tomorrow 07:30" or "Monday 07:30"
+export const storeOpensText = (store, timeOffsetMs) => {
+  const date = getNow(timeOffsetMs);
+  const mins = date.getHours() * 60 + date.getMinutes();
+  if (getDayStatus(date).open && opensOnDay(store, date) && mins < toMinutes(store.openTime)) return store.openTime;
+  for (let i = 1; i <= 400; i += 1) {
+    const day = addDays(date, i);
+    if (getDayStatus(day).open && opensOnDay(store, day)) return `${describeDay(day, date)} ${store.openTime}`;
+  }
+  return REOPENS_TEXT;
+};
+
+// Badge text: "Open · until 22:00" / "Closed · opens Monday 07:30" / "Closed for Independence Day · opens Tuesday 07:30"
+export const storeStatusLabel = (store, timeOffsetMs) => {
+  if (isStoreOpen(store, timeOffsetMs)) return `Open · until ${store.closeTime}`;
+  const status = getDayStatus(getNow(timeOffsetMs));
+  const why = status.closure ? `Closed for ${status.closure.label}` : 'Closed';
+  return `${why} · opens ${storeOpensText(store, timeOffsetMs)}`;
+};
+
+// Why nobody can order right now because of the CALENDAR (not the store hours): null when the university is open.
+// { reason: "UA is closed – Christmas & New Year's", opensText: "Monday 4 Jan at 09:45", emoji }
+export const getOrderingBlock = (timeOffsetMs, slots = []) => {
+  const date = getNow(timeOffsetMs);
+  const status = getDayStatus(date);
+  if (status.open) return null;
+  const next = nextOpenDay(date);
+  const first = slots[0] ? slots[0].start : '09:45';
+  const estimated = next && getTeachingPeriod(next)?.estimated;
+  const opensText = next ? `${describeDay(next, date)} at ${first}${estimated ? ' (dates may change)' : ''}` : REOPENS_TEXT;
+  const name = status.reason;
+  const reason = status.closure ? `UA is closed – ${name}` : name;
+  let emoji = '🏫';
+  if (/Christmas/i.test(name)) emoji = '🎄';
+  else if (/Easter/i.test(name)) emoji = '🐣';
+  else if (/Independence|Army|Liberation|Labor|Mourning/i.test(name)) emoji = '🇱🇧';
+  else if (/weekend/i.test(name)) emoji = '🌴';
+  else if (/break/i.test(name)) emoji = '🏖️';
+  return { reason, opensText, emoji, closure: status.closure };
+};
+
+// One sentence for a button / hint when ordering is impossible right now ('' when it is possible):
+// calendar closure first, then the store's own hours
+export const closedReason = (store, slots, timeOffsetMs) => {
+  const block = getOrderingBlock(timeOffsetMs, slots);
+  if (block) return `${block.reason} · ordering opens ${block.opensText}`;
+  if (store && !isStoreOpen(store, timeOffsetMs)) return `${store.name} opens ${storeOpensText(store, timeOffsetMs)}`;
+  return '';
+};
+
+// First day (after today, or today when still before the first break) with orders possible: "tomorrow at 09:45"
+export const nextOrderingText = (slots, timeOffsetMs) => {
+  const date = getNow(timeOffsetMs);
+  const first = slots[0] ? slots[0].start : '09:45';
+  const next = nextOpenDay(date);
+  if (!next) return REOPENS_TEXT;
+  return `${describeDay(next, date)} at ${first}${getTeachingPeriod(next)?.estimated ? ' (dates may change)' : ''}`;
 };
 
 // Returns { disabled, reason } for one delivery slot
 export const getSlotState = (slot, store, timeOffsetMs) => {
+  const date = getNow(timeOffsetMs);
+  if (!getDayStatus(date).open) return { disabled: true, reason: 'UA is closed today' };
+  if (store && !opensOnDay(store, date)) return { disabled: true, reason: 'Store closed today' };
   const now = nowMinutes(timeOffsetMs);
   const start = toMinutes(slot.start);
   if (start <= now) return { disabled: true, reason: 'Passed' };
@@ -49,8 +130,29 @@ export const getSlotState = (slot, store, timeOffsetMs) => {
 };
 
 export const getNextSlot = (slots, timeOffsetMs) => {
+  if (!getDayStatus(getNow(timeOffsetMs)).open) return null;
   const now = nowMinutes(timeOffsetMs);
   return slots.find((slot) => toMinutes(slot.start) > now) || null;
+};
+
+// First break a student can still order for. `stores` are the stores to consider (open stores, or the cart's store);
+// a slot counts when at least one of them can prepare in time (getSlotState). Returns
+// { slot, minutesLeft, skipped } or null: minutesLeft = minutes left to order, skipped = the next break that is
+// already too close (shown as a small secondary line on the Home banner).
+export const getNextAvailableSlot = (slots, stores, timeOffsetMs) => {
+  if (!getDayStatus(getNow(timeOffsetMs)).open) return null; // closed days: see getOrderingBlock / nextOrderingText
+  const now = nowMinutes(timeOffsetMs);
+  let skipped = null;
+  for (const slot of slots) {
+    if (toMinutes(slot.start) <= now) continue;
+    const makers = stores.filter((store) => !getSlotState(slot, store, timeOffsetMs).disabled);
+    if (makers.length) {
+      const prep = Math.min(...makers.map((s) => s.prepTime));
+      return { slot, minutesLeft: Math.max(0, toMinutes(slot.start) - now - prep), skipped };
+    }
+    if (!skipped) skipped = slot;
+  }
+  return null;
 };
 
 export const getGreeting = (timeOffsetMs) => {
@@ -72,7 +174,8 @@ export const formatFloorLong = (floor) => (floor === 0 ? 'Ground floor' : `${for
 
 export const minutesUntil = (hhmm, timeOffsetMs) => toMinutes(hhmm) - nowMinutes(timeOffsetMs);
 
-const fromMinutes = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+export const minutesToTime = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
+const fromMinutes = minutesToTime;
 
 // Latest time an order must be placed to make a slot ("Order by 11:00")
 export const orderByTime = (slot, store) => fromMinutes(toMinutes(slot.start) - (store ? store.prepTime : 0));

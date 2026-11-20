@@ -6,10 +6,12 @@
 
 CampusGo is a React Native (Expo) app for ordering food, drinks, stationery and printing from the stores on the Antonine University campus. Orders are delivered to your building and room during a class break. It is the final project of the Mobile Development course.
 
+**User guide for students:** [docs/USER_GUIDE.md](docs/USER_GUIDE.md) (install, ordering, printing, tracking, extras, 5-minute demo script, FAQ).
+
 ## Features
 
 - First-launch onboarding (3 slides), Welcome with the official UA logo and a one-tap demo account
-- University login and 2-step sign-up with validation (`@ua.edu.lb` email, 8-digit ID, Lebanese phone, faculty, campus)
+- University login and 2-step sign-up with validation (`@ua.edu.lb` email, UA ID checked against a (mock) UA registry, Lebanese phone, faculty, campus)
 - Home: 4 campus stores with live Open/Closed state, search, category filter, pull-to-refresh
 - Store menus grouped by category, product sizes and extras, quantity, out-of-stock handling
 - Printing service: live price, colour/B&W, double-sided, binding
@@ -88,13 +90,26 @@ Store hours and delivery breaks depend on the time. Because a presentation can h
 2. Type a time such as `11:00` and press **Set time**. All stores, slots and greetings now use this time (it keeps ticking from there).
 3. Press **Reset** to go back to the real phone time.
 
-Tip: `11:00` makes every store open and most delivery breaks available. The UA Cafeteria is open 06:30–20:00 (its real hours, Monday to Friday).
+The same screen has a **demo date** (needed because UA is closed on weekends and holidays): type `YYYY-MM-DD`, or tap **Next weekday**, **A Saturday**, **Christmas break** (28 Dec 2026) or **Independence Day (23 Nov)**. The quick buttons also set the time to 11:00. **Set time** keeps the chosen date; **Reset** goes back to the real date and time. The date is stored as the same time offset as the clock, so `getNow(timeOffsetMs)` returns that date and time everywhere (weekday, greeting, breaks, open/closed, closures, past-order dates, wallet times).
+
+Tip: `11:00` on a normal weekday makes every store open and most delivery breaks available. The UA Cafeteria is open 07:30–22:00, Monday to Friday.
+
+## UA calendar: weekends, closed days, semester breaks
+
+UA is **closed** (no orders at all) on: Saturdays and Sundays; every date in `closedDays`; and every date outside the `teachingPeriods` (semester start → end of exams) while `"closeBetweenSemesters": true`. The data and the rules are in `src/data/uaCalendar.json` and `src/utils/calendar.js` (`isUniversityOpen`, `getClosure`, `getDayStatus`). Sources: the UA Academic Calendar 2026–27 (https://ua.edu.lb/en/academic-calendar), the UA HR holiday calendar (https://ua.edu.lb/en/human-resources/holiday-calendar) and PM Memorandum No. 25/2026 (23 Nov 2026). Lunar-calendar dates are marked `"estimated": true` and shown with "(date may change)".
+
+While UA is closed: **Add to bag, Reorder, Print → Add to bag and Place order are blocked**, in the screens *and* inside `AppContext` (`addToCart`, `replaceCart`, `reorder`, `placeOrder`). Browsing menus stays allowed ("Browsing only – …" on the store menu). Home, the product sheet, the bag and checkout show the reason and when ordering opens. Break reminders skip closed days.
+
+**How to add a new closed day** (the government often announces extra days off at short notice):
+1. Open `src/data/uaCalendar.json` and add one line to `closedDays`: `{ "date": "2027-02-12", "name": "Extra day off", "type": "national" }`, or a range `{ "from": "2027-02-12", "to": "2027-02-14", "name": "…", "type": "ua" }`. Add `"estimated": true` if the date may still change. An entry with `"closesCampus": false` is only an event and does not close anything.
+2. Run `node scripts/sync-calendar.js`. It copies the file into `src/data/campus.json` and `db.json` (key `calendar`) so the three stay identical.
+3. Reload the app. Past entries are ignored automatically and never need to be deleted. To stop closing the university between semesters, set `"closeBetweenSemesters": false`.
 
 ## Business rules
 
 **Stores**
-- A store is open when opening time ≤ now < closing time.
-- Closed stores show a red "Closed · opens HH:MM" badge. You can browse them, but you cannot add their products or check out.
+- A store is open when **UA is open today** (see *UA calendar* below), the store works on this weekday (`days` in `campus.json`, JS `getDay()` convention: Sunday = 0 … Saturday = 6, so Monday–Friday = `[1,2,3,4,5]`) and opening time ≤ now < closing time. Hours: UA Cafeteria 07:30–22:00; Coffee Corner 07:00–17:30; Bookstore 08:00–15:00; Printing Office 08:00–16:30; all Monday to Friday.
+- Closed stores show a red badge that says when they open next: "Closed · opens Monday 07:30", or "Closed for Independence Day … · opens tomorrow 07:30" (`storeStatusLabel` in `src/utils/time.js`). You can browse them, but you cannot add their products or check out.
 
 **Cart**
 - The cart can only hold items from one store. Adding from another store asks whether to empty the cart first.
@@ -104,19 +119,23 @@ Tip: `11:00` makes every store open and most delivery breaks available. The UA C
 **Totals** (money is stored in cents)
 - Subtotal = sum of unit price × quantity, minus the loyalty reward if used.
 - Minimum order is **$2.00** (counted on what you pay, after the loyalty reward); below it, checkout is disabled and the app shows how much is missing.
-- Delivery fee is **free above $10.00**, otherwise **$0.50**. The app shows how much more is needed for free delivery.
+- Delivery fee is **free above $10.00**, otherwise **$0.50**. The bag says "Free delivery on orders over $10.00 · you're $X away" (the rule is strictly *more than* $10.00, so the amount away is shown against $10.00, never as a confusing extra cent).
 
 **Printing**
 - Price = pages × copies × ($0.05 B&W or $0.25 colour) + binding × copies.
 - Binding: none $0.00, staple $0.25, spiral $1.50 (per copy).
 - Double-sided does not change the price; the app shows how many sheets you save.
-- Pages and copies must be whole numbers ≥ 1, and pages × copies ≤ 200. A document name is required.
+- Pages and copies must be whole numbers ≥ 1, and pages × copies ≤ 200 (the Copies card shows "pages × copies = N of 200 max printed pages"). A document name is required.
+- With 0 pages (or 0 copies) the price is **$0.00**: the binding fee is only charged when something is printed.
+- The hint "Page count edited by you" appears only after the student changes the page count the app filled in (detected or sample document).
 
 **Delivery breaks**
-- A break is disabled if it has already started ("Passed"), if the store cannot prepare the order in time — now + preparation time > break start ("Too close – needs N min") — or if it starts after the store closes ("Store closed").
-- The home banner shows the next break that has not started yet.
+- **Breaks** are UA's real ones (75-minute classes): 09:45–10:00, 11:15–11:30, 12:45–13:00, **14:15–15:30 (long break)**, 16:45–17:00, 18:15–18:30, 19:45–20:00. Orders store the break label, so orders placed with the older timetable still display their own break.
+- A break is disabled if UA is closed today ("UA is closed today"), if the store does not work today, if it has already started ("Passed"), if the store cannot prepare the order in time — now + preparation time > break start ("Too close – needs N min") — or if it starts after the store closes ("Store closed").
+- The home banner shows the **next available break**: the first break the student can still order for. It uses the cart's store if the bag is not empty, otherwise the **shortest preparation time among the stores that are open now**, through the same `getSlotState` rule as checkout (`getNextAvailableSlot` in `src/utils/time.js`). A break that has not started but is already too close is skipped and mentioned in a small line ("14:00–14:15 break is too close to order"). If nothing is left today the banner says "No more breaks today – ordering opens tomorrow at 09:45" (or the next open day). On a closed day the banner is replaced by the reason, e.g. "🎄 UA is closed – Christmas & New Year's · Ordering opens Monday 18 Jan at 09:45". With 0 minutes left it says "Order now – last minute for this break".
 
 **Checkout**
+- Errors ("Choose a delivery break", missing room…) appear only after **Continue** or **Place order** is pressed, and are cleared when you move between steps. While something is missing the Place order button has the disabled look (with the reason under it) but can still be pressed to show what is missing.
 - Building, floor and room number (1–99) are required; together they form the real UA room code `Building.Floor.Room` (e.g. `G.2.15`). Delivery break and payment method are required too.
 - Only the buildings of the user's campus are shown.
 - Saved locations fill the location in one tap; a new place can be saved during checkout.
@@ -124,6 +143,9 @@ Tip: `11:00` makes every store open and most delivery breaks available. The UA C
 
 **Tracking**
 - Status steps: Received → Preparing → On the way → Delivered, one step every **8 / 20 / 60 seconds** (Fast / **Demo, the default** / Slow, set in Demo settings when the order is placed). The status is computed from timestamps stored on the order, so it is correct even after closing the app.
+- **Displayed times follow the chosen break, not the demo timer** (`getDisplayTimes` in `src/utils/orderStatus.js`): *Received* = real placement time; *Preparing* = break start − store prep time ("planned"); *On the way* = break start − 5 min ("planned"); *Delivered* = the break window, e.g. "15:15–15:30 break · simulated". The same story is used in the timeline, the hero text, the notifications ("Scheduled for the 15:15–15:30 break (demo speed)") and the order history (which shows the break). When the speed is Fast/Demo the tracking screen adds "Demo speed: status changes every N s."
+- The last step reads **"Delivered to Building D, Room D.2.8"** before and after delivery. Only the label changes; the status keys (`STATUS_STEPS`) and the history filters are unchanged.
+- A **cancelled** order keeps "Received" as done (with its time), shows the other steps as skipped, replaces "Arriving" by "Cancelled at HH:MM" (plus "Refunded $X to wallet" for wallet orders) and hides the courier card.
 - An order can be cancelled only while it is "Received". Wallet orders are refunded.
 - After delivery the order can be rated 1–5 stars with an optional comment.
 
@@ -131,7 +153,9 @@ Tip: `11:00` makes every store open and most delivery breaks available. The UA C
 - Top-ups of $5, $10, $20 or a custom amount (max $200). Every top-up, payment and refund is listed as a transaction.
 
 **Accounts**
-- Email must end with `@ua.edu.lb` (typing only the username adds the domain automatically); password ≥ 6 characters; ID exactly 8 digits; phone matches `03xxxxxx`, `7Xxxxxxx` or `81xxxxxx`; passwords must match; an email can only be registered once.
+- Email must end with `@ua.edu.lb` (typing only the username adds the domain automatically); password ≥ 6 characters;
+- **UA ID**: 8 digits whose first 4 are the year of enrolment (1996 → the current demo year), constant `UA_ID_REGEX` in `src/utils/validation.js`. It is looked up in the **mock UA registry** (`uaRegistry` in `campus.json`, 25 records incl. the demo account `20231234`; the app cannot reach UA's real student system, so this is simulated). Not found → "This ID isn't in Antonine University's records. Check your student card." Found → faculty and campus are filled from the record and locked, with a "✓ Verified UA ID" badge. The first name typed must match the record (case-insensitive, titles like Dr. ignored), otherwise "Name doesn't match the UA record for this ID". One account per ID ("An account already exists for this ID"). Example IDs to try: `20240101` Rami Khoury, `20240215` Maya Haddad, `20230342` Karim Nassar, `20250123` Elie Frem, `20230876` Georges Sleiman (Zahle), `20231390` Charbel Rahme (Zgharta). Login accepts the email **or** the UA ID.
+- phone matches `03xxxxxx`, `7Xxxxxxx` or `81xxxxxx`; passwords must match; an email can only be registered once.
 
 ## Project structure
 
@@ -140,6 +164,7 @@ App.js                  fonts + AppProvider + NavigationContainer
 db.json                 copy of the mock data for json-server
 src/
   data/campus.json      mock data
+  data/images.js        maps product ids / store ids to local photos (one static require per file)
   services/api.js       loadCampusData() – fetch with timeout, fallback to local JSON
   context/               AppContext (user, cart, wallet, orders, loyalty), ThemeContext, NetworkContext
   hooks/                 useThemedStyles, useDietFilter, useNotificationNavigation
@@ -150,6 +175,9 @@ src/
   components/           reusable UI (AppButton, AppInput, Card, Badge, Chip, DoorSign, RoomPicker, …)
     motion/             animation kit (PressableScale, FadeInView, Toast, …)
 assets/brand/           official UA logos (blue and white)
+assets/products/        product photos (README lists the exact filenames; optional, gradient fallback)
+assets/stores/          store logos (same idea)
+docs/USER_GUIDE.md      user manual for students (+ docs/screenshots/)
   screens/
     auth/               Onboarding, Welcome, Login, SignUp
     home/               Home, StoreMenu, ProductDetails
@@ -161,15 +189,27 @@ assets/brand/           official UA logos (blue and white)
 
 ## Mock data summary
 
-| Data | Count |
-| --- | --- |
-| Stores | 4 (UA Cafeteria, Coffee Corner, Bookstore & Stationery, Printing Office) |
-| Products | 28 (3 out of stock) |
-| Campuses | 3 (Hadat–Baabda, Nabi Ayla–Zahle, Mejdlaya–Zgharta) |
-| Buildings | 10 (Hadat–Baabda: A, B, C, D, G, Sports Complex S · Zahle: A, B · Zgharta: A, B) |
-| Delivery breaks | 6 |
-| Couriers | 6 |
-| Faculties | 7 (the real UA faculties) |
+Source: `src/data/campus.json` (`db.json` is an identical copy for json-server).
+
+| Data | Brief asks for | We have |
+| --- | --- | --- |
+| Stores | ≥ 4 | **4** (UA Cafeteria, Coffee Corner, Bookstore & Stationery, Printing Office) |
+| Products | ≥ 25 | **28** (3 out of stock; the Printing Office has no products, it uses the print form) |
+| Buildings | ≥ 6 | **10**: **6 on the main Hadat–Baabda campus** (A, B, C, D, G, Sports Complex S) · Zahle 2 (A, B) · Zgharta 2 (A, B) |
+| Delivery breaks | ≥ 5 | **7** (UA's real timetable, incl. the 14:15–15:30 long break) |
+| UA registry (mock) | – | 25 records (students and staff) |
+| Calendar | – | 3 teaching periods, 21 closed-day entries (`src/data/uaCalendar.json`) |
+| Campuses | – | 3 (Hadat–Baabda, Nabi Ayla–Zahle, Mejdlaya–Zgharta) |
+| Couriers | – | 6 |
+| Faculties | – | 7 (the real UA faculties) |
+
+## Background image
+
+Onboarding and Welcome use a photo of the Hadat–Baabda campus (`assets/backgrounds/ua-campus.jpg`, from the official UA website, see `assets/CREDITS.md`) through `components/CampusBackground.js`: a dark UA-blue overlay (85–95% opacity, white text stays above 4.5:1), a slow Ken Burns zoom (1.0 → 1.06 over 12 s, off when Reduce Motion is on) and the blue gradient as fallback. The photo is preloaded with `Asset.loadAsync` during the splash. The mapping is `src/data/backgrounds.js` (comment its line out if you remove the file).
+
+## Product photos and store logos
+
+All 28 products and 4 stores have a free-licence photo from Wikimedia Commons (credits in `assets/CREDITS.md` and in the app: Profile → About → Photo credits). Without a photo a product or store shows a gradient tile with an icon. To add real images: put `assets/products/<productId>.jpg` (e.g. `p12.jpg`, 600×600, under 80 KB) or `assets/stores/<storeId>.jpg` in the folder, then add **one line** to `src/data/images.js` (Metro needs static `require`s, and JSON cannot hold them). `assets/products/README.md` and `assets/stores/README.md` list every expected filename. The image then appears on product cards, the product sheet, the bag, Home search results and "Order again", the store cards and the store menu header. Items without an image keep the gradient, and out-of-stock items stay dimmed.
 
 ## UA Branding & Campus Data
 
@@ -208,7 +248,7 @@ Nabi Ayla–Zahle has buildings A and B (cafeteria in B); Mejdlaya–Zgharta has
 
 **Room codes.** UA rooms follow `Building.Floor.Room` (e.g. Student Affairs `B.0.34`; floor 0 = ground floor). The room picker builds the code from building, floor and room number and shows it like a door sign, e.g. **G.2.15**. Rooms are displayed everywhere as "Building G · Room G.2.15". Rooms saved by version 1 of the app stay readable.
 
-**Store locations.** The UA Cafeteria is real (Building G ground floor on Hadat–Baabda, Building B in Zahle, open 06:30–20:00). **Coffee Corner, Bookstore & Stationery and Printing Office are assumed** for this project (marked `"isPlaceholder": true` in the data): Coffee Corner in Building A, Bookstore in Building B, Printing Office in Building C, all on the ground floor.
+**Store locations.** The UA Cafeteria is real (Building G ground floor on Hadat–Baabda, Building B in Zahle, open 07:30–22:00, Monday to Friday). **Coffee Corner, Bookstore & Stationery and Printing Office are assumed** for this project (marked `"isPlaceholder": true` in the data): Coffee Corner in Building A, Bookstore in Building B, Printing Office in Building C, all on the ground floor.
 
 **Faculties.** Antonine School of Business · Faculty of Engineering and Technology · Faculty of Information and Communication · Faculty of Music and Musicology · Faculty of Public Health · Faculty of Sport Sciences · Faculty of Theology.
 
@@ -322,6 +362,10 @@ In the Wallet: spending = every **non-cancelled** order (wallet **and** cash), d
 ## New packages
 
 `expo-notifications`, `expo-document-picker`, `expo-file-system`, `@react-native-community/netinfo` (all work in Expo Go; installed with `npx expo install`).
+
+## Phone-only features
+
+Notifications, haptics and the document picker only work on a real phone (not on web). Test them with [docs/PHONE_TEST_CHECKLIST.md](docs/PHONE_TEST_CHECKLIST.md). Haptics are skipped on web and when Reduce Motion is on; every notification or file-picker problem (permission denied, cancelled pick, wrong or too large file) shows a Toast and never crashes; only local notifications are used (no push token).
 
 ## Optional: load data from json-server
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, FlatList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from './Card';
 import SegmentedControl from './SegmentedControl';
@@ -110,6 +110,7 @@ export default function SpendingCard({ orders, stores, now }) {
       </View>
 
       <View style={styles.chart}>
+        {/* Not a FlatList: the bar chart is a fixed set of 4 or 7 drawn bars, a visual rather than a list */}
         {data.bars.map((bar, i) => (
           <PressableScale
             key={bar.date}
@@ -152,19 +153,25 @@ export default function SpendingCard({ orders, stores, now }) {
         <View style={styles.storeBlock}>
           <Text style={styles.sectionLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>By store</Text>
           <View style={styles.stack} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            {/* Not a FlatList: coloured segments of one decorative bar (the legend below is a FlatList) */}
             {data.stores.map((s) => (
               <View key={s.storeId} style={{ flex: Math.max(s.share, 0.02), backgroundColor: getCategoryColors(s.category)[1] }} />
             ))}
           </View>
-          {data.stores.map((s) => (
-            <View key={s.storeId} style={styles.legendRow}>
-              <View style={[styles.dot, { backgroundColor: getCategoryColors(s.category)[1] }]} />
-              <Text style={styles.legendName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{s.name}</Text>
-              <Text style={styles.legendValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {formatMoney(s.cents)} · {Math.round(s.share * 100)}%
-              </Text>
-            </View>
-          ))}
+          <FlatList
+            data={data.stores}
+            scrollEnabled={false}
+            keyExtractor={(s) => s.storeId}
+            renderItem={({ item: s }) => (
+              <View style={styles.legendRow}>
+                <View style={[styles.dot, { backgroundColor: getCategoryColors(s.category)[1] }]} />
+                <Text style={styles.legendName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{s.name}</Text>
+                <Text style={styles.legendValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  {formatMoney(s.cents)} · {Math.round(s.share * 100)}%
+                </Text>
+              </View>
+            )}
+          />
         </View>
       ) : null}
 

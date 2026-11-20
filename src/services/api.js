@@ -4,7 +4,7 @@ import localData from '../data/campus.json';
 // Leave empty to use the local JSON. With json-server: 'http://<laptop-ip>:3000'
 export const API_URL = '';
 
-const COLLECTIONS = ['campuses', 'stores', 'products', 'buildings', 'deliverySlots', 'printPrices', 'couriers', 'faculties', 'seasons'];
+const COLLECTIONS = ['campuses', 'stores', 'products', 'buildings', 'deliverySlots', 'printPrices', 'couriers', 'faculties', 'seasons', 'uaRegistry', 'calendar'];
 const CACHE_KEY = 'campusgo:catalogCache';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

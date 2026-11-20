@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Asset } from 'expo-asset';
 import { StatusBar, View } from 'react-native';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ import { navigationRef } from './src/navigation/navigationRef';
 import LoadingView from './src/components/LoadingView';
 import useNotificationNavigation from './src/hooks/useNotificationNavigation';
 import { configureNotifications } from './src/services/notifications';
+import { campusBackground } from './src/data/backgrounds';
 
 // Builds the React Navigation theme (tab bar, headers, cards) from our palette
 const makeNavTheme = (colors, isDark) => {
@@ -64,6 +66,14 @@ export default function App() {
     Roboto_700Bold,
   });
 
+  // Preload the campus photo during the splash so Welcome / Onboarding never flash white
+  const [assetsReady, setAssetsReady] = useState(false);
+  useEffect(() => {
+    Asset.loadAsync(campusBackground)
+      .catch((error) => console.log('Background preload skipped', error.message))
+      .finally(() => setAssetsReady(true));
+  }, []);
+
   // Notification handler + Android channels, once
   useEffect(() => {
     configureNotifications();
@@ -74,7 +84,7 @@ export default function App() {
       <ThemeProvider>
         <NetworkProvider>
           <AppProvider>
-            <Inner fontsLoaded={fontsLoaded} />
+            <Inner fontsLoaded={fontsLoaded && assetsReady} />
           </AppProvider>
         </NetworkProvider>
       </ThemeProvider>

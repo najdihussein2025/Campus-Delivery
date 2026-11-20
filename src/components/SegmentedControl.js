@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Text, View } from 'react-native';
+import { Animated, FlatList, Text, View } from 'react-native';
 import PressableScale from './motion/PressableScale';
 import useReduceMotion from './motion/useReduceMotion';
 import { tap } from '../utils/haptics';
@@ -8,7 +8,7 @@ import { createStyles } from './SegmentedControl.styles';
 import useThemedStyles from '../hooks/useThemedStyles';
 
 // Segmented control: a white indicator slides (Animated.spring) under the selected option
-export default function SegmentedControl({ options = [], value, onChange, style }) {
+export default function SegmentedControl({ options = [], value, onChange, style, disabled = false }) {
   const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
   const [width, setWidth] = useState(0);
@@ -34,20 +34,26 @@ export default function SegmentedControl({ options = [], value, onChange, style 
       {width > 0 ? (
         <Animated.View style={[styles.indicator, { width: segmentWidth, transform: [{ translateX }] }]} />
       ) : null}
-      {options.map((option) => {
+      <FlatList
+        data={options}
+        horizontal
+        scrollEnabled={false}
+        keyExtractor={(option) => String(option.value)}
+        extraData={{ value, segmentWidth, disabled }}
+        renderItem={({ item: option }) => {
         const selected = option.value === value;
         return (
           <PressableScale
-            key={String(option.value)}
             onPress={() => {
               if (!selected) tap();
               onChange(option.value);
             }}
+            disabled={disabled}
             scaleTo={0.97}
             accessibilityRole="tab"
             accessibilityLabel={option.label}
-            accessibilityState={{ selected }}
-            style={styles.segment}
+            accessibilityState={{ selected, disabled }}
+            style={[styles.segment, { width: segmentWidth || undefined, flex: segmentWidth ? undefined : 1 }, disabled && styles.segmentDisabled]}
           >
             <Text style={[styles.label, selected && styles.labelSelected]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {option.label}
@@ -59,7 +65,8 @@ export default function SegmentedControl({ options = [], value, onChange, style 
             ) : null}
           </PressableScale>
         );
-      })}
+        }}
+      />
     </View>
   );
 }

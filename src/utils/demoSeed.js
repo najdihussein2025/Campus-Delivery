@@ -3,6 +3,7 @@
 import { calcCartTotals } from './money';
 import { buildStatusSchedule } from './orderStatus';
 import { toMinutes } from './time';
+import { addDays, getDayStatus } from './calendar';
 
 const DAY = 86400000;
 
@@ -12,13 +13,13 @@ const SEED_ORDERS = [
   [2, 's1', 'cafeteria', [['p03', 1]], 'cash', 'Nour'],
   [3, 's3', 'coffee', [['p15', 1, 'Large', ['Extra shot']]], 'wallet', 'Maya'],
   [5, 's2', 'cafeteria', [['p02', 1]], 'wallet', 'Karim'],
-  [6, 's5', 'bookstore', [['p21', 1], ['p24', 1], ['p26', 1]], 'wallet', 'Elie'],
+  [6, 's4', 'bookstore', [['p21', 1], ['p24', 1], ['p26', 1]], 'wallet', 'Elie'],
   [8, 's2', 'coffee', [['p18', 2, 'Large']], 'wallet', 'Jad'],
   [9, 's1', 'cafeteria', [['p05', 2], ['p08', 1]], 'cash', 'Rami'],
   [10, 's2', 'coffee', [['p12', 2, 'Large']], 'cash', 'Nour'],
   [13, 's3', 'cafeteria', [['p09', 1]], 'wallet', 'Maya'],
   [15, 's2', 'coffee', [['p14', 1, 'Large'], ['p17', 1]], 'wallet', 'Karim'],
-  [17, 's4', 'bookstore', [['p23', 1], ['p25', 1]], 'wallet', 'Elie'],
+  [17, 's3', 'bookstore', [['p23', 1], ['p25', 1]], 'wallet', 'Elie'],
   [19, 's2', 'cafeteria', [['p07', 2]], 'cash', 'Jad'],
 ];
 
@@ -47,7 +48,9 @@ export const buildDemoSeed = (campus, demoNowMs, offsetMs = 0) => {
   const history = [];
   SEED_ORDERS.forEach(([daysAgo, slotId, storeId, lines, payment, courier], index) => {
     const slot = campus.deliverySlots.find((s) => s.id === slotId);
-    const day = new Date(demoNowMs - daysAgo * DAY);
+    // Past orders never fall on a weekend or a closed day: step back to the previous open day
+    let day = new Date(demoNowMs - daysAgo * DAY);
+    for (let guard = 0; guard < 60 && !getDayStatus(day).open; guard += 1) day = addDays(day, -1);
     const startMins = toMinutes(slot.start) - 20;
     const placedAt = new Date(day.getFullYear(), day.getMonth(), day.getDate(), Math.floor(startMins / 60), startMins % 60).getTime();
     const placedAtMs = placedAt - offsetMs;
@@ -69,6 +72,9 @@ export const buildDemoSeed = (campus, demoNowMs, offsetMs = 0) => {
       building: 'baabda-D',
       room: 'D.2.8',
       slotId,
+      slotLabel: slot.label,
+      slotStart: slot.start,
+      slotEnd: slot.end,
       payment,
       courier,
       placedAt,

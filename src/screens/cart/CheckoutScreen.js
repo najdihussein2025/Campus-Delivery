@@ -15,7 +15,7 @@ import StickyBar from '../../components/StickyBar';
 import { PressableScale, ShakeView, animateLayout } from '../../components/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
+import { closedReason, getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
 import { makeRoomCode, validateCheckoutSteps, validateRoomParts } from '../../utils/validation';
 import * as haptics from '../../utils/haptics';
 import { createStyles } from './CheckoutScreen.styles';
@@ -113,8 +113,10 @@ export default function CheckoutScreen({ navigation }) {
   const completed = [whereDone, whenDone, payDone];
   const slot = getSlot(slotId);
 
+  // Moving between steps clears old errors: they only appear after Continue / Place order is pressed
   const goToStep = (index) => {
     animateLayout();
+    setErrors({});
     setOpenStep(index);
   };
 
@@ -156,7 +158,7 @@ export default function CheckoutScreen({ navigation }) {
   // Hard blocks disable the button (with a reason); missing steps keep it enabled and shake on press
   let blockReason = '';
   if (!isOnline) blockReason = "You're offline. Reconnect to place your order.";
-  else if (!storeOpen) blockReason = `${store ? store.name : 'The store'} opens at ${store ? store.openTime : ''}`;
+  else if (!storeOpen) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
   else if (cartTotals.missingForMinimum > 0) blockReason = `Add ${formatMoney(cartTotals.missingForMinimum)} more to reach the $2.00 minimum`;
   else if (walletShort) blockReason = `Top up ${formatMoney(missing)} or choose cash on delivery`;
 
@@ -175,14 +177,15 @@ export default function CheckoutScreen({ navigation }) {
       payment,
     });
     if (mode === 'saved' && !savedLocation) found.building = 'Choose a saved location or add a new one';
-    setErrors(found);
     if (Object.keys(found).length) {
       shakeRef.current?.shake();
       if (found.building || found.floor || found.room) goToStep(0);
       else if (found.slot) goToStep(1);
       else goToStep(2);
+      setErrors(found); // after goToStep, which clears errors
       return;
     }
+    setErrors({});
     haptics.tap();
     setShowSummary(true);
   };
@@ -304,7 +307,7 @@ export default function CheckoutScreen({ navigation }) {
         <View style={styles.closedBanner}>
           <Ionicons name="moon" size={18} color={colors.dangerText} />
           <Text style={styles.closedText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {store ? store.name : 'This store'} is closed. Ordering opens at {store ? store.openTime : ''}.
+            {closedReason(store, campus.deliverySlots, timeOffsetMs)}.
           </Text>
         </View>
       ) : null}
@@ -440,18 +443,13 @@ export default function CheckoutScreen({ navigation }) {
       />
 
       <StickyBar>
-        {!blockReason && nextHint ? (
-          <View style={styles.hintRow}>
-            <Ionicons name="information-circle-outline" size={16} color={colors.textBrand} />
-            <Text style={styles.hintText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{nextHint}</Text>
-          </View>
-        ) : null}
         <AppButton
           title={`Place order · ${formatMoney(cartTotals.total)}`}
           icon="checkmark-circle"
           onPress={handlePlaceOrder}
           disabled={Boolean(blockReason)}
-          reason={blockReason}
+          dimmed={Boolean(nextHint)}
+          reason={blockReason || nextHint}
         />
       </StickyBar>
 

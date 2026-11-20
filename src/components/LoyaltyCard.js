@@ -41,6 +41,7 @@ export default function LoyaltyCard({ stamps, rewards, style }) {
 
   return (
     <View style={[styles.card, style]} accessible accessibilityLabel={`Coffee stamps. ${text}`}>
+      {/* Not a FlatList: the 10-stamp grid is a fixed 2 × 5 decorative layout, not scrolling data */}
       {rows.map((row, r) => (
         <View key={r} style={styles.row}>
           {row.map((value, c) => {

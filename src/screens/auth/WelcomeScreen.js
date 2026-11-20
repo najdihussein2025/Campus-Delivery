@@ -1,12 +1,12 @@
 import React from 'react';
 import { StatusBar, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import CampusBackground from '../../components/CampusBackground';
 import { Ionicons } from '@expo/vector-icons';
 import AppButton from '../../components/AppButton';
 import UALogo from '../../components/UALogo';
 import { FadeInView, PressableScale } from '../../components/motion';
-import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
+import { MAX_FONT_SCALE } from '../../theme/theme';
 import { createStyles } from './WelcomeScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
@@ -22,7 +22,7 @@ export default function WelcomeScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   return (
-    <LinearGradient colors={gradients.hero} style={styles.gradient}>
+    <CampusBackground style={styles.gradient}>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe}>
         <View style={styles.glow} />
@@ -39,6 +39,7 @@ export default function WelcomeScreen({ navigation }) {
           </FadeInView>
 
           <View style={styles.points}>
+            {/* Not a FlatList: three fixed selling points in a static layout block */}
             {POINTS.map((point, i) => (
               <FadeInView key={point.text} delay={240 + i * 80} style={styles.point}>
                 <View style={styles.pointIcon}>
@@ -68,6 +69,6 @@ export default function WelcomeScreen({ navigation }) {
           </PressableScale>
         </FadeInView>
       </SafeAreaView>
-    </LinearGradient>
+    </CampusBackground>
   );
 }

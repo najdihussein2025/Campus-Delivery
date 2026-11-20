@@ -118,10 +118,15 @@ export default function WalletScreen() {
       <FadeInView delay={100}>
         <ShakeView ref={shakeRef}>
           <Card>
-            <View style={styles.presets}>
-              {PRESETS.map((value) => (
+            <FlatList
+              data={PRESETS}
+              numColumns={PRESETS.length}
+              scrollEnabled={false}
+              keyExtractor={(value) => String(value)}
+              extraData={{ custom, preset }}
+              style={styles.presets}
+              renderItem={({ item: value }) => (
                 <Chip
-                  key={value}
                   label={formatMoney(value)}
                   selected={!custom && preset === value}
                   onPress={() => {
@@ -132,8 +137,8 @@ export default function WalletScreen() {
                   }}
                   style={styles.presetChip}
                 />
-              ))}
-            </View>
+              )}
+            />
             <AppInput
               label="Or a custom amount"
               icon="cash-outline"

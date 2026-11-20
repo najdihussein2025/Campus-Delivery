@@ -17,6 +17,7 @@ import { FadeInView, PressableScale, ShakeView, StaggerItem, animateLayout, useS
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/money';
 import { formatFloorLong, formatTime, getNow, isValidTime } from '../../utils/time';
+import { addDays, dateKey, isValidDateKey, longDayLabel, nextOpenDay, parseKey } from '../../utils/calendar';
 import { makeRoomCode, validateRoomParts } from '../../utils/validation';
 import { tagLabel } from '../../utils/diet';
 import * as haptics from '../../utils/haptics';
@@ -26,6 +27,7 @@ import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useNetwork } from '../../context/NetworkContext';
 import { TRACKING_SPEEDS } from '../../utils/orderStatus';
+import { PHOTO_CREDITS } from '../../data/credits';
 
 const EMPTY_ROOM = { buildingId: '', floor: null, roomNumber: '' };
 const APP_VERSION = '2.0.0';
@@ -45,7 +47,7 @@ export default function ProfileScreen({ navigation }) {
   const { colors, mode, setMode } = useTheme();
   const {
     user, wallet, campus, savedLocations, timeOffsetMs, campusBuildings, getBuilding, getCampus,
-    formatLocation, updateProfile, addLocation, removeLocation, setDemoTime, resetDemoTime, logout, loyalty,
+    formatLocation, updateProfile, addLocation, removeLocation, setDemoTime, setDemoDate, resetDemoTime, logout, loyalty,
     trackingSpeed, setTrackingSpeed, resetDemoData, isDemoAccount,
   } = useApp();
   const { simulateOffline, setSimulateOffline } = useNetwork();
@@ -59,6 +61,8 @@ export default function ProfileScreen({ navigation }) {
   const [clock, setClock] = useState(formatTime(getNow(timeOffsetMs)));
   const [demoInput, setDemoInput] = useState('');
   const [demoError, setDemoError] = useState('');
+  const [dateInput, setDateInput] = useState('');
+  const [dateError, setDateError] = useState('');
   const [showAdd, setShowAdd] = useState(false);
   const [label, setLabel] = useState('');
   const [room, setRoom] = useState(EMPTY_ROOM);
@@ -66,6 +70,7 @@ export default function ProfileScreen({ navigation }) {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [showLogout, setShowLogout] = useState(false);
   const [showReset, setShowReset] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
 
   useEffect(() => {
     setClock(formatTime(getNow(timeOffsetMs)));
@@ -96,8 +101,40 @@ export default function ProfileScreen({ navigation }) {
     showToast({ message: `App time set to ${demoInput}`, icon: 'time', tone: 'success' });
   };
 
+  // Demo date: quick buttons set the date and 11:00, so stores and breaks are visible right away
+  const applyDate = (dateStr, hhmm) => {
+    setDateError('');
+    setDateInput('');
+    setDemoDate(dateStr, hhmm);
+    showToast({ message: `Demo date: ${longDayLabel(parseKey(dateStr))}`, icon: 'calendar', tone: 'success' });
+  };
+
+  const handleSetDate = () => {
+    if (!isValidDateKey(dateInput.trim())) {
+      setDateError('Use the YYYY-MM-DD format, e.g. 2026-12-28');
+      haptics.error();
+      return;
+    }
+    applyDate(dateInput.trim());
+  };
+
+  const quickDates = () => {
+    const today = getNow(timeOffsetMs);
+    // nextOpenDay is capped at 730 days: null when the calendar has no later open day (the button is hidden then)
+    const weekday = nextOpenDay(today);
+    const saturday = addDays(today, (6 - today.getDay() + 7) % 7 || 7);
+    return [
+      ...(weekday ? [{ id: 'weekday', label: 'Next weekday', date: dateKey(weekday) }] : []),
+      { id: 'saturday', label: 'A Saturday', date: dateKey(saturday) },
+      { id: 'christmas', label: 'Christmas break', date: '2026-12-28' },
+      { id: 'independence', label: 'Independence Day (23 Nov)', date: '2026-11-23' },
+    ];
+  };
+
   const handleReset = () => {
     setDemoError('');
+    setDateError('');
+    setDateInput('');
     setDemoInput('');
     resetDemoTime();
     showToast({ message: 'Back to the real time', icon: 'refresh' });
@@ -270,14 +307,14 @@ export default function ProfileScreen({ navigation }) {
         <MenuRow
           icon="time"
           label="Demo settings"
-          value={timeOffsetMs !== 0 ? `${clock} · demo` : clock}
+          value={timeOffsetMs !== 0 ? `${longDayLabel(getNow(timeOffsetMs))} ${clock} · demo` : clock}
           open={openSection === 'demo'}
           onPress={() => toggleSection('demo')}
         />
         {openSection === 'demo' ? (
           <View style={styles.expand}>
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Set the app clock for a live demo (e.g. 11:00 so stores are open and breaks are available).
+              Set the app clock for a live demo (e.g. 11:00 so stores are open and breaks are available). Set time keeps the demo date; Reset returns to the real date and time.
             </Text>
             <AppInput
               placeholder="HH:MM, e.g. 11:00"
@@ -293,6 +330,32 @@ export default function ProfileScreen({ navigation }) {
             />
             <View style={styles.demoButtons}>
               <AppButton title="Set time" small onPress={handleSetTime} style={styles.flex} />
+              <AppButton title="Reset" small variant="secondary" onPress={handleReset} style={[styles.flex, styles.resetButton]} />
+            </View>
+
+            <Text style={styles.subLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>Demo date (weekends and holidays close UA)</Text>
+            <AppInput
+              placeholder="YYYY-MM-DD, e.g. 2026-12-28"
+              icon="calendar-outline"
+              keyboardType="numbers-and-punctuation"
+              maxLength={10}
+              returnKeyType="done"
+              onSubmitEditing={handleSetDate}
+              value={dateInput}
+              onChangeText={setDateInput}
+              error={dateError}
+              style={styles.demoInput}
+            />
+            <FlatList
+              data={quickDates()}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id}
+              style={styles.quickDates}
+              renderItem={({ item }) => <Chip label={item.label} icon="calendar" onPress={() => applyDate(item.date, '11:00')} />}
+            />
+            <View style={styles.demoButtons}>
+              <AppButton title="Set date" small onPress={handleSetDate} style={styles.flex} />
               <AppButton title="Reset" small variant="secondary" onPress={handleReset} style={[styles.flex, styles.resetButton]} />
             </View>
 
@@ -341,6 +404,29 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               Mobile Development course project – Université Antonine. Campus deliveries between classes.
             </Text>
+            <AppButton
+              title={showCredits ? 'Hide photo credits' : 'Photo credits'}
+              icon="images-outline"
+              small
+              variant="secondary"
+              onPress={() => {
+                animateLayout();
+                setShowCredits(!showCredits);
+              }}
+              style={styles.resetData}
+            />
+            {showCredits ? (
+              <FlatList
+                data={PHOTO_CREDITS}
+                scrollEnabled={false}
+                keyExtractor={(item) => item.file}
+                renderItem={({ item }) => (
+                  <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    {item.subject}: “{item.title}” by {item.author} · {item.license}
+                  </Text>
+                )}
+              />
+            ) : null}
           </View>
         ) : null}
       </Card>

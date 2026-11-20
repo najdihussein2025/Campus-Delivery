@@ -30,6 +30,8 @@ export const calcPrintPrice = ({ pages, copies, color, binding }, printPrices) =
   const p = parseInt(pages, 10) || 0;
   const c = parseInt(copies, 10) || 0;
   const rate = color ? printPrices.color : printPrices.bw;
+  // Nothing to print (0 or invalid pages / copies): no printing and no binding charge
+  if (p < 1 || c < 1) return { rate, printing: 0, bindingPrice: printPrices.binding[binding] || 0, bindingTotal: 0, total: 0 };
   const bindingPrice = printPrices.binding[binding] || 0;
   const printing = p * c * rate;
   const bindingTotal = bindingPrice * c;

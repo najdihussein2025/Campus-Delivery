@@ -27,6 +27,7 @@ export default function AppButton({
   icon,
   loading = false,
   disabled = false,
+  dimmed = false,
   small = false,
   haptic,
   reason,
@@ -36,10 +37,12 @@ export default function AppButton({
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const isDisabled = disabled || loading;
-  const textColor = disabled ? colors.textMuted : getTextColors(colors)[variant] || colors.textOnDark;
+  // dimmed: disabled look but still pressable (so a form can explain what is missing)
+  const looksDisabled = disabled || dimmed;
+  const textColor = looksDisabled ? colors.textMuted : getTextColors(colors)[variant] || colors.textOnDark;
   const spinnerColor = variant === 'primary' || variant === 'danger' ? colors.textOnDark : colors.primaryText;
   const useHaptic = haptic === undefined ? HAPTIC_VARIANTS.includes(variant) : haptic;
-  const showReason = disabled && reason;
+  const showReason = looksDisabled && reason;
 
   const button = (
     <PressableScale
@@ -47,8 +50,8 @@ export default function AppButton({
       disabled={isDisabled}
       haptic={useHaptic}
       accessibilityLabel={accessibilityLabel || title}
-      accessibilityState={{ disabled: isDisabled, busy: loading }}
-      style={[styles.button, small && styles.small, styles[variant], disabled && styles.disabled, !showReason && style]}
+      accessibilityState={{ disabled: isDisabled || dimmed, busy: loading }}
+      style={[styles.button, small && styles.small, styles[variant], looksDisabled && styles.disabled, !showReason && style]}
     >
       {loading ? (
         <ActivityIndicator color={spinnerColor} />

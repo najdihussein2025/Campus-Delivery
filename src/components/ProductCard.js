@@ -23,7 +23,7 @@ export default function ProductCard({ product, onPress, storeOpen = true, index 
         style={styles.card}
       >
         <View>
-          <ProductImage category={product.category} size={110} rounded={14} />
+          <ProductImage category={product.category} productId={product.id} size={110} rounded={14} />
           {!product.inStock ? (
             <View style={styles.overlay}>
               <View style={styles.oosPill}>

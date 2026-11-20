@@ -2,6 +2,8 @@ import { StyleSheet } from 'react-native';
 import { fonts, radius, spacing, makeTypography } from '../../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
+  verified: { flexDirection: 'row', alignItems: 'center', backgroundColor: c.successSoft, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10, marginTop: -6, marginBottom: 12, alignSelf: 'flex-start' },
+  verifiedText: { fontFamily: fonts.medium, fontSize: 12.5, color: c.successText, flexShrink: 1 },
   safe: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
   content: { padding: spacing.xl, paddingBottom: spacing.xxl * 2 },

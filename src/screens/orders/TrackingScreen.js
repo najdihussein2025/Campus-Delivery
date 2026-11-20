@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, ScrollView, Text, View } from 'react-native';
+import { AppState, FlatList, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useApp } from '../../context/AppContext';
@@ -17,7 +17,8 @@ import StatusTimeline from '../../components/StatusTimeline';
 import { AnimatedProgressBar, FadeInView, PulseDot, SuccessCheck, useToast } from '../../components/motion';
 import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { getOrderStatus, getRouteProgress, getStepProgress } from '../../utils/orderStatus';
+import { getDisplayTimes, getOrderStatus, getRouteProgress, getStepProgress } from '../../utils/orderStatus';
+import { formatTime } from '../../utils/time';
 import { stampsForOrder } from '../../utils/loyalty';
 import { dismissOrderNotifications, setViewing } from '../../services/notifications';
 import * as haptics from '../../utils/haptics';
@@ -35,7 +36,8 @@ const initials = (name) =>
     .slice(0, 2)
     .toUpperCase();
 
-const headlineFor = (status, order, storeName, itemCount) => {
+// `where` = "Building D, Room D.2.8"
+const headlineFor = (status, order, storeName, itemCount, where) => {
   const items = `${itemCount} ${itemCount === 1 ? 'item' : 'items'}`;
   switch (status) {
     case 'Received':
@@ -43,9 +45,9 @@ const headlineFor = (status, order, storeName, itemCount) => {
     case 'Preparing':
       return { title: 'Preparing your order', sub: `${storeName} is preparing ${items}` };
     case 'On the way':
-      return { title: 'On the way to you', sub: `${order.courier} is heading to room ${order.room}` };
+      return { title: 'On the way to you', sub: `${order.courier} is heading to ${where}` };
     case 'Delivered':
-      return { title: 'Delivered – enjoy!', sub: `${order.courier} dropped it at room ${order.room}` };
+      return { title: 'Delivered – enjoy!', sub: `${order.courier} dropped it at ${where}` };
     default:
       return { title: 'Order cancelled', sub: 'This order will not be prepared' };
   }
@@ -56,7 +58,7 @@ export default function TrackingScreen({ route, navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { orderId } = route.params;
-  const { orders, getStore, getSlot, cancelOrder, rateOrder, formatLocation, settle, lastSettlement } = useApp();
+  const { orders, getStore, getOrderSlot, getBuilding, cancelOrder, rateOrder, formatLocation, settle, lastSettlement } = useApp();
   const { showToast } = useToast();
   const [nowMs, setNowMs] = useState(Date.now());
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -130,10 +132,14 @@ export default function TrackingScreen({ route, navigation }) {
 
   const store = getStore(order.storeId);
   const storeName = store ? store.name : 'The store';
-  const slot = getSlot(order.slotId);
+  const slot = getOrderSlot(order);
   const progress = getStepProgress(order, nowMs);
   const itemCount = order.items.reduce((sum, i) => sum + i.qty, 0);
-  const headline = headlineFor(status, order, storeName, itemCount);
+  const building = getBuilding(order.building);
+  const where = `${building ? `${building.name}, ` : ''}Room ${order.room}`;
+  const headline = headlineFor(status, order, storeName, itemCount, where);
+  const displayTimes = getDisplayTimes(order, slot, store);
+  const demoSpeed = !order.cancelled && !delivered && order.stepSeconds && order.stepSeconds < 60;
   const routeProgress = getRouteProgress(order, nowMs);
   const stampCount = stampsForOrder(order);
   const roomParts = String(order.room).split('.');
@@ -203,6 +209,12 @@ export default function TrackingScreen({ route, navigation }) {
             </View>
           ) : null}
 
+          {demoSpeed ? (
+            <Text style={styles.demoNote} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              Demo speed: status changes every {order.stepSeconds} s.
+            </Text>
+          ) : null}
+
           {!order.cancelled && !progress.done ? (
             <View style={styles.countdown}>
               <Ionicons name="timer-outline" size={16} color={colors.accent} />
@@ -229,17 +241,25 @@ export default function TrackingScreen({ route, navigation }) {
 
         <Card style={[styles.section, styles.etaCard]}>
           <View style={styles.flex}>
-            <Text style={styles.micro} maxFontSizeMultiplier={MAX_FONT_SCALE}>{delivered ? 'Delivered during' : 'Arriving'}</Text>
-            <Text style={styles.etaTime} maxFontSizeMultiplier={MAX_FONT_SCALE}>{slot ? slot.label : '—'}</Text>
+            <Text style={styles.micro} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {order.cancelled ? 'Cancelled' : delivered ? 'Delivered during' : 'Arriving'}
+            </Text>
+            <Text style={[styles.etaTime, order.cancelled && styles.etaCancelled]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {order.cancelled ? `Cancelled at ${formatTime(new Date(order.cancelledAt ?? order.placedAt))}` : slot ? slot.label : '—'}
+            </Text>
+            {order.cancelled && order.payment === 'wallet' ? (
+              <Text style={styles.refundText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Refunded {formatMoney(order.total)} to wallet</Text>
+            ) : null}
             <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatLocation(order.building, order.room)}</Text>
           </View>
           <DoorSign code={order.room} subtitle={floorLabel} size="md" />
         </Card>
 
         <Card style={styles.section}>
-          <StatusTimeline currentIndex={progress.index} stepTimes={progress.stepTimes} cancelled={order.cancelled} />
+          <StatusTimeline currentIndex={progress.index} displayTimes={displayTimes} deliveredTo={where} cancelled={order.cancelled} />
         </Card>
 
+        {!order.cancelled ? (
         <Card style={[styles.section, styles.row]}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials(order.courier)}</Text>
@@ -252,6 +272,7 @@ export default function TrackingScreen({ route, navigation }) {
             </Text>
           </View>
         </Card>
+        ) : null}
 
         <Card style={styles.section}>
           <InfoRow
@@ -308,11 +329,15 @@ export default function TrackingScreen({ route, navigation }) {
                 />
               </View>
               {ratingError ? <Text style={styles.error}>{ratingError}</Text> : null}
-              <View style={styles.tagsWrap}>
-                {QUICK_TAGS.map((tag) => (
-                  <Chip key={tag} label={tag} selected={tags.includes(tag)} onPress={() => toggleTag(tag)} />
-                ))}
-              </View>
+              <FlatList
+                data={QUICK_TAGS}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(tag) => tag}
+                extraData={tags}
+                style={styles.tagsList}
+                renderItem={({ item: tag }) => <Chip label={tag} selected={tags.includes(tag)} onPress={() => toggleTag(tag)} />}
+              />
               <AppInput
                 placeholder="Add a comment (optional)"
                 value={comment}

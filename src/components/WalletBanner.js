@@ -10,7 +10,7 @@ import useThemedStyles from '../hooks/useThemedStyles';
 import { useTheme } from '../context/ThemeContext';
 
 // Home hero: next class break with a live countdown, plus wallet balance and a Top up pill
-export default function WalletBanner({ nextSlot, minutesLeft, balance, onTopUp, emptyText }) {
+export default function WalletBanner({ nextSlot, minutesLeft, missedNote, balance, onTopUp, emptyText, closedInfo }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   return (
@@ -20,8 +20,15 @@ export default function WalletBanner({ nextSlot, minutesLeft, balance, onTopUp, 
 
       <View style={styles.topRow}>
         <View style={styles.flex}>
-          <Text style={styles.micro} maxFontSizeMultiplier={MAX_FONT_SCALE}>Next break</Text>
-          {nextSlot ? (
+          <Text style={styles.micro} maxFontSizeMultiplier={MAX_FONT_SCALE}>{closedInfo ? 'University closed' : 'Next break'}</Text>
+          {closedInfo ? (
+            <>
+              <Text style={[styles.slot, styles.slotNone]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{closedInfo.emoji} {closedInfo.reason}</Text>
+              {closedInfo.opensText ? (
+                <Text style={styles.countdown} maxFontSizeMultiplier={MAX_FONT_SCALE}>Ordering opens {closedInfo.opensText}</Text>
+              ) : null}
+            </>
+          ) : nextSlot ? (
             <>
               <Text style={styles.slot} maxFontSizeMultiplier={MAX_FONT_SCALE}>{nextSlot.label}</Text>
               {typeof minutesLeft === 'number' ? (
@@ -31,10 +38,11 @@ export default function WalletBanner({ nextSlot, minutesLeft, balance, onTopUp, 
                       Order in the next <Text style={styles.countdownStrong}>{minutesLeft} min</Text> to make it
                     </>
                   ) : (
-                    'Too late for this break – try the next one'
+                    'Order now – last minute for this break'
                   )}
                 </Text>
               ) : null}
+              {missedNote ? <Text style={styles.missed} maxFontSizeMultiplier={MAX_FONT_SCALE}>{missedNote}</Text> : null}
             </>
           ) : (
             <Text style={[styles.slot, styles.slotNone]} maxFontSizeMultiplier={MAX_FONT_SCALE}>

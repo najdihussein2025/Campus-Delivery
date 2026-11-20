@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, StatusBar, Text, View } from 'react-native';
+import { Animated, FlatList, Image, StatusBar, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import { getStoreLogo } from '../../data/images';
 import Badge from '../../components/Badge';
 import Chip from '../../components/Chip';
 import DietFilterChips from '../../components/DietFilterChips';
@@ -14,7 +15,7 @@ import ProductCard from '../../components/ProductCard';
 import { BumpBadge, PressableScale } from '../../components/motion';
 import { fixedColors, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { isStoreOpen } from '../../utils/time';
+import { closedReason, getOrderingBlock, isStoreOpen, storeStatusLabel } from '../../utils/time';
 import { matchesDiet } from '../../utils/diet';
 import { createStyles, HERO_HEIGHT, CHIPS_HEIGHT, FILTERS_HEIGHT } from './StoreMenuScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
@@ -107,7 +108,7 @@ export default function StoreMenuScreen({ navigation, route }) {
     <View style={styles.closedBanner}>
       <Ionicons name="moon-outline" size={16} color={colors.dangerText} />
       <Text style={styles.closedText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-        Browsing only – opens at {store.openTime}
+        Browsing only – {closedReason(store, campus.deliverySlots, timeOffsetMs)}
       </Text>
     </View>
   ) : null;
@@ -180,14 +181,18 @@ export default function StoreMenuScreen({ navigation, route }) {
         <Animated.View style={[styles.heroWrap, { opacity: heroOpacity, transform: [{ scale: heroScale }] }]}>
           <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
             <View style={styles.heroRow}>
-              <LinearGradient colors={getCategoryColors(store.category)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconTile}>
-                <Ionicons name={store.icon} size={30} color={fixedColors.white} />
-              </LinearGradient>
+              {getStoreLogo(store.id) ? (
+                <Image source={getStoreLogo(store.id)} resizeMode="cover" style={styles.iconTile} accessibilityLabel={`${store.name} logo`} />
+              ) : (
+                <LinearGradient colors={getCategoryColors(store.category)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconTile}>
+                  <Ionicons name={store.icon} size={30} color={fixedColors.white} />
+                </LinearGradient>
+              )}
               <View style={styles.heroInfo}>
                 <Text style={styles.heroDescription} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {store.description}
                 </Text>
-                <Badge variant={isOpen ? 'open' : 'closed'} label={isOpen ? `Open · until ${store.closeTime}` : `Closed · opens ${store.openTime}`} />
+                <Badge variant={isOpen ? 'open' : 'closed'} label={storeStatusLabel(store, timeOffsetMs)} />
               </View>
             </View>
             <View style={styles.metaRow}>

@@ -19,6 +19,7 @@ export const createStyles = (c) => StyleSheet.create({
     borderWidth: 1,
     borderColor: c.cardBorder,
   },
+  segmentDisabled: { opacity: 0.5 },
   segment: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingVertical: 6 },
   label: { fontFamily: fonts.bold, fontSize: 14, color: c.textMuted },
   labelSelected: { color: c.primaryText },

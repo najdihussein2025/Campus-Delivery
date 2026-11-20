@@ -31,7 +31,7 @@ const isPastStatus = (status) => status === 'Delivered' || status === 'Cancelled
 export default function OrdersScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
-  const { orders, campus, getStore, reorder, previewReorder } = useApp();
+  const { orders, campus, getStore, getOrderSlot, reorder, previewReorder } = useApp();
   const { showToast } = useToast();
   const [tab, setTab] = useState('active');
   const [storeFilter, setStoreFilter] = useState('all');
@@ -87,7 +87,10 @@ export default function OrdersScreen({ navigation }) {
     const preview = reorderPreview;
     setReorderPreview(null);
     const outcome = reorder(preview.orderId, preview.conflict);
-    if (outcome.added > 0) {
+    if (outcome.closed) {
+      haptics.error();
+      showToast({ message: `${outcome.reason} · ordering opens ${outcome.opensText}`, icon: 'moon', tone: 'error' });
+    } else if (outcome.added > 0) {
       haptics.success();
       showToast({
         message: `${outcome.added} ${outcome.added === 1 ? 'item' : 'items'} added to your bag`,
@@ -120,6 +123,9 @@ export default function OrdersScreen({ navigation }) {
             <View style={styles.cardInfo}>
               <Text style={styles.storeName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store ? store.name : 'Store'}</Text>
               <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>#{item.number} · {formatDate(item.placedAt)}</Text>
+              {getOrderSlot(item) ? (
+                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{getOrderSlot(item).label} break</Text>
+              ) : null}
             </View>
             <Badge status={status} />
           </View>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, Switch, Text, View } from 'react-native';
+import { FlatList, ScrollView, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
@@ -15,7 +15,7 @@ import StickyBar from '../../components/StickyBar';
 import { FadeInView, PressableScale, useToast } from '../../components/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { isStoreOpen } from '../../utils/time';
+import { closedReason, isStoreOpen } from '../../utils/time';
 import { allergenLine, tagMeta } from '../../utils/diet';
 import { createStyles } from './ProductDetailsScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
@@ -26,7 +26,7 @@ export default function ProductDetailsScreen({ navigation, route }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { productId } = route.params;
-  const { cart, getProduct, getStore, addToCart, replaceCart, timeOffsetMs } = useApp();
+  const { campus, cart, getProduct, getStore, addToCart, replaceCart, timeOffsetMs } = useApp();
   const { showToast } = useToast();
   const product = getProduct(productId);
   const store = product ? getStore(product.storeId) : null;
@@ -50,7 +50,7 @@ export default function ProductDetailsScreen({ navigation, route }) {
 
   let blockReason = '';
   if (!product.inStock) blockReason = 'This item is out of stock right now.';
-  else if (!isOpen) blockReason = `${store.name} opens at ${store.openTime}`;
+  else if (!isOpen) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
 
   const toggleExtra = (label) => {
     setChosenExtras((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
@@ -87,6 +87,7 @@ export default function ProductDetailsScreen({ navigation, route }) {
   const handleAdd = () => {
     const result = addToCart(buildItem(), store.id);
     if (result === 'conflict') setConflictVisible(true);
+    else if (result === 'closed') showToast({ message: 'UA is closed – ordering is paused', icon: 'moon', tone: 'error' });
     else confirmAdded();
   };
 
@@ -109,7 +110,7 @@ export default function ProductDetailsScreen({ navigation, route }) {
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <FadeInView>
-          <ProductImage category={product.category} size={220} rounded={24} dimmed={!product.inStock} />
+          <ProductImage category={product.category} productId={product.id} size={220} rounded={24} dimmed={!product.inStock} />
         </FadeInView>
 
         <FadeInView delay={60} style={styles.titleBlock}>
@@ -121,15 +122,20 @@ export default function ProductDetailsScreen({ navigation, route }) {
           </View>
           <Text style={styles.name} maxFontSizeMultiplier={MAX_FONT_SCALE}>{product.name}</Text>
           {product.tags && product.tags.length > 0 ? (
-            <View style={styles.tagRow}>
-              {product.tags.map((tag) => (
-                <View key={tag} style={styles.tagPill}>
+            <FlatList
+              data={product.tags}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(tag) => tag}
+              style={styles.tagRow}
+              renderItem={({ item: tag }) => (
+                <View style={styles.tagPill}>
                   <Text style={styles.tagText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {tagMeta(tag) ? `${tagMeta(tag).emoji} ${tagMeta(tag).label}` : tag}
                   </Text>
                 </View>
-              ))}
-            </View>
+              )}
+            />
           ) : null}
           <Text style={styles.description} maxFontSizeMultiplier={MAX_FONT_SCALE}>{product.description}</Text>
           {allergenLine(product) ? (
@@ -145,6 +151,7 @@ export default function ProductDetailsScreen({ navigation, route }) {
               options={sizes.map((s) => ({ value: s.label, label: s.label, subtitle: s.extra ? `+${formatMoney(s.extra)}` : 'Included' }))}
               value={sizeLabel}
               onChange={setSizeLabel}
+              disabled={!product.inStock}
             />
           </FadeInView>
         ) : null}
@@ -153,19 +160,26 @@ export default function ProductDetailsScreen({ navigation, route }) {
           <FadeInView delay={160}>
             <SectionHeader title="Extras" />
             <Card style={styles.extrasCard}>
-              {extras.map((extra, index) => (
-                <View key={extra.label} style={[styles.extraRow, index > 0 && styles.extraDivider]}>
+              <FlatList
+                data={extras}
+                scrollEnabled={false}
+                keyExtractor={(extra) => extra.label}
+                extraData={chosenExtras}
+                renderItem={({ item: extra, index }) => (
+                <View style={[styles.extraRow, index > 0 && styles.extraDivider, !product.inStock && styles.extraRowOff]}>
                   <Text style={styles.extraLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{extra.label}</Text>
                   <Text style={styles.extraPrice} maxFontSizeMultiplier={MAX_FONT_SCALE}>+{formatMoney(extra.extra)}</Text>
                   <Switch
                     value={chosenExtras.includes(extra.label)}
                     onValueChange={() => toggleExtra(extra.label)}
+                    disabled={!product.inStock}
                     trackColor={{ false: colors.border, true: colors.primary }}
                     thumbColor={colors.surface}
                     accessibilityLabel={`${extra.label}, plus ${formatMoney(extra.extra)}`}
                   />
                 </View>
-              ))}
+                )}
+              />
             </Card>
           </FadeInView>
         ) : null}
@@ -173,7 +187,13 @@ export default function ProductDetailsScreen({ navigation, route }) {
         <FadeInView delay={200}>
           <SectionHeader title="Quantity" />
           <View style={styles.qtyRow}>
-            <QuantitySelector qty={qty} onIncrease={() => setQty(qty + 1)} onDecrease={() => setQty(Math.max(1, qty - 1))} />
+            <QuantitySelector
+              qty={qty}
+              allowRemove={false}
+              disabled={!product.inStock}
+              onIncrease={() => setQty(qty + 1)}
+              onDecrease={() => setQty(Math.max(1, qty - 1))}
+            />
             <Text style={styles.unitText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatMoney(unitPrice)} each</Text>
           </View>
         </FadeInView>

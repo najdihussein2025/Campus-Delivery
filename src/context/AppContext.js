@@ -4,11 +4,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadCampusData } from '../services/api';
 import { calcCartTotals } from '../utils/money';
 import { DEFAULT_SPEED, buildStatusSchedule, getOrderStatus, secondsForSpeed } from '../utils/orderStatus';
-import { getNow, offsetForTime } from '../utils/time';
+import { dateKey } from '../utils/calendar';
+import { findAccount } from '../utils/validation';
+import { formatTime, getNow, getOrderingBlock, offsetForDateTime } from '../utils/time';
 import {
   canUseReward, consumeReward, emptyLoyalty, refundReward, rewardDiscount, settleDeliveredOrders, willCompleteCard,
 } from '../utils/loyalty';
 import { activeSeasons } from '../utils/diet';
+import { setHapticsEnabled } from '../utils/haptics';
 import { buildDemoSeed } from '../utils/demoSeed';
 import {
   cancelAllNotifications, cancelNotifications, rescheduleBreakReminders, scheduleOrderNotifications,
@@ -32,12 +35,13 @@ const EMPTY_CART = { storeId: null, items: [] };
 
 const makeId = (prefix) => `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
-const makeTransaction = (type, amount, label) => ({
+// `at` = demo-clock time in ms, so wallet times match the clock shown in the app
+const makeTransaction = (type, amount, label, at = Date.now()) => ({
   id: makeId('t'),
   type,
   amount,
   label,
-  date: Date.now(),
+  date: at,
 });
 
 const DEMO_USER = {
@@ -61,9 +65,22 @@ const migrateUser = (u) => {
   return next;
 };
 
+// Before the real UA timetable (v3) the breaks were different. Old orders keep the label they were placed with.
+const LEGACY_SLOTS = {
+  s1: { start: '09:45', end: '10:00', label: '09:45–10:00' },
+  s2: { start: '11:15', end: '11:30', label: '11:15–11:30' },
+  s3: { start: '12:45', end: '13:30', label: '12:45–13:30' },
+  s4: { start: '14:00', end: '14:15', label: '14:00–14:15' },
+  s5: { start: '15:15', end: '15:30', label: '15:15–15:30' },
+  s6: { start: '16:15', end: '16:30', label: '16:15–16:30' },
+};
+
 // Orders saved before the time-based status / loyalty existed get the new fields (no retroactive stamps)
 const migrateOrder = (o) => ({
   ...o,
+  ...(o.slotLabel || !LEGACY_SLOTS[o.slotId]
+    ? {}
+    : { slotLabel: LEGACY_SLOTS[o.slotId].label, slotStart: LEGACY_SLOTS[o.slotId].start, slotEnd: LEGACY_SLOTS[o.slotId].end }),
   placedAtMs: o.placedAtMs ?? o.createdAt,
   placedAt: o.placedAt ?? o.createdAt,
   gross: o.gross ?? o.subtotal,
@@ -79,9 +96,9 @@ const migrateData = (data) => {
   return { ...data, savedLocations, orders: (data.orders || []).map(migrateOrder) };
 };
 
-const newUserData = (credit, savedLocations = []) => ({
+const newUserData = (credit, savedLocations = [], at = Date.now()) => ({
   cart: EMPTY_CART,
-  wallet: { balance: credit, transactions: [makeTransaction('topup', credit, 'Welcome credit')] },
+  wallet: { balance: credit, transactions: [makeTransaction('topup', credit, 'Welcome credit', at)] },
   orders: [],
   savedLocations,
 });
@@ -152,6 +169,11 @@ export function AppProvider({ children }) {
     return () => sub.remove();
   }, []);
 
+  // No haptics when Reduce Motion is on (and never on web, see utils/haptics.js)
+  useEffect(() => {
+    setHapticsEnabled(!reduceMotion);
+  }, [reduceMotion]);
+
   const commitOrders = (next) => {
     ordersRef.current = next;
     setOrders(next);
@@ -179,7 +201,13 @@ export function AppProvider({ children }) {
     const alreadySeeded = await readJson(KEYS.demoSeeded, false);
     if (isDemo(account.email) && (data.orders || []).length === 0 && !alreadySeeded) {
       const bundle = buildDemoBundle(campusData, offsetMs);
-      data = { ...data, ...bundle.data, cart: data.cart || EMPTY_CART, savedLocations: data.savedLocations || bundle.data.savedLocations };
+      // `[]` is truthy, so check the length: a fresh install stores an empty list that must not hide the seeded place
+      data = {
+        ...data,
+        ...bundle.data,
+        cart: data.cart?.items?.length ? data.cart : EMPTY_CART,
+        savedLocations: data.savedLocations?.length ? data.savedLocations : bundle.data.savedLocations,
+      };
       loyaltyData = bundle.loyalty;
       await writeJson(KEYS.demoSeeded, true);
     }
@@ -233,11 +261,20 @@ export function AppProvider({ children }) {
     setCampus(data);
   };
 
+  const demoNowMs = () => getNow(timeOffsetMs).getTime();
   const getStore = (storeId) => campus?.stores.find((s) => s.id === storeId);
   const getProduct = (productId) => campus?.products.find((p) => p.id === productId);
   const getBuilding = (buildingId) =>
     campus?.buildings.find((b) => b.id === buildingId || b.id === LEGACY_BUILDINGS[buildingId]);
   const getSlot = (slotId) => campus?.deliverySlots.find((s) => s.id === slotId);
+  // The break an order was placed for: the label stored on the order wins, so old orders still display correctly
+  const getOrderSlot = (order) => {
+    if (!order) return null;
+    if (order.slotLabel) return { id: order.slotId, label: order.slotLabel, start: order.slotStart, end: order.slotEnd };
+    return getSlot(order.slotId) || null;
+  };
+  // null when UA is open today, otherwise { reason, opensText, emoji } (weekend, holiday, semester break)
+  const getClosedBlock = () => getOrderingBlock(timeOffsetMs, campus?.deliverySlots || []);
   const userCampusId = user?.campusId || 'baabda';
   const getCampus = (campusId = userCampusId) => campus?.campuses.find((c) => c.id === campusId);
   const campusBuildings = campus ? campus.buildings.filter((b) => b.campusId === userCampusId) : [];
@@ -280,7 +317,7 @@ export function AppProvider({ children }) {
     const c = campusRef.current;
     if (!c) return;
     const store = c.stores.find((s) => s.id === order.storeId);
-    const slot = c.deliverySlots.find((s) => s.id === order.slotId);
+    const slot = order.slotLabel ? { label: order.slotLabel } : c.deliverySlots.find((s) => s.id === order.slotId);
     const building = c.buildings.find((b) => b.id === order.building);
     const session = sessionRef.current;
     const ids = await scheduleOrderNotifications({
@@ -327,7 +364,7 @@ export function AppProvider({ children }) {
 
   // ---------- Auth ----------
   const login = async (email) => {
-    const account = users.find((u) => u.email.toLowerCase() === email.trim().toLowerCase());
+    const account = findAccount(users, email); // email or 8-digit UA ID
     if (!account) return false;
     setDataReady(false);
     const bundle = await loadBundle(account, campus, timeOffsetMs);
@@ -352,7 +389,7 @@ export function AppProvider({ children }) {
     const nextUsers = [...users, account];
     setUsers(nextUsers);
     await writeJson(KEYS.users, nextUsers);
-    const data = newUserData(1000);
+    const data = newUserData(1000, [], getNow(timeOffsetMs).getTime());
     await writeJson(KEYS.data(account.email), data);
     setDataReady(false);
     applyUserData(data, emptyLoyalty());
@@ -384,6 +421,7 @@ export function AppProvider({ children }) {
 
   // ---------- Cart (one store only) ----------
   const addToCart = (item, storeId) => {
+    if (getClosedBlock()) return 'closed';
     if (cart.items.length > 0 && cart.storeId !== storeId) return 'conflict';
     setCart((prev) => {
       const existing = prev.items.find((i) => i.key === item.key);
@@ -395,7 +433,10 @@ export function AppProvider({ children }) {
     return 'added';
   };
 
-  const replaceCart = (item, storeId) => setCart({ storeId, items: [item] });
+  const replaceCart = (item, storeId) => {
+    if (getClosedBlock()) return;
+    setCart({ storeId, items: [item] });
+  };
 
   const changeQty = (key, qty) => {
     if (qty < 1) return;
@@ -436,8 +477,10 @@ export function AppProvider({ children }) {
 
   // ---------- Orders ----------
   const placeOrder = ({ buildingId, room, slotId, payment, saveLocation, locationLabel }) => {
+    if (getClosedBlock()) return null; // UA is closed: no orders at all (the UI explains why)
     const totals = calcCartTotals(cart.items, rewardCents);
     if (payment === 'wallet' && wallet.balance < totals.total) return null;
+    const slotInfo = campus.deliverySlots.find((s) => s.id === slotId);
 
     const couriers = campus.couriers;
     // The status is time-based: these real-time timestamps drive both the app and the phone notifications
@@ -456,6 +499,9 @@ export function AppProvider({ children }) {
       building: buildingId,
       room: room.trim().toUpperCase(),
       slotId,
+      slotLabel: slotInfo ? slotInfo.label : '',
+      slotStart: slotInfo ? slotInfo.start : '',
+      slotEnd: slotInfo ? slotInfo.end : '',
       payment,
       courier: couriers[Math.floor(Math.random() * couriers.length)],
       placedAt: getNow(timeOffsetMs).getTime(),
@@ -475,7 +521,7 @@ export function AppProvider({ children }) {
       setWallet((prev) => ({
         balance: prev.balance - order.total,
         transactions: [
-          makeTransaction('payment', order.total, `Order #${order.number} · ${getStore(order.storeId)?.name}`),
+          makeTransaction('payment', order.total, `Order #${order.number} · ${getStore(order.storeId)?.name}`, demoNowMs()),
           ...prev.transactions,
         ],
       }));
@@ -490,13 +536,13 @@ export function AppProvider({ children }) {
   const cancelOrder = (orderId) => {
     const order = ordersRef.current.find((o) => o.id === orderId);
     if (!order || getOrderStatus(order, Date.now()) !== 'Received') return false;
-    commitOrders(ordersRef.current.map((o) => (o.id === orderId ? { ...o, cancelled: true } : o)));
+    commitOrders(ordersRef.current.map((o) => (o.id === orderId ? { ...o, cancelled: true, cancelledAt: getNow(timeOffsetMs).getTime() } : o)));
     cancelNotifications(order.notificationIds || []);
     if (order.rewardUsed) commitLoyalty(refundReward(loyaltyRef.current, order.id, Date.now()));
     if (order.payment === 'wallet') {
       setWallet((prev) => ({
         balance: prev.balance + order.total,
-        transactions: [makeTransaction('refund', order.total, `Refund · Order #${order.number}`), ...prev.transactions],
+        transactions: [makeTransaction('refund', order.total, `Refund · Order #${order.number}`, demoNowMs()), ...prev.transactions],
       }));
     }
     syncBreakReminders();
@@ -526,6 +572,8 @@ export function AppProvider({ children }) {
   const reorder = (orderId, force = false) => {
     const order = orders.find((o) => o.id === orderId);
     if (!order) return { added: 0, skipped: [] };
+    const closed = getClosedBlock();
+    if (closed) return { closed: true, reason: closed.reason, opensText: closed.opensText, added: 0, skipped: [] };
     if (!force && cart.items.length > 0 && cart.storeId !== order.storeId) {
       return { conflict: true, storeName: getStore(cart.storeId)?.name };
     }
@@ -554,7 +602,7 @@ export function AppProvider({ children }) {
     await new Promise((resolve) => setTimeout(resolve, 900));
     setWallet((prev) => ({
       balance: prev.balance + amount,
-      transactions: [makeTransaction('topup', amount, 'Wallet top-up'), ...prev.transactions],
+      transactions: [makeTransaction('topup', amount, 'Wallet top-up', demoNowMs()), ...prev.transactions],
     }));
   };
 
@@ -569,8 +617,17 @@ export function AppProvider({ children }) {
   const removeLocation = (id) => setSavedLocations((prev) => prev.filter((l) => l.id !== id));
 
   // ---------- Demo clock & demo settings ----------
+  // Keeps the demo DATE that is already chosen and changes only the time of day
   const setDemoTime = (hhmm) => {
-    const offset = offsetForTime(hhmm);
+    const offset = offsetForDateTime(dateKey(getNow(timeOffsetMs)), hhmm);
+    setTimeOffsetMs(offset);
+    writeJson(KEYS.demoOffset, offset);
+  };
+
+  // Demo date (YYYY-MM-DD) + optional time; the clock keeps ticking from there
+  const setDemoDate = (dateStr, hhmm) => {
+    const time = hhmm || formatTime(getNow(timeOffsetMs));
+    const offset = offsetForDateTime(dateStr, time);
     setTimeOffsetMs(offset);
     writeJson(KEYS.demoOffset, offset);
   };
@@ -658,6 +715,9 @@ export function AppProvider({ children }) {
     getProduct,
     getBuilding,
     getSlot,
+    getOrderSlot,
+    getClosedBlock,
+    setDemoDate,
     login,
     signUp,
     logout,

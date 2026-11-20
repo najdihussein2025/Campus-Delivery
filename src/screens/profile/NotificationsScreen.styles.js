@@ -20,6 +20,6 @@ export const createStyles = (c) => StyleSheet.create({
   rowSub: makeTypography(c).caption,
   leadBlock: { marginTop: spacing.sm },
   leadLabel: { ...makeTypography(c).micro, marginBottom: spacing.sm },
-  leadRow: { flexDirection: 'row' },
+  leadRow: { flexGrow: 0 },
   testButton: { marginTop: spacing.md },
 });

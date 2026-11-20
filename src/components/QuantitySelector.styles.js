@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { fonts, radius } from '../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
+  btnDisabled: { opacity: 0.4 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

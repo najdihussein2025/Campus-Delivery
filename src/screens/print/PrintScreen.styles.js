@@ -62,6 +62,8 @@ export const createStyles = (c) => StyleSheet.create({
   limitError: { color: c.dangerText },
   bindingTitle: { ...makeTypography(c).micro, marginTop: spacing.sm, marginBottom: spacing.md },
   copiesCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // The text may wrap, so the stepper always stays fully inside the card (360 px phones too)
+  copiesInfo: { flex: 1, flexShrink: 1, marginRight: spacing.md },
   limitCard: {
     flexDirection: 'row',
     alignItems: 'center',

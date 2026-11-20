@@ -64,6 +64,7 @@ export const createStyles = (c) => StyleSheet.create({
   hint: { ...makeTypography(c).caption, marginTop: spacing.xs, marginBottom: spacing.sm },
   demoInput: { marginBottom: spacing.md },
   demoButtons: { flexDirection: 'row' },
+  quickDates: { flexGrow: 0, marginBottom: spacing.md },
   resetButton: { marginLeft: spacing.sm },
   aboutLogo: { marginBottom: spacing.md },
   aboutTitle: { ...makeTypography(c).h3 },

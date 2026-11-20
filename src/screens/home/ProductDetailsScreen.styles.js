@@ -25,7 +25,7 @@ export const createStyles = (c) => StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   storeName: makeTypography(c).micro,
   name: { ...makeTypography(c).display, marginTop: spacing.xs },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.sm },
+  tagRow: { marginTop: spacing.sm, flexGrow: 0 },
   tagPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -42,6 +42,7 @@ export const createStyles = (c) => StyleSheet.create({
   basePrice: { fontFamily: fonts.extrabold, fontSize: 22, color: c.primaryText, marginTop: spacing.md },
   extrasCard: { paddingVertical: spacing.xs },
   extraRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingVertical: spacing.sm },
+  extraRowOff: { opacity: 0.45 },
   extraDivider: { borderTopWidth: 1, borderTopColor: c.border },
   extraLabel: { ...makeTypography(c).bodyStrong, flex: 1 },
   extraPrice: { fontFamily: fonts.bold, fontSize: 14.5, color: c.textBrand, marginRight: spacing.md },
