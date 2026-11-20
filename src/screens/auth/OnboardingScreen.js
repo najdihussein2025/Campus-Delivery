@@ -1,5 +1,9 @@
-import React, { useRef, useState } from 'react';
-import { Animated, StatusBar, Text, View, useWindowDimensions } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StatusBar, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  Extrapolation, interpolate, interpolateColor, runOnJS, useAnimatedReaction, useAnimatedScrollHandler,
+  useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,9 +11,10 @@ import AppButton from '../../components/AppButton';
 import UALogo from '../../components/UALogo';
 import CampusBackground from '../../components/CampusBackground';
 import DoorSign from '../../components/DoorSign';
-import { FadeInView, PressableScale } from '../../components/motion';
+import { FadeInView, PressableScale, useReduceMotion } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { fixedColors, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
+import { durations, easings, REDUCED_FADE_MS } from '../../theme/motion';
 import { createStyles } from './OnboardingScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 
@@ -41,33 +46,76 @@ const CATEGORY_TILES = [
 // Real UA breaks (see deliverySlots in campus.json); the middle one is highlighted as the delivery
 const BREAKS = ['09:45', '11:15', '12:45'];
 
-// Chapter 16/20: horizontal paging FlatList + Animated dots driven by the scroll position
-export default function OnboardingScreen({ navigation }) {
+// One pager dot: widens 8 → 24 and changes colour, interpolated from the scroll position
+function PagerDot({ i, scrollX, width }) {
   const styles = useThemedStyles(createStyles);
-  const { completeOnboarding } = useApp();
-  const { width } = useWindowDimensions();
-  const listRef = useRef(null);
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const [index, setIndex] = useState(0);
-  const isLast = index === SLIDES.length - 1;
+  const style = useAnimatedStyle(() => {
+    const range = [(i - 1) * width, i * width, (i + 1) * width];
+    return {
+      width: interpolate(scrollX.value, range, [8, 24, 8], Extrapolation.CLAMP),
+      backgroundColor: interpolateColor(scrollX.value, range, ['rgba(255,255,255,0.45)', '#00AEEF', 'rgba(255,255,255,0.45)']),
+    };
+  });
+  return <Animated.View style={[styles.dot, style]} />;
+}
 
-  const finish = () => {
-    completeOnboarding();
-    navigation.replace('Welcome');
-  };
+// A break row of slide 2: enters when the slide becomes active (stagger 60 ms); the "Delivery" row then pulses softly
+function BreakRow({ time, i, active, reduceMotion }) {
+  const styles = useThemedStyles(createStyles);
+  const progress = useSharedValue(reduceMotion ? 1 : 0);
+  const pulse = useSharedValue(1);
+  const highlight = i === 1;
 
-  const goNext = () => {
-    if (isLast) return finish();
-    listRef.current?.scrollToIndex({ index: index + 1, animated: true });
-  };
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.value = withTiming(active ? 1 : 0, { duration: REDUCED_FADE_MS });
+      return;
+    }
+    progress.value = active ? withDelay(i * 60, withTiming(1, { duration: durations.medium, easing: easings.emphasizedDecel })) : 0;
+    if (highlight && active) {
+      pulse.value = withDelay(600, withRepeat(withSequence(withTiming(1.04, { duration: 700 }), withTiming(1, { duration: 700 })), 3, false));
+    } else {
+      pulse.value = 1;
+    }
+  }, [active, reduceMotion]);
 
-  const renderVisual = (key) => {
-    if (key === 'stores') {
+  const style = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ translateY: (1 - progress.value) * 14 }, { scale: pulse.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.breakRow, highlight && styles.breakRowActive, style]}>
+      <Ionicons name={highlight ? 'bicycle' : 'time-outline'} size={18} color={highlight ? fixedColors.ink : fixedColors.white} />
+      <Text style={[styles.breakText, highlight && styles.breakTextActive]}>Break {time}</Text>
+      {highlight ? <Text style={styles.breakTag}>Delivery</Text> : null}
+    </Animated.View>
+  );
+}
+
+// One slide. Parallax: the illustration travels at 0.6× the scroll speed (and fades / scales by distance), the text at 1×.
+function Slide({ item, i, width, scrollX, activeIndex, reduceMotion }) {
+  const styles = useThemedStyles(createStyles);
+
+  const visualStyle = useAnimatedStyle(() => {
+    const delta = scrollX.value - i * width; // -width … +width while this slide is on screen
+    if (reduceMotion) return { opacity: interpolate(Math.abs(delta), [0, width * 0.6], [1, 0], Extrapolation.CLAMP) };
+    return {
+      opacity: interpolate(Math.abs(delta), [0, width * 0.7], [1, 0], Extrapolation.CLAMP),
+      transform: [
+        { translateX: delta * 0.4 }, // content moves with the page (1×) minus 0.4 → the visual lags at 0.6×
+        { scale: interpolate(Math.abs(delta), [0, width], [1, 0.9], Extrapolation.CLAMP) },
+      ],
+    };
+  });
+
+  const renderVisual = () => {
+    if (item.key === 'stores') {
       return (
         <View style={styles.tileGrid}>
           {/* Not a FlatList: four fixed, decorative tiles in a static grid (the slides themselves are a FlatList) */}
-          {CATEGORY_TILES.map((tile, i) => (
-            <FadeInView key={tile.label} delay={120 + i * 80} style={styles.tileWrap}>
+          {CATEGORY_TILES.map((tile, k) => (
+            <FadeInView key={tile.label} delay={120 + k * 80} style={styles.tileWrap}>
               <LinearGradient colors={getCategoryColors(tile.label)} style={styles.tile}>
                 <Ionicons name={tile.icon} size={30} color={fixedColors.white} />
               </LinearGradient>
@@ -77,7 +125,7 @@ export default function OnboardingScreen({ navigation }) {
         </View>
       );
     }
-    if (key === 'breaks') {
+    if (item.key === 'breaks') {
       return (
         <View style={styles.breakCard}>
           <View style={styles.classRow}>
@@ -85,12 +133,8 @@ export default function OnboardingScreen({ navigation }) {
             <Text style={styles.classText}>Class 08:30–09:45</Text>
           </View>
           {/* Not a FlatList: three fixed, decorative rows of an illustration */}
-          {BREAKS.map((time, i) => (
-            <View key={time} style={[styles.breakRow, i === 1 && styles.breakRowActive]}>
-              <Ionicons name={i === 1 ? 'bicycle' : 'time-outline'} size={18} color={i === 1 ? fixedColors.ink : fixedColors.white} />
-              <Text style={[styles.breakText, i === 1 && styles.breakTextActive]}>Break {time}</Text>
-              {i === 1 ? <Text style={styles.breakTag}>Delivery</Text> : null}
-            </View>
+          {BREAKS.map((time, k) => (
+            <BreakRow key={time} time={time} i={k} active={activeIndex === 1} reduceMotion={reduceMotion} />
           ))}
         </View>
       );
@@ -102,14 +146,51 @@ export default function OnboardingScreen({ navigation }) {
     );
   };
 
-  const renderSlide = ({ item, index: i }) => (
+  return (
     <View style={[styles.slide, { width }]}>
       {i === 0 ? <UALogo variant="white" width={150} style={styles.logo} /> : <View style={styles.logoSpacer} />}
-      <View style={styles.visual}>{renderVisual(item.key)}</View>
+      <Animated.View style={[styles.visual, visualStyle]}>{renderVisual()}</Animated.View>
       <Text style={styles.title} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.title}</Text>
       <Text style={styles.text} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.text}</Text>
     </View>
   );
+}
+
+// Horizontal paging FlatList. The page index comes from the scroll position (a listener on scrollX), so it is right
+// after swipes AND after the programmatic scroll of the Next button (onMomentumScrollEnd does not fire for that on web/Android).
+export default function OnboardingScreen({ navigation }) {
+  const styles = useThemedStyles(createStyles);
+  const { completeOnboarding } = useApp();
+  const { width } = useWindowDimensions();
+  const reduceMotion = useReduceMotion();
+  const listRef = useRef(null);
+  const scrollX = useSharedValue(0);
+  const [index, setIndex] = useState(0);
+  const isLast = index === SLIDES.length - 1;
+
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollX.value = e.contentOffset.x;
+  });
+
+  // Page index = round(x / width), updated from the UI thread only when it changes
+  useAnimatedReaction(
+    () => Math.round(scrollX.value / width),
+    (page, prev) => {
+      if (page !== prev && page >= 0 && page < SLIDES.length) runOnJS(setIndex)(page);
+    },
+    [width]
+  );
+
+  const finish = () => {
+    completeOnboarding();
+    navigation.replace('Welcome');
+  };
+
+  const goNext = () => {
+    if (isLast) return finish();
+    setIndex(index + 1);
+    listRef.current?.scrollToIndex({ index: index + 1, animated: true });
+  };
 
   return (
     <CampusBackground style={styles.flex}>
@@ -125,25 +206,25 @@ export default function OnboardingScreen({ navigation }) {
           ref={listRef}
           data={SLIDES}
           keyExtractor={(item) => item.key}
-          renderItem={renderSlide}
+          renderItem={({ item, index: i }) => (
+            <Slide item={item} i={i} width={width} scrollX={scrollX} activeIndex={index} reduceMotion={reduceMotion} />
+          )}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           bounces={false}
+          extraData={index}
           getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
-          onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], { useNativeDriver: true })}
-          onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / width))}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
         />
 
         <View style={styles.bottom}>
           <View style={styles.dots}>
             {/* Not a FlatList: the pager dots are decoration driven by scroll position, not a list of data */}
-            {SLIDES.map((slide, i) => {
-              const inputRange = [(i - 1) * width, i * width, (i + 1) * width];
-              const scaleX = scrollX.interpolate({ inputRange, outputRange: [1, 3, 1], extrapolate: 'clamp' });
-              const opacity = scrollX.interpolate({ inputRange, outputRange: [0.4, 1, 0.4], extrapolate: 'clamp' });
-              return <Animated.View key={slide.key} style={[styles.dot, { opacity, transform: [{ scaleX }] }]} />;
-            })}
+            {SLIDES.map((slide, i) => (
+              <PagerDot key={slide.key} i={i} scrollX={scrollX} width={width} />
+            ))}
           </View>
           <AppButton title={isLast ? 'Get started' : 'Next'} variant="accent" icon={isLast ? 'checkmark' : 'arrow-forward'} onPress={goNext} />
         </View>

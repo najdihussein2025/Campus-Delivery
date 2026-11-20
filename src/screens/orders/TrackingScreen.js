@@ -14,7 +14,8 @@ import DoorSign from '../../components/DoorSign';
 import EmptyState from '../../components/EmptyState';
 import StarRating from '../../components/StarRating';
 import StatusTimeline from '../../components/StatusTimeline';
-import { AnimatedProgressBar, FadeInView, PulseDot, SuccessCheck, useToast } from '../../components/motion';
+import Reanimated, { FadeIn, ZoomIn } from 'react-native-reanimated';
+import { AnimatedProgressBar, ConfettiBurst, FadeInView, ProgressRing, PulseDot, SuccessCheck, useReduceMotion, useToast } from '../../components/motion';
 import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getDisplayTimes, getOrderStatus, getRouteProgress, getStepProgress } from '../../utils/orderStatus';
@@ -68,6 +69,8 @@ export default function TrackingScreen({ route, navigation }) {
   const [ratingError, setRatingError] = useState('');
   const [earnedReward, setEarnedReward] = useState(false);
   const feedbackShown = useRef(false);
+  const [celebrate, setCelebrate] = useState(0);
+  const reduceMotion = useReduceMotion();
 
   // Chapter 19: the brief's required timer — setInterval every second, cleared in the cleanup.
   // The status itself comes from timestamps, so the timer only refreshes `now` (and settles loyalty stamps).
@@ -118,7 +121,10 @@ export default function TrackingScreen({ route, navigation }) {
   // Success haptic only when the order turns "Delivered" while this screen is open
   const wasDelivered = useRef(delivered);
   useEffect(() => {
-    if (delivered && !wasDelivered.current) haptics.success();
+    if (delivered && !wasDelivered.current) {
+      haptics.success();
+      setCelebrate((n) => n + 1); // confetti only when it turns Delivered while this screen is open
+    }
     wasDelivered.current = delivered;
   }, [delivered]);
 
@@ -201,6 +207,8 @@ export default function TrackingScreen({ route, navigation }) {
                 trackColor="rgba(255,255,255,0.22)"
                 height={6}
                 thumbIcon="bicycle"
+                spring
+                wobble={status === 'On the way'}
               />
               <View style={styles.routeLabels}>
                 <Text style={styles.routeLabel}>Store</Text>
@@ -217,7 +225,7 @@ export default function TrackingScreen({ route, navigation }) {
 
           {!order.cancelled && !progress.done ? (
             <View style={styles.countdown}>
-              <Ionicons name="timer-outline" size={16} color={colors.accent} />
+              <ProgressRing size={22} stroke={3} color={colors.accent} progress={order.stepSeconds ? progress.secondsToNext / order.stepSeconds : 0} linearMs={1000} />
               <Text style={styles.countdownText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                 Next update in <Text style={styles.countdownStrong}>{progress.secondsToNext}s</Text>
               </Text>
@@ -228,13 +236,16 @@ export default function TrackingScreen({ route, navigation }) {
         {delivered ? (
           <FadeInView style={styles.deliveredBox}>
             <SuccessCheck size={84} />
+            <ConfettiBurst trigger={celebrate} />
             <Text style={styles.deliveredText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Your order has arrived</Text>
             {earnedReward ? (
               <Text style={styles.rewardText} maxFontSizeMultiplier={MAX_FONT_SCALE}>🎁 You earned a free coffee!</Text>
             ) : stampCount > 0 && order.stampsCredited ? (
-              <Text style={styles.stampText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                +{stampCount} {stampCount === 1 ? 'stamp' : 'stamps'} ☕ added to your card
-              </Text>
+              <Reanimated.View entering={reduceMotion ? FadeIn.duration(150) : ZoomIn.springify().damping(12)}>
+                <Text style={styles.stampText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  +{stampCount} {stampCount === 1 ? 'stamp' : 'stamps'} ☕ added to your card
+                </Text>
+              </Reanimated.View>
             ) : null}
           </FadeInView>
         ) : null}

@@ -16,6 +16,7 @@ import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
 import { formatDate } from '../../utils/time';
 import * as haptics from '../../utils/haptics';
+import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { createStyles } from './OrdersScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
@@ -157,6 +158,13 @@ export default function OrdersScreen({ navigation }) {
     );
   };
 
+  const filterRow = [
+    ...storeOptions.map((o) => ({ key: `store-${o.id}`, kind: 'store', id: o.id, label: o.label })),
+    ...(tab === 'past'
+      ? [{ key: 'divider', kind: 'divider' }, ...STATUS_FILTERS.past.map((label) => ({ key: `status-${label}`, kind: 'status', label }))]
+      : []),
+  ];
+
   const header = (
     <View style={styles.filters}>
       <SegmentedControl
@@ -168,25 +176,20 @@ export default function OrdersScreen({ navigation }) {
         onChange={switchTab}
         style={styles.segment}
       />
+      {/* One horizontal row: store filters, and on Past a divider + the status filters (Active cards show their status) */}
       <FlatList
         horizontal
-        data={storeOptions}
-        keyExtractor={(item) => item.id}
+        data={filterRow}
+        keyExtractor={(item) => item.key}
         showsHorizontalScrollIndicator={false}
-        extraData={storeFilter}
-        renderItem={({ item }) => (
-          <Chip label={item.label} selected={storeFilter === item.id} onPress={() => pickFilter(setStoreFilter, item.id)} />
-        )}
-      />
-      <FlatList
-        horizontal
-        data={STATUS_FILTERS[tab]}
-        keyExtractor={(item) => item}
-        showsHorizontalScrollIndicator={false}
-        extraData={statusFilter}
-        renderItem={({ item }) => (
-          <Chip label={item} selected={statusFilter === item} onPress={() => pickFilter(setStatusFilter, item)} />
-        )}
+        extraData={[storeFilter, statusFilter, tab]}
+        renderItem={({ item }) => {
+          if (item.kind === 'divider') return <View style={styles.filterDivider} />;
+          if (item.kind === 'store') {
+            return <Chip label={item.label} selected={storeFilter === item.id} onPress={() => pickFilter(setStoreFilter, item.id)} />;
+          }
+          return <Chip label={item.label} selected={statusFilter === item.label} onPress={() => pickFilter(setStatusFilter, item.label)} />;
+        }}
       />
     </View>
   );
@@ -195,7 +198,8 @@ export default function OrdersScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <FlatList
+      <Reanimated.FlatList
+        itemLayoutAnimation={LinearTransition.springify().damping(20)}
         data={filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderOrder}

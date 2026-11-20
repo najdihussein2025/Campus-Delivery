@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import useReduceMotion from './motion/useReduceMotion';
 import { campusBackground } from '../data/backgrounds';
 import { gradients } from '../theme/theme';
@@ -48,6 +49,10 @@ export default function CampusBackground({ children, style }) {
         style={[StyleSheet.absoluteFill, styles.image, { transform: [{ scale: zoom }] }]}
       />
       <LinearGradient colors={OVERLAY} style={StyleSheet.absoluteFill} />
+      {/* Light blur behind the logo area, so the lettering on the building does not compete with the UA logo */}
+      <BlurView intensity={10} tint="dark" style={[styles.blurBand, { height: '34%' }]} pointerEvents="none" />
+      <BlurView intensity={14} tint="dark" style={[styles.blurBand, { height: '26%' }]} pointerEvents="none" />
+      <BlurView intensity={20} tint="dark" style={[styles.blurBand, { height: '18%' }]} pointerEvents="none" />
       {children}
     </View>
   );
@@ -56,4 +61,5 @@ export default function CampusBackground({ children, style }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0C2640', overflow: 'hidden' },
   image: { width: '100%', height: '100%' },
+  blurBand: { position: 'absolute', top: 0, left: 0, right: 0 },
 });

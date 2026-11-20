@@ -34,24 +34,22 @@ export default function StoreCard({ store, isOpen, onPress, location, statusLabe
             </LinearGradient>
           )}
           <View style={styles.info}>
-            <View style={styles.nameRow}>
-              <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.name}</Text>
+            {/* The name gets the full width (2 lines max); the category pill sits under it next to the location */}
+            <Text style={styles.name} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.name}</Text>
+            <View style={styles.metaRow}>
               <View style={styles.categoryPill}>
                 <Text style={styles.categoryText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.category}</Text>
               </View>
+              <Ionicons name="time-outline" size={13} color={colors.textMuted} style={styles.locIcon} />
+              <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min</Text>
             </View>
+            {/* The location gets its own line so it is never cut off on small phones */}
             {location ? (
               <View style={styles.metaRow}>
                 <Ionicons name="location-outline" size={13} color={colors.textMuted} />
-                <Text style={styles.meta} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{location}</Text>
+                <Text style={styles.meta} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>{location}</Text>
               </View>
             ) : null}
-            <View style={styles.metaRow}>
-              <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-              <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min</Text>
-              <View style={styles.metaDot} />
-              <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.openTime}–{store.closeTime}</Text>
-            </View>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
         </View>

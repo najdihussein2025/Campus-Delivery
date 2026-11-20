@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { fonts, radius, shadow, spacing, makeTypography } from '../../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
+  filterDivider: { width: 1, height: 28, backgroundColor: c.border, alignSelf: 'center', marginHorizontal: spacing.sm, marginBottom: spacing.sm },
   screen: { flex: 1, backgroundColor: c.background },
   list: { padding: spacing.lg, paddingBottom: spacing.xxl },
   filters: { marginBottom: spacing.sm },

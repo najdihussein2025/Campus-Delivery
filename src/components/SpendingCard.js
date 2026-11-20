@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Text, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FlatList, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import Card from './Card';
 import SegmentedControl from './SegmentedControl';
 import PressableScale from './motion/PressableScale';
+import AnimatedNumber from './motion/AnimatedNumber';
 import useReduceMotion from './motion/useReduceMotion';
+import { durations, easings, springs } from '../theme/motion';
 import { formatMoney } from '../utils/money';
 import { byStore, countedOrders, dailyTotals, insightLine, periodRange, periodStats, weeklyTotals } from '../utils/spending';
 import * as haptics from '../utils/haptics';
@@ -23,6 +26,29 @@ const spoken = (cents) => {
   return rest === 0 ? `${dollars} dollars` : `${dollars} dollars ${rest}`;
 };
 
+// One bar: grows from 0 (scaleY from the bottom, delayed by its index) when it appears or the period changes, and
+// lifts slightly when selected. Fixed height, transform only. Reduce Motion: appears at once.
+function Bar({ target, index, selected, replay, style, reduceMotion }) {
+  const grow = useSharedValue(reduceMotion ? 1 : 0);
+  const lift = useSharedValue(0);
+  useEffect(() => {
+    if (reduceMotion) {
+      grow.value = 1;
+      return;
+    }
+    grow.value = 0;
+    grow.value = withDelay(index * 60, withTiming(1, { duration: durations.long, easing: easings.emphasizedDecel }));
+  }, [replay, reduceMotion]);
+  useEffect(() => {
+    lift.value = reduceMotion ? (selected ? 1 : 0) : withSpring(selected ? 1 : 0, springs.snappy);
+  }, [selected, reduceMotion]);
+  const animated = useAnimatedStyle(() => ({
+    transform: [{ translateY: -4 * lift.value }, { scaleY: Math.max(grow.value, 0.001) }],
+    transformOrigin: 'center bottom',
+  }));
+  return <Animated.View style={[style, { height: target }, animated]} />;
+}
+
 // Spending insights: bar chart built from plain Views, comparison with the previous period, split by store
 export default function SpendingCard({ orders, stores, now }) {
   const styles = useThemedStyles(createStyles);
@@ -30,7 +56,6 @@ export default function SpendingCard({ orders, stores, now }) {
   const reduceMotion = useReduceMotion();
   const [kind, setKind] = useState('week');
   const [picked, setPicked] = useState(null);
-  const heights = useRef(Array.from({ length: 7 }, () => new Animated.Value(0))).current;
 
   const nowKey = Math.floor(now.getTime() / 60000);
   const data = useMemo(() => {
@@ -47,24 +72,10 @@ export default function SpendingCard({ orders, stores, now }) {
   const max = Math.max(1, ...data.bars.map((b) => b.cents));
   const barsKey = data.bars.map((b) => b.cents).join(',');
 
-  // Bars grow from 0 on mount and when the data or period changes.
-  // useNativeDriver must be false: native driver cannot animate `height` (a layout property).
+  // A new period / new data: forget the selected bar (the bars replay their grow animation through `replay`)
   useEffect(() => {
     setPicked(null);
-    const animations = data.bars.map((bar, i) => {
-      const target = (bar.cents / max) * CHART_HEIGHT;
-      if (reduceMotion) {
-        heights[i].setValue(target);
-        return null;
-      }
-      heights[i].setValue(0);
-      return Animated.timing(heights[i], { toValue: target, duration: 450, useNativeDriver: false });
-    });
-    if (reduceMotion) return undefined;
-    const run = Animated.stagger(50, animations.filter(Boolean));
-    run.start();
-    return () => run.stop();
-  }, [barsKey, kind, reduceMotion]);
+  }, [barsKey, kind]);
 
   if (countedOrders(orders).length === 0) {
     return (
@@ -127,8 +138,13 @@ export default function SpendingCard({ orders, stores, now }) {
               ) : null}
             </View>
             <View style={styles.barArea}>
-              <Animated.View
-                style={[styles.bar, bar.isCurrent ? styles.barCurrent : styles.barPast, { height: heights[i] }]}
+              <Bar
+                target={(bar.cents / max) * CHART_HEIGHT}
+                index={i}
+                selected={picked === i}
+                replay={`${kind}:${barsKey}`}
+                reduceMotion={reduceMotion}
+                style={[styles.bar, bar.isCurrent ? styles.barCurrent : styles.barPast]}
               />
             </View>
             <Text style={[styles.barLabel, bar.isCurrent && styles.barLabelCurrent]} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -140,7 +156,7 @@ export default function SpendingCard({ orders, stores, now }) {
 
       <View style={styles.summary}>
         <View style={styles.flex}>
-          <Text style={styles.total} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatMoney(total)}</Text>
+          <AnimatedNumber value={total} format={formatMoney} style={styles.total} />
           <Text style={[styles.comparison, toneStyle]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{comparison.text}</Text>
         </View>
         <View style={styles.summaryRight}>

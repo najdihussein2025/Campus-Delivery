@@ -8,12 +8,19 @@ import { createStyles } from './PriceSummary.styles';
 import useThemedStyles from '../hooks/useThemedStyles';
 import { useTheme } from '../context/ThemeContext';
 
-function Row({ label, value, strong, free }) {
+import AnimatedNumber from './motion/AnimatedNumber';
+
+// `cents` (optional): the value rolls to the new amount (AnimatedNumber); otherwise `value` is shown as text
+function Row({ label, value, cents, strong, free }) {
   const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.row}>
       <Text style={[styles.label, strong && styles.labelStrong]}>{label}</Text>
-      <Text style={[styles.value, strong && styles.valueStrong, free && styles.valueFree]}>{value}</Text>
+      {cents !== undefined ? (
+        <AnimatedNumber value={cents} format={formatMoney} style={[styles.value, strong && styles.valueStrong, free && styles.valueFree]} />
+      ) : (
+        <Text style={[styles.value, strong && styles.valueStrong, free && styles.valueFree]}>{value}</Text>
+      )}
     </View>
   );
 }
@@ -40,7 +47,7 @@ export default function PriceSummary({ totals, showHints = true, style }) {
       {discount > 0 ? <Row label="Free coffee (loyalty)" value={`−${formatMoney(discount)}`} free /> : null}
       <Row label="Delivery fee" value={deliveryFee === 0 ? 'Free' : formatMoney(deliveryFee)} free={deliveryFee === 0} />
       <View style={styles.divider} />
-      <Row label="Total" value={formatMoney(total)} strong />
+      <Row label="Total" cents={total} strong />
       {showHints && missingForMinimum > 0 ? (
         <Hint danger icon="alert-circle" text={`Add ${formatMoney(missingForMinimum)} more to reach the $2.00 minimum`} />
       ) : null}

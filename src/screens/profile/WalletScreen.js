@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Image, StatusBar, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,8 @@ import SectionHeader from '../../components/SectionHeader';
 import EmptyState from '../../components/EmptyState';
 import ConfirmModal from '../../components/ConfirmModal';
 import SpendingCard from '../../components/SpendingCard';
-import { FadeInView, ShakeView, StaggerItem, SuccessCheck, animateLayout, useToast } from '../../components/motion';
+import Reanimated, { FadeIn, SlideInUp, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { AnimatedNumber, FadeInView, ShakeView, StaggerItem, SuccessCheck, animateLayout, useReduceMotion, useToast } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/money';
 import { dayLabel, formatTime, getNow } from '../../utils/time';
@@ -46,6 +47,22 @@ const groupByDay = (transactions, timeOffsetMs) => {
   return rows;
 };
 
+// A transaction added while this screen is open slides in at the top, with a highlight that fades out
+function NewRow({ children, color }) {
+  const reduceMotion = useReduceMotion();
+  const glow = useSharedValue(reduceMotion ? 0 : 1);
+  useEffect(() => {
+    if (!reduceMotion) glow.value = withTiming(0, { duration: 1600 });
+  }, []);
+  const glowStyle = useAnimatedStyle(() => ({ opacity: glow.value * 0.45 }));
+  return (
+    <Reanimated.View entering={reduceMotion ? FadeIn.duration(150) : SlideInUp.duration(320)}>
+      {children}
+      <Reanimated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: 14, backgroundColor: color }, glowStyle]} />
+    </Reanimated.View>
+  );
+}
+
 // Chapter 19: async/await simulated top-up with loading state; transactions in a grouped FlatList
 export default function WalletScreen() {
   const styles = useThemedStyles(createStyles);
@@ -59,6 +76,7 @@ export default function WalletScreen() {
   const [loading, setLoading] = useState(false);
   const [doneAmount, setDoneAmount] = useState(0);
   const shakeRef = useRef(null);
+  const initialIds = useRef(new Set(wallet.transactions.map((t) => t.id))); // rows that existed when the screen opened
 
   const getAmount = () => {
     if (!custom) return preset;
@@ -105,7 +123,7 @@ export default function WalletScreen() {
             <Text style={styles.balanceLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>CAMPUS WALLET</Text>
             <Ionicons name="wifi" size={20} color="rgba(255,255,255,0.7)" style={styles.contactless} />
           </View>
-          <Text style={styles.balance} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatMoney(wallet.balance)}</Text>
+          <AnimatedNumber value={wallet.balance} format={formatMoney} style={styles.balance} />
           <Text style={styles.balanceHint} maxFontSizeMultiplier={MAX_FONT_SCALE}>Available balance · Université Antonine</Text>
         </LinearGradient>
       </FadeInView>
@@ -178,8 +196,9 @@ export default function WalletScreen() {
     }
     const typeStyles = makeTypeStyles(colors);
     const type = typeStyles[item.type] || typeStyles.payment;
+    const Wrapper = initialIds.current.has(item.id) ? StaggerItem : NewRow;
     return (
-      <StaggerItem index={index}>
+      <Wrapper index={index} color={colors.accentSoft}>
         <View style={styles.txRow}>
           <View style={[styles.txIcon, { backgroundColor: type.soft }]}>
             <Ionicons name={type.icon} size={20} color={type.color} />
@@ -195,7 +214,7 @@ export default function WalletScreen() {
             {formatMoney(item.amount)}
           </Text>
         </View>
-      </StaggerItem>
+      </Wrapper>
     );
   };
 

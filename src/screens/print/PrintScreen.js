@@ -13,7 +13,7 @@ import QuantitySelector from '../../components/QuantitySelector';
 import SectionHeader from '../../components/SectionHeader';
 import SegmentedControl from '../../components/SegmentedControl';
 import StickyBar from '../../components/StickyBar';
-import { PressableScale, ShakeView, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
+import { AnimatedNumber, PressableScale, ShakeView, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { calcPrintPrice, formatMoney } from '../../utils/money';
 import { closedReason, isStoreOpen } from '../../utils/time';
@@ -253,7 +253,7 @@ export default function PrintScreen({ navigation }) {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
       <Animated.View style={[styles.flex, animatedStyle]}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {!isOpen ? (
@@ -353,7 +353,7 @@ export default function PrintScreen({ navigation }) {
               <FlatList
                 data={BINDINGS}
                 horizontal
-                scrollEnabled={false}
+                showsHorizontalScrollIndicator={false}
                 keyExtractor={(item) => item.key}
                 renderItem={({ item }) => (
                   <Chip label={bindingLabel(item.key)} selected={form.binding === item.key} onPress={() => updateAnimated('binding', item.key)} />
@@ -403,9 +403,7 @@ export default function PrintScreen({ navigation }) {
             {summaryLine}
           </Text>
           <Animated.View style={{ transform: [{ scale: totalScale }] }}>
-            <Animated.Text style={[styles.totalValue, { color: totalColor }]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {formatMoney(price.total)}
-            </Animated.Text>
+            <AnimatedNumber value={price.total} format={formatMoney} style={styles.totalValue} />
           </Animated.View>
           <Ionicons name={expanded ? 'chevron-down' : 'chevron-up'} size={18} color={colors.textMuted} />
         </PressableScale>

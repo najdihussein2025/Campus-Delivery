@@ -236,8 +236,6 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.divider} />
         <MenuRow icon="notifications" label="Notifications" onPress={() => navigation.navigate('Notifications')} />
         <View style={styles.divider} />
-        <MenuRow icon="bookmark" label="Saved locations" value={`${savedLocations.length}`} onPress={scrollToLocations} />
-        <View style={styles.divider} />
         <MenuRow
           icon="business"
           label="Campus"
@@ -265,7 +263,10 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>Checkout shows the buildings of your campus.</Text>
           </View>
         ) : null}
-        <View style={styles.divider} />
+      </Card>
+
+      <SectionHeader title="Preferences" />
+      <Card style={styles.menu}>
         <MenuRow
           icon="leaf"
           label="My diet"
@@ -303,7 +304,10 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>System follows your phone's dark mode setting.</Text>
           </View>
         ) : null}
-        <View style={styles.divider} />
+      </Card>
+
+      <SectionHeader title="Demo" />
+      <Card style={styles.menu}>
         <MenuRow
           icon="time"
           label="Demo settings"
@@ -395,7 +399,10 @@ export default function ProfileScreen({ navigation }) {
             ) : null}
           </View>
         ) : null}
-        <View style={styles.divider} />
+      </Card>
+
+      <SectionHeader title="About" />
+      <Card style={styles.menu}>
         <MenuRow icon="information-circle" label="About CampusGo" open={openSection === 'about'} onPress={() => toggleSection('about')} />
         {openSection === 'about' ? (
           <View style={styles.expand}>
@@ -458,7 +465,8 @@ export default function ProfileScreen({ navigation }) {
 
   const footer = (
     <View style={styles.footer}>
-      <AppButton title="Log out" icon="log-out-outline" variant="danger" onPress={() => setShowLogout(true)} />
+      {/* Outlined danger button (not a solid red block); the ConfirmModal below asks before logging out */}
+      <AppButton title="Log out" icon="log-out-outline" variant="dangerOutline" onPress={() => setShowLogout(true)} />
       <UALogo variant="blue" width={120} style={styles.footerLogo} />
       <Text style={styles.version} maxFontSizeMultiplier={MAX_FONT_SCALE}>CampusGo v{APP_VERSION} · Université Antonine</Text>
     </View>

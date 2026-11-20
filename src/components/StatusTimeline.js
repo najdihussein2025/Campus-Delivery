@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, FlatList, Text, View } from 'react-native';
+import Reanimated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import PulseDot from './motion/PulseDot';
 import useReduceMotion from './motion/useReduceMotion';
@@ -36,6 +37,25 @@ function Connector({ filled }) {
   );
 }
 
+// Step icon: pops (scale 0.7 → 1, bouncy spring) when its step is newly reached
+function PopCircle({ reached, style, children }) {
+  const reduceMotion = useReduceMotion();
+  const scale = useSharedValue(1);
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    if (reached && !reduceMotion) {
+      scale.value = 0.7;
+      scale.value = withSpring(1, { damping: 12, stiffness: 180 });
+    }
+  }, [reached]);
+  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  return <Reanimated.View style={[style, animated]}>{children}</Reanimated.View>;
+}
+
 // Vertical order timeline: done = UA blue, current = cyan ring with a pulse, future = muted.
 // displayTimes: the times to SHOW per step (see getDisplayTimes), deliveredTo: "Building D, Room D.2.8".
 // A cancelled order keeps "Received" as done; the other steps are skipped (greyed).
@@ -65,10 +85,10 @@ export default function StatusTimeline({ currentIndex = 0, displayTimes = [], de
     return (
       <View style={styles.row}>
         <View style={styles.rail}>
-          <View style={[styles.circle, (done || finished) && styles.circleDone, current && !finished && styles.circleCurrent]}>
+          <PopCircle reached={reached} style={[styles.circle, (done || finished) && styles.circleDone, current && !finished && styles.circleCurrent]}>
             <Ionicons name={icon} size={18} color={iconColor} />
             {current && !finished ? <PulseDot color={colors.accent} size={9} style={styles.pulse} /> : null}
-          </View>
+          </PopCircle>
           {!isLast ? <Connector filled={!cancelled && i < currentIndex} /> : null}
         </View>
         <View style={styles.textBox}>

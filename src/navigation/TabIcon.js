@@ -1,29 +1,36 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import BumpBadge from '../components/motion/BumpBadge';
+import { FlyTarget } from '../components/motion/FlyToBag';
 import useReduceMotion from '../components/motion/useReduceMotion';
+import { springs } from '../theme/motion';
 import { createStyles } from './TabIcon.styles';
 import useThemedStyles from '../hooks/useThemedStyles';
 
-// Tab bar icon: springs up when its tab becomes active; optional bumping badge (cart count)
-export default function TabIcon({ name, focused, color, size, badge }) {
+// Tab bar icon: bounces (translateY -3 → 0, bouncy spring) when its tab becomes active; optional bumping badge (cart
+// count). The Bag icon is also a landing spot for the fly-to-bag animation. The sliding indicator lives in MainTabs.
+export default function TabIcon({ name, focused, color, size, badge, flyTarget = false }) {
   const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
-  const scale = useRef(new Animated.Value(1)).current;
+  const lift = useSharedValue(0);
 
   useEffect(() => {
     if (!focused || reduceMotion) return;
-    scale.setValue(0.8);
-    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 14 }).start();
+    lift.value = withSequence(withTiming(-3, { duration: 90 }), withSpring(0, springs.bouncy));
   }, [focused]);
+
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ translateY: lift.value }] }));
+  const icon = (
+    <Animated.View style={iconStyle}>
+      <Ionicons name={focused ? name : `${name}-outline`} size={size} color={color} />
+    </Animated.View>
+  );
 
   return (
     <View style={styles.wrapper}>
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Ionicons name={focused ? name : `${name}-outline`} size={size} color={color} />
-      </Animated.View>
-      {focused ? <View style={[styles.indicator, { backgroundColor: color }]} /> : null}
+      {flyTarget ? <FlyTarget>{icon}</FlyTarget> : icon}
       <BumpBadge value={badge} style={styles.badge} />
     </View>
   );

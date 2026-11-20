@@ -108,7 +108,7 @@ While UA is closed: **Add to bag, Reorder, Print → Add to bag and Place order 
 ## Business rules
 
 **Stores**
-- A store is open when **UA is open today** (see *UA calendar* below), the store works on this weekday (`days` in `campus.json`, JS `getDay()` convention: Sunday = 0 … Saturday = 6, so Monday–Friday = `[1,2,3,4,5]`) and opening time ≤ now < closing time. Hours: UA Cafeteria 07:30–22:00; Coffee Corner 07:00–17:30; Bookstore 08:00–15:00; Printing Office 08:00–16:30; all Monday to Friday.
+- A store is open when **UA is open today** (see *UA calendar* below), the store works on this weekday (`days` in `campus.json`, JS `getDay()` convention: Sunday = 0 … Saturday = 6, so Monday–Friday = `[1,2,3,4,5]`) and opening time ≤ now < closing time. Hours: UA Cafeteria 07:30–22:00; Coffee Corner 07:30–22:00 (same as the Cafeteria); Bookstore 08:00–15:00; Printing Office 08:00–16:30; all Monday to Friday.
 - Closed stores show a red badge that says when they open next: "Closed · opens Monday 07:30", or "Closed for Independence Day … · opens tomorrow 07:30" (`storeStatusLabel` in `src/utils/time.js`). You can browse them, but you cannot add their products or check out.
 
 **Cart**
@@ -362,6 +362,38 @@ In the Wallet: spending = every **non-cancelled** order (wallet **and** cash), d
 ## New packages
 
 `expo-notifications`, `expo-document-picker`, `expo-file-system`, `@react-native-community/netinfo` (all work in Expo Go; installed with `npx expo install`).
+
+## Motion
+
+All motion lives in `src/components/motion/` and uses **react-native-reanimated 4** (UI thread; only transform, opacity and colours are animated, never width/height/top/left inside long lists). The older React Native `Animated` components still work and were migrated only where they were touched. Durations, easings and springs are tokens in `src/theme/motion.js`.
+
+| Token | Value |
+| --- | --- |
+| `durations` | instant 50 · short 150 · medium 250 · long 400 · extraLong 600 ms |
+| `easings` | standard `bezier(0.2, 0, 0, 1)` · emphasizedDecel `bezier(0.05, 0.7, 0.1, 1)` · emphasizedAccel `bezier(0.3, 0, 0.8, 0.15)` |
+| `springs` | snappy `{damping 18, stiffness 220}` · bouncy `{12, 180}` · gentle `{20, 120}` |
+
+**Animations by screen**
+
+| Screen | Animation |
+| --- | --- |
+| Onboarding | parallax (illustration at 0.6×, text 1×, fade + scale by distance), dots widen 8 → 24 and change colour, break rows enter one by one (60 ms) and the "Delivery" row pulses; the Next button now always advances (the page index comes from the scroll position) |
+| Welcome / Onboarding | campus photo with Ken Burns zoom and a light blur band behind the logo |
+| Home | collapsing header (greeting shrinks, date/campus fade, search stays pinned), rolling wallet balance, countdown ring (amber at ≤ 5 min), coffee-stamp chip, one-time emoji drop on closed days, list reflow with a spring layout transition |
+| Store menu | 200 px hero that stretches on pull-down and fades while scrolling, store name fades into the header, sticky tabs with a sliding underline, scroll-spy and smooth jump, Diet chip in the same row, **fly-to-bag** from the "+" |
+| Product sheet | image zoom-in (1.08 → 1), segmented-control sliding thumb, rolling price, "✓ Added" morph, then fly-to-bag |
+| Bag | swipe-to-delete (red action with a growing trash icon, row exit + FadeOut, Undo toast), rolling totals, confetti burst when free delivery unlocks |
+| Checkout | stepper connector fills left → right, circle pop + drawn check, available breaks first with one expandable "earlier breaks passed" row, place-order button shrinks to a spinner |
+| Order placed | check drawn inside a growing ring + 2 ripples, confetti in UA colours, door sign flips in (≤ 1.5 s, tap anywhere to skip) |
+| Tracking | scooter springs along the track and wobbles while "On the way", step icons pop, draining "Next update" ring, confetti on Delivered |
+| Coffee stamps | new stamps land like a rubber stamp (scale 1.6 → 1, −12° → 0, burst ring, haptic); full card gets a shimmer sweep and a bouncing "Free coffee" badge |
+| Wallet | bars grow with a 60 ms stagger and the selected bar lifts, new transactions slide in with a fading highlight |
+| Tabs | active icon bounces, one indicator slides between tabs, bag badge bumps, 150 ms cross-fade between tabs |
+| Everywhere | chips cross-fade their selected colour, loading skeletons shimmer, empty states pop in once, theme switch cross-fades (~200 ms) |
+
+**Reduce Motion.** `useReduceMotion` combines the phone setting and Reanimated's own flag. With it on: no flight, parallax, stretch, scaling, spinning, confetti, ripples or shimmer; the rest become a ≤ 150 ms fade or switch instantly. Haptics are skipped as well.
+
+**Dependencies added:** `react-native-reanimated`, `react-native-worklets`, `react-native-gesture-handler` (swipe-to-delete, root view), `react-native-svg` (rings, drawn check marks), `expo-blur` (blur behind the logo), `expo-asset`. All are in Expo Go; no Babel plugin was added by hand.
 
 ## Phone-only features
 

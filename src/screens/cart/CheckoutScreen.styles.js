@@ -2,6 +2,8 @@ import { StyleSheet } from 'react-native';
 import { fonts, radius, shadow, spacing, makeTypography } from '../../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
+  collapsedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: c.border },
+  collapsedText: { fontFamily: fonts.medium, fontSize: 14, color: c.textMuted, marginRight: spacing.sm },
   screen: { flex: 1, backgroundColor: c.background },
   list: { padding: spacing.lg, paddingBottom: 220 },
   flex: { flex: 1 },

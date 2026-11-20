@@ -5,7 +5,8 @@ export const createStyles = (c) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.background },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl * 2 },
   balanceCard: { borderRadius: radius.xl, padding: spacing.xl, minHeight: 190, overflow: 'hidden', ...shadow.card },
-  watermark: { position: 'absolute', width: 260, height: 260 / 3.3, right: -40, bottom: 6, opacity: 0.12 },
+  // UA watermark: bottom-right corner at ~8 % opacity so it never overlaps the text
+  watermark: { position: 'absolute', width: 130, height: 130 / 3.3, right: spacing.lg, bottom: spacing.md, opacity: 0.08 },
   balanceTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   balanceLabel: { fontFamily: fonts.bold, fontSize: 12, letterSpacing: 1.2, color: 'rgba(255,255,255,0.8)' },
   contactless: { transform: [{ rotate: '90deg' }] },

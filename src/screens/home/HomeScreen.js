@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Animated, FlatList, RefreshControl, StatusBar, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
+import Reanimated, { Extrapolation, LinearTransition, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppInput from '../../components/AppInput';
 import Chip from '../../components/Chip';
 import ConfirmModal from '../../components/ConfirmModal';
-import DietFilterChips from '../../components/DietFilterChips';
+import DietChip from '../../components/DietChip';
 import SeasonBanner from '../../components/SeasonBanner';
 import EmptyState from '../../components/EmptyState';
 import ProductImage from '../../components/ProductImage';
@@ -14,8 +16,8 @@ import SectionHeader from '../../components/SectionHeader';
 import SkeletonStoreCard from '../../components/SkeletonStoreCard';
 import StoreCard from '../../components/StoreCard';
 import WalletBanner from '../../components/WalletBanner';
-import { BumpBadge, PressableScale, PulseDot, StaggerItem, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
-import { MAX_FONT_SCALE } from '../../theme/theme';
+import { BumpBadge, FlyTarget, PressableScale, PulseDot, StaggerItem, animateLayout, useReduceMotion, useScreenFocusAnimation, useToast } from '../../components/motion';
+import { MAX_FONT_SCALE, spacing } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
 import { matchesDiet } from '../../utils/diet';
@@ -34,6 +36,7 @@ const CATEGORIES = [
   { key: 'Printing', icon: 'print' },
 ];
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const COLLAPSE = 22; // px of scrolling over which the header collapses
 const SKELETONS = [{ type: 'skeleton', id: 'sk1' }, { type: 'skeleton', id: 'sk2' }, { type: 'skeleton', id: 'sk3' }];
 
 // Home: FlatList with ListHeaderComponent, RefreshControl, skeletons and a re-render timer (useEffect cleanup)
@@ -53,6 +56,31 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [conflict, setConflict] = useState(null);
   const [, setTick] = useState(0);
+  const focused = useIsFocused();
+  const reduceMotion = useReduceMotion();
+  const [barHeight, setBarHeight] = useState(150);
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+
+  // Collapsing header: over the first 22 px of scrolling the greeting shrinks into a compact title, the date and campus
+  // lines fade out, the bag button stays put and the search bar stays pinned under the header (transform + opacity only).
+  const barStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -interpolate(scrollY.value, [0, COLLAPSE], [0, COLLAPSE], Extrapolation.CLAMP) }],
+  }));
+  const greetStyle = useAnimatedStyle(() => {
+    const t = interpolate(scrollY.value, [0, COLLAPSE], [0, 1], Extrapolation.CLAMP);
+    return reduceMotion
+      ? { transform: [{ translateY: t * COLLAPSE }] }
+      : { transform: [{ translateY: t * COLLAPSE * 0.9 }, { scale: 1 - t * 0.22 }], transformOrigin: 'left center' };
+  });
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, COLLAPSE * 0.6], [1, 0], Extrapolation.CLAMP),
+  }));
+  const bagStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: interpolate(scrollY.value, [0, COLLAPSE], [0, COLLAPSE * 0.5], Extrapolation.CLAMP) }],
+  }));
 
   // Re-render every 10 s so the clock, open badges and the active order banner stay live
   useEffect(() => {
@@ -143,31 +171,6 @@ export default function HomeScreen({ navigation }) {
 
   const header = (
     <View>
-      <View style={styles.topRow}>
-        <View style={styles.greetingBox}>
-          <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {DAYS[now.getDay()]} · {formatTime(now)}
-          </Text>
-          <Text style={styles.greeting} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {getGreeting(timeOffsetMs)}, <Text style={styles.name}>{firstName}</Text>
-          </Text>
-          <View style={styles.campusRow}>
-            <Ionicons name="location" size={14} color={colors.primaryText} />
-            <Text style={styles.campusText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {campusInfo ? `${campusInfo.name} · ${campusInfo.subtitle}` : 'Université Antonine'}
-            </Text>
-          </View>
-        </View>
-        <PressableScale
-          onPress={() => navigation.navigate('Cart')}
-          style={styles.bagButton}
-          accessibilityLabel={`Your bag, ${cartTotals.count} items`}
-        >
-          <Ionicons name="bag-handle-outline" size={24} color={colors.primaryText} />
-          <BumpBadge value={cartTotals.count} style={styles.bagBadge} />
-        </PressableScale>
-      </View>
-
       <WalletBanner
         nextSlot={nextSlot}
         minutesLeft={minutesLeft}
@@ -176,19 +179,9 @@ export default function HomeScreen({ navigation }) {
         onTopUp={() => navigation.navigate('Wallet')}
         emptyText={`No more breaks today – ordering opens ${nextOrderingText(campus.deliverySlots, timeOffsetMs)}`}
         closedInfo={closedBlock}
+        stamps={loyalty}
+        onStamps={() => navigation.navigate('Loyalty')}
       />
-
-      {/* Loyalty strip: opens the stamp card */}
-      <PressableScale
-        onPress={() => navigation.navigate('Loyalty')}
-        style={styles.loyaltyStrip}
-        accessibilityLabel={loyalty.rewards > 0 ? 'Coffee stamps, you have a free coffee' : `Coffee stamps, ${loyalty.stamps} of 10`}
-      >
-        <Text style={styles.loyaltyText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-          {loyalty.rewards > 0 ? '🎁 Free coffee ready' : `☕ ${loyalty.stamps}/10 · ${10 - loyalty.stamps} to go`}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-      </PressableScale>
 
       <SeasonBanner seasons={visibleSeasons} onSelectTag={diet.turnOn} onDismiss={dismissSeason} />
 
@@ -232,34 +225,71 @@ export default function HomeScreen({ navigation }) {
         </View>
       ) : null}
 
-      <AppInput
-        icon="search"
-        placeholder="Search stores or products"
-        value={search}
-        onChangeText={setSearch}
-        clearable
-        onClear={() => setSearch('')}
-        autoCorrect={false}
-        returnKeyType="search"
-        style={styles.search}
-      />
-
       <FlatList
         data={CATEGORIES}
         horizontal
+        style={styles.categoryRow}
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.key}
+        extraData={[category, diet.selected]}
         renderItem={({ item }) => (
           <Chip label={item.key} icon={item.icon} selected={category === item.key} onPress={() => selectCategory(item.key)} />
         )}
       />
-      <DietFilterChips selected={diet.selected} onToggle={diet.toggle} />
 
       <SectionHeader
         title={showProducts ? `Results · ${stores.length + productResults.length}` : `Stores · ${stores.length}`}
         style={styles.sectionHeader}
       />
     </View>
+  );
+
+  // Greeting + bag + search: pinned above the list (see the collapsing header above)
+  const topBar = (
+    <Reanimated.View style={[styles.topBar, barStyle]} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
+      <View style={styles.topRow}>
+        <Reanimated.View style={[styles.greetingBox, greetStyle]}>
+          <Reanimated.Text style={[styles.caption, fadeStyle]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {DAYS[now.getDay()]} · {formatTime(now)}
+          </Reanimated.Text>
+          <Text style={styles.greeting} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {getGreeting(timeOffsetMs)}, <Text style={styles.name}>{firstName}</Text>
+          </Text>
+          <Reanimated.View style={[styles.campusRow, fadeStyle]}>
+            <Ionicons name="location" size={14} color={colors.primaryText} />
+            <Text style={styles.campusText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {campusInfo ? `${campusInfo.name} · ${campusInfo.subtitle}` : 'Université Antonine'}
+            </Text>
+          </Reanimated.View>
+        </Reanimated.View>
+        <Reanimated.View style={bagStyle}>
+          <FlyTarget active={focused}>
+            <PressableScale
+              onPress={() => navigation.navigate('Cart')}
+              style={styles.bagButton}
+              accessibilityLabel={`Your bag, ${cartTotals.count} items`}
+            >
+              <Ionicons name="bag-handle-outline" size={24} color={colors.primaryText} />
+              <BumpBadge value={cartTotals.count} style={styles.bagBadge} />
+            </PressableScale>
+          </FlyTarget>
+        </Reanimated.View>
+      </View>
+      <View style={styles.searchRow}>
+        <AppInput
+          icon="search"
+          placeholder="Search stores or products"
+          value={search}
+          onChangeText={setSearch}
+          clearable
+          onClear={() => setSearch('')}
+          autoCorrect={false}
+          returnKeyType="search"
+          style={styles.searchInput}
+        />
+        <DietChip selected={diet.selected} onToggle={diet.toggle} onClear={diet.clear} />
+      </View>
+    </Reanimated.View>
   );
 
   const renderItem = ({ item, index }) => {
@@ -306,7 +336,8 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       <Animated.View style={[styles.flex, animatedStyle]}>
-        <FlatList
+        <Reanimated.FlatList
+          itemLayoutAnimation={reduceMotion ? undefined : LinearTransition.springify().damping(20)}
           data={listData}
           keyExtractor={(item) => `${item.type}-${item.id}`}
           renderItem={renderItem}
@@ -328,13 +359,16 @@ export default function HomeScreen({ navigation }) {
               }}
             />
           }
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, { paddingTop: barHeight + spacing.sm }]}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primaryText} colors={[colors.primary]} />
           }
         />
+        {topBar}
       </Animated.View>
 
       <ConfirmModal

@@ -86,3 +86,27 @@ Note: airplane mode also cuts Expo Go from the laptop, so reload the app afterwa
 | 7.5 | Create the account, log out, log in with the **UA ID** | Works; signing up again with the same ID says "An account already exists for this ID" | ☐ | ☐ |
 
 Notes for the report: write the phone model, the OS version and anything that failed next to the step number.
+
+## 8. Motion and animations (Reanimated)
+
+Tick on a real Android phone and a real iPhone. Then repeat the table with **Reduce Motion ON** (Android: Settings → Accessibility → *Remove animations*; iPhone: Settings → Accessibility → Motion → *Reduce Motion*) and compare.
+
+| # | Step | Reduce Motion OFF | Reduce Motion ON | Android | iPhone |
+| --- | --- | --- | --- | --- | --- |
+| 8.1 | Onboarding: tap **Next** twice | Reaches slide 3 and the button says "Get started"; dots widen, illustration slides slower than the text | Same pages, only fades | ☐ | ☐ |
+| 8.2 | Home: scroll down a little | Greeting shrinks, date fades, search stays pinned | Search stays pinned, no shrinking | ☐ | ☐ |
+| 8.3 | Store menu: pull down, then scroll up | Hero stretches, then fades; store name appears in the header; underline slides under the tabs | No stretch; fades only | ☐ | ☐ |
+| 8.4 | **Fly-to-bag:** tap **+** on a product without options | Thumbnail flies in an arc to the bag icon, icon bumps, badge number bumps, light haptic | No flight; a toast says "Added … to bag" | ☐ | ☐ |
+| 8.5 | Product sheet: add a product with options | Button morphs to "✓ Added", sheet closes, thumbnail flies to the bag | No flight, toast only | ☐ | ☐ |
+| 8.6 | **Swipe-to-delete:** swipe a bag row to the left | Red action with a growing trash icon; releasing past the threshold deletes, the row fades out and the rows below slide up; Undo toast works | Row disappears with a short fade | ☐ | ☐ |
+| 8.7 | **Confetti:** raise the bag above $10.00 | A short burst (≤ 1 s) and "🎉 Free delivery unlocked" springs up | No confetti | ☐ | ☐ |
+| 8.8 | Checkout: complete a step | Connector line fills, circle pops, check mark draws | Instant | ☐ | ☐ |
+| 8.9 | Checkout: **Place order** | Button shrinks to a spinner, then the success screen with a drawn check, ripples, confetti and a flipping door sign (≤ 1.5 s); tapping anywhere continues | Fades, no confetti | ☐ | ☐ |
+| 8.10 | Tracking with Demo speed | Scooter springs along the track and wobbles while "On the way"; step icons pop; the "Next update" ring drains; confetti on Delivered | Scooter jumps, no wobble or confetti | ☐ | ☐ |
+| 8.11 | **Stamp animation:** order 2 coffees from Coffee Corner, wait for delivery, open **Coffee stamps** | New stamps land like a rubber stamp with a haptic; at 10/10 a shimmer sweeps and the "Free coffee" badge bounces | Stamps just appear | ☐ | ☐ |
+| 8.12 | Wallet: switch Week / Month, tap a bar, top up | Bars grow one after another, the tapped bar lifts, the balance rolls to the new value, the new transaction slides in highlighted | Values swap | ☐ | ☐ |
+| 8.13 | **Tab bar:** tap each tab | Icon bounces, the indicator slides between tabs, content cross-fades, bag badge bumps when the count changes | Indicator jumps, no bounce | ☐ | ☐ |
+| 8.14 | Profile → Appearance → Dark | Whole screen cross-fades (~200 ms), headers turn deep navy with a thin bottom border | Same, instant | ☐ | ☐ |
+| 8.15 | Pull Home and Orders down to refresh | Skeleton cards shimmer while loading | Static skeletons | ☐ | ☐ |
+| 8.16 | Set the demo date to a Saturday | The "UA is closed" emoji drops in once, nothing keeps moving | Fade only | ☐ | ☐ |
+| 8.17 | Low-end Android (if available): scroll Home and the store menu quickly | No dropped taps, no visible stutter | — | ☐ | — |

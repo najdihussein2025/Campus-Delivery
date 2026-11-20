@@ -25,8 +25,9 @@ export const createStyles = (c) => StyleSheet.create({
     height: 2,
     borderRadius: 1,
     backgroundColor: c.border,
+    overflow: 'hidden',
     marginHorizontal: spacing.xs,
     marginBottom: 18,
   },
-  connectorDone: { backgroundColor: c.primary },
+  connectorFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: c.primary },
 });

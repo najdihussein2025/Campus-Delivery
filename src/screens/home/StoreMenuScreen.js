@@ -1,62 +1,96 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, FlatList, Image, StatusBar, Text, View } from 'react-native';
+import Reanimated, {
+  Extrapolation, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import { getStoreLogo } from '../../data/images';
 import Badge from '../../components/Badge';
-import Chip from '../../components/Chip';
-import DietFilterChips from '../../components/DietFilterChips';
+import DietChip from '../../components/DietChip';
 import MyDietChip from '../../components/MyDietChip';
 import SeasonBanner from '../../components/SeasonBanner';
 import EmptyState from '../../components/EmptyState';
 import ProductCard from '../../components/ProductCard';
-import { BumpBadge, PressableScale } from '../../components/motion';
-import { fixedColors, getCategoryColors, MAX_FONT_SCALE } from '../../theme/theme';
+import { AnimatedNumber, BumpBadge, FlyTarget, PressableScale, useFlyToBag, useReduceMotion, useToast } from '../../components/motion';
+import { fixedColors, getCategoryColors, MAX_FONT_SCALE, spacing } from '../../theme/theme';
+import { durations } from '../../theme/motion';
 import { formatMoney } from '../../utils/money';
-import { closedReason, getOrderingBlock, isStoreOpen, storeStatusLabel } from '../../utils/time';
+import { closedReason, isStoreOpen, storeStatusLabel } from '../../utils/time';
 import { matchesDiet } from '../../utils/diet';
-import { createStyles, HERO_HEIGHT, CHIPS_HEIGHT, FILTERS_HEIGHT } from './StoreMenuScreen.styles';
+import { createStyles, HERO_HEIGHT, TABS_HEIGHT } from './StoreMenuScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import useDietFilter from '../../hooks/useDietFilter';
 import { useTheme } from '../../context/ThemeContext';
 
-const HEADER_HEIGHT = HERO_HEIGHT + CHIPS_HEIGHT + FILTERS_HEIGHT;
+const HEADER_HEIGHT = HERO_HEIGHT + TABS_HEIGHT;
+const TAB_PAD = spacing.md; // horizontal padding of a tab (styles.tab); the underline sits under the text only
 
-// Store menu: collapsing hero (Animated.event on scroll), sticky category chips and a "View bag" bar
+// Store name in the navigation header: fades in as the hero scrolls away
+function HeaderTitle({ title, scrollY, styles }) {
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [HERO_HEIGHT * 0.45, HERO_HEIGHT * 0.8], [0, 1], Extrapolation.CLAMP),
+  }));
+  return <Reanimated.Text style={[styles.headerTitle, style]} numberOfLines={1}>{title}</Reanimated.Text>;
+}
+
+// Store menu: 200 px hero (stretches on overscroll, fades into the header while scrolling up), sticky category tabs
+// with a sliding underline + scroll-spy, a Diet chip in the same sticky row, and a "View bag" bar.
 export default function StoreMenuScreen({ navigation, route }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { storeId } = route.params;
-  const { campus, cart, cartTotals, getStore, getStoreLocation, timeOffsetMs, reduceMotion, visibleSeasons, dismissSeason } = useApp();
+  const { campus, cart, cartTotals, getStore, getStoreLocation, addToCart, timeOffsetMs, visibleSeasons, dismissSeason } = useApp();
+  const reduceMotion = useReduceMotion();
+  const { flyFrom } = useFlyToBag();
+  const { showToast } = useToast();
+  const focused = useIsFocused();
   const diet = useDietFilter({ useMyDiet: true });
   const insets = useSafeAreaInsets();
   const [active, setActive] = useState(null);
+  const [tabWidths, setTabWidths] = useState({}); // measured width of each tab in the scrollable row
+  const [tabsWidth, setTabsWidth] = useState(0); // visible width of the tab row (the Diet chip sits outside it)
+  const tabScroll = useSharedValue(0); // horizontal scroll offset of the tab row
   const listRef = useRef(null);
-  const scrollY = useRef(new Animated.Value(0)).current;
+  const tabsRef = useRef(null);
+  const scrollY = useSharedValue(0);
+  const indX = useSharedValue(0);
+  const indW = useSharedValue(0);
   const barY = useRef(new Animated.Value(160)).current;
   const store = getStore(storeId);
   const isOpen = store ? isStoreOpen(store, timeOffsetMs) : false;
   const bagCount = cart.storeId === storeId ? cartTotals.count : 0;
 
+  const onScroll = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y;
+  });
+  const onTabsScroll = useAnimatedScrollHandler((e) => {
+    tabScroll.value = e.contentOffset.x;
+  });
+
   useEffect(() => {
     if (!store) return;
     navigation.setOptions({
+      headerTitle: () => <HeaderTitle title={store.name} scrollY={scrollY} styles={styles} />,
       title: store.name,
       headerRight: () => (
-        <PressableScale
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Cart' })}
-          hitSlop={10}
-          style={styles.bagButton}
-          accessibilityLabel={`Your bag, ${cartTotals.count} items`}
-        >
-          <Ionicons name="bag-handle-outline" size={24} color={colors.textOnDark} />
-          <BumpBadge value={cartTotals.count} style={styles.bagBubble} />
-        </PressableScale>
+        <FlyTarget active={focused}>
+          <PressableScale
+            onPress={() => navigation.navigate('MainTabs', { screen: 'Cart' })}
+            hitSlop={10}
+            style={styles.bagButton}
+            accessibilityLabel={`Your bag, ${cartTotals.count} items`}
+          >
+            <Ionicons name="bag-handle-outline" size={24} color={colors.headerText} />
+            <BumpBadge value={cartTotals.count} style={styles.bagBubble} />
+          </PressableScale>
+        </FlyTarget>
       ),
     });
-  }, [cartTotals.count, store]);
+  }, [cartTotals.count, store, focused, styles]);
 
   // Slide the "View bag" bar up when this store has items in the bag
   useEffect(() => {
@@ -65,44 +99,101 @@ export default function StoreMenuScreen({ navigation, route }) {
     else Animated.spring(barY, { toValue, useNativeDriver: true, friction: 9 }).start();
   }, [bagCount > 0]);
 
-  // Highlight the chip of the first visible category section
+  // Scroll-spy: the tab of the first visible category section is the active one
+  // A tapped tab stays active while the list scrolls to it (the last sections can't reach the top, so scroll-spy would
+  // otherwise switch back to an earlier one); scroll-spy takes over again on the next scroll by the user
+  const tapLockUntil = useRef(0);
   const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    if (Date.now() < tapLockUntil.current) return;
     if (viewableItems.length) setActive(viewableItems[0].item.category);
   }).current;
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 40 }).current;
 
-  if (!store) {
-    return <EmptyState icon="storefront-outline" title="Store not found" actionLabel="Go back" onAction={() => navigation.goBack()} />;
-  }
-
-  const storeProducts = campus.products.filter((p) => p.storeId === storeId);
+  const storeProducts = store ? campus.products.filter((p) => p.storeId === storeId) : [];
   const products = storeProducts.filter((p) => matchesDiet(p, diet.selected));
   // Sections with no matching product are hidden
   const categories = [...new Set(products.map((p) => p.category))];
   const groups = categories.map((c) => ({ category: c, products: products.filter((p) => p.category === c) }));
   const current = categories.includes(active) ? active : categories[0];
 
+  // Position of each tab in the row's CONTENT coordinates (sum of the widths before it). The underline is drawn over the
+  // row at (content x − row scroll offset), so it follows the tabs when the row scrolls; it slides to the active tab
+  // (translateX + scaleX, UI thread) and is clipped to the row, so it never shows under the Diet chip.
+  const allMeasured = categories.length > 0 && categories.every((c) => tabWidths[c]);
+  const tabX = (category) => categories.slice(0, categories.indexOf(category)).reduce((sum, c) => sum + (tabWidths[c] || 0), 0);
+  useEffect(() => {
+    if (!allMeasured || !current) return;
+    const x = tabX(current);
+    const w = tabWidths[current];
+    const textX = x + TAB_PAD;
+    const textW = Math.max(1, w - TAB_PAD * 2);
+    if (reduceMotion) {
+      indX.value = textX;
+      indW.value = textW;
+    } else {
+      indX.value = withTiming(textX, { duration: durations.medium });
+      indW.value = withTiming(textW, { duration: durations.medium });
+    }
+    // Keep the active tab fully visible: centre it in the row (never behind the Diet chip, which is outside the row)
+    if (tabsWidth) {
+      const offset = Math.max(0, x - (tabsWidth - w) / 2);
+      tabsRef.current?.scrollToOffset({ offset, animated: !reduceMotion });
+    }
+  }, [current, allMeasured, tabWidths, tabsWidth]);
+
+  if (!store) {
+    return <EmptyState icon="storefront-outline" title="Store not found" actionLabel="Go back" onAction={() => navigation.goBack()} />;
+  }
+
   const jumpTo = (category) => {
+    tapLockUntil.current = Date.now() + 900;
     setActive(category);
     const index = categories.indexOf(category);
-    listRef.current?.scrollToIndex({ index, animated: !reduceMotion, viewOffset: CHIPS_HEIGHT + FILTERS_HEIGHT + 8 });
+    listRef.current?.scrollToIndex({ index, animated: !reduceMotion, viewOffset: TABS_HEIGHT + 8 });
   };
 
-  const headerTranslate = scrollY.interpolate({
-    inputRange: [0, HERO_HEIGHT],
-    outputRange: [0, -HERO_HEIGHT],
-    extrapolate: 'clamp',
-  });
-  const heroOpacity = scrollY.interpolate({
-    inputRange: [0, HERO_HEIGHT * 0.7],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const heroScale = scrollY.interpolate({
-    inputRange: [-80, 0],
-    outputRange: [1.12, 1],
-    extrapolate: 'clamp',
-  });
+  // Quick add from the "+" of a product without options: add, then the thumbnail flies to the bag
+  const quickAdd = (product, imageRef) => {
+    const item = {
+      key: `${product.id}||`,
+      type: 'product',
+      productId: product.id,
+      name: product.name,
+      unitPrice: product.price,
+      qty: 1,
+      details: '',
+      category: product.category,
+      loyalty: product.loyalty || null,
+    };
+    const result = addToCart(item, store.id);
+    if (result === 'conflict') {
+      navigation.navigate('ProductDetails', { productId: product.id }); // the sheet asks whether to empty the bag
+      return;
+    }
+    if (result === 'closed') {
+      showToast({ message: 'UA is closed – ordering is paused', icon: 'moon', tone: 'error' });
+      return;
+    }
+    if (reduceMotion) showToast({ message: `Added ${product.name} to bag`, icon: 'bag-check', tone: 'success' });
+    else flyFrom(imageRef, { category: product.category, productId: product.id });
+  };
+
+  // Hero: stretches on overscroll (scale from the top), fades out while scrolling up; the whole header scrolls up
+  // until the tab strip is pinned under the navigation header
+  const headerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -interpolate(scrollY.value, [0, HERO_HEIGHT], [0, HERO_HEIGHT], Extrapolation.CLAMP) }],
+  }));
+  const heroStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [0, HERO_HEIGHT * 0.75], [1, 0], Extrapolation.CLAMP),
+    transform: reduceMotion
+      ? []
+      : [{ scale: interpolate(scrollY.value, [-120, 0], [1.35, 1], Extrapolation.CLAMP) }],
+    transformOrigin: 'center top',
+  }));
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indX.value - tabScroll.value }, { scaleX: Math.max(indW.value, 1) / 100 }],
+    transformOrigin: 'left center',
+  }));
 
   const closedBanner = !isOpen ? (
     <View style={styles.closedBanner}>
@@ -126,10 +217,12 @@ export default function StoreMenuScreen({ navigation, route }) {
     </View>
   );
 
+  const logo = getStoreLogo(store.id);
+
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <Animated.FlatList
+      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
+      <Reanimated.FlatList
         ref={listRef}
         data={groups}
         keyExtractor={(item) => item.category}
@@ -146,7 +239,7 @@ export default function StoreMenuScreen({ navigation, route }) {
         contentContainerStyle={[styles.content, { paddingTop: HEADER_HEIGHT + 8, paddingBottom: 120 + insets.bottom }]}
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={onScroll}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         onScrollToIndexFailed={({ averageItemLength, index }) =>
@@ -170,6 +263,7 @@ export default function StoreMenuScreen({ navigation, route }) {
                   index={index}
                   storeOpen={isOpen}
                   onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+                  onQuickAdd={quickAdd}
                 />
               )}
             />
@@ -177,55 +271,71 @@ export default function StoreMenuScreen({ navigation, route }) {
         )}
       />
 
-      <Animated.View style={[styles.header, { transform: [{ translateY: headerTranslate }] }]}>
-        <Animated.View style={[styles.heroWrap, { opacity: heroOpacity, transform: [{ scale: heroScale }] }]}>
-          <LinearGradient colors={[colors.primary, colors.primaryDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-            <View style={styles.heroRow}>
-              {getStoreLogo(store.id) ? (
-                <Image source={getStoreLogo(store.id)} resizeMode="cover" style={styles.iconTile} accessibilityLabel={`${store.name} logo`} />
-              ) : (
-                <LinearGradient colors={getCategoryColors(store.category)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.iconTile}>
-                  <Ionicons name={store.icon} size={30} color={fixedColors.white} />
-                </LinearGradient>
-              )}
-              <View style={styles.heroInfo}>
-                <Text style={styles.heroDescription} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                  {store.description}
-                </Text>
+      <Reanimated.View style={[styles.header, headerStyle]}>
+        <Reanimated.View style={[styles.heroWrap, heroStyle]}>
+          {logo ? <Image source={logo} resizeMode="cover" style={styles.heroImage} accessibilityLabel={`${store.name} photo`} /> : null}
+          <LinearGradient
+            colors={logo ? ['rgba(12,38,64,0.25)', 'rgba(12,38,64,0.9)'] : getCategoryColors(store.category)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.6, y: 1 }}
+            style={styles.hero}
+          >
+            {!logo ? <Ionicons name={store.icon} size={72} color="rgba(255,255,255,0.22)" style={styles.heroIcon} /> : null}
+            <View style={styles.heroBottom}>
+              <Text style={styles.heroName} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.name}</Text>
+              <Text style={styles.heroDescription} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {store.description}
+              </Text>
+              <View style={styles.metaRow}>
                 <Badge variant={isOpen ? 'open' : 'closed'} label={storeStatusLabel(store, timeOffsetMs)} />
-              </View>
-            </View>
-            <View style={styles.metaRow}>
-              <View style={styles.meta}>
-                <Ionicons name="location-outline" size={15} color={colors.accent} />
-                <Text style={styles.metaText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{getStoreLocation(store)}</Text>
-              </View>
-              <View style={styles.meta}>
-                <Ionicons name="time-outline" size={15} color={colors.accent} />
-                <Text style={styles.metaText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.openTime}–{store.closeTime}</Text>
-              </View>
-              <View style={styles.meta}>
-                <Ionicons name="flame-outline" size={15} color={colors.accent} />
-                <Text style={styles.metaText} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min</Text>
+                <View style={styles.meta}>
+                  <Ionicons name="location-outline" size={14} color={fixedColors.white} />
+                  <Text style={styles.metaText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{getStoreLocation(store)}</Text>
+                </View>
+                <View style={styles.meta}>
+                  <Ionicons name="flame-outline" size={14} color={fixedColors.white} />
+                  <Text style={styles.metaText} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min</Text>
+                </View>
               </View>
             </View>
           </LinearGradient>
-        </Animated.View>
+        </Reanimated.View>
 
-        <View style={styles.chipsBar}>
-          <FlatList
+        {/* One sticky row: category tabs (sliding underline) + the Diet chip */}
+        <View style={styles.tabsBar}>
+          <View style={styles.tabsClip} onLayout={(e) => setTabsWidth(e.nativeEvent.layout.width)}>
+          <Reanimated.FlatList
+            ref={tabsRef}
             data={categories}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyExtractor={(item) => item}
-            contentContainerStyle={styles.chips}
-            renderItem={({ item }) => <Chip label={item} selected={current === item} onPress={() => jumpTo(item)} />}
+            extraData={current}
+            onScroll={onTabsScroll}
+            scrollEventThrottle={16}
+            renderItem={({ item }) => (
+              <View
+                onLayout={(e) => {
+                  const { width } = e.nativeEvent.layout;
+                  setTabWidths((prev) => (prev[item] === width ? prev : { ...prev, [item]: width }));
+                }}
+              >
+                <PressableScale
+                  onPress={() => jumpTo(item)}
+                  style={styles.tab}
+                  accessibilityLabel={item}
+                  accessibilityState={{ selected: current === item }}
+                >
+                  <Text style={[styles.tabText, current === item && styles.tabTextActive]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item}</Text>
+                </PressableScale>
+              </View>
+            )}
           />
+          <Reanimated.View pointerEvents="none" style={[styles.underline, indicatorStyle]} />
+          </View>
+          <DietChip selected={diet.selected} onToggle={diet.toggle} onClear={diet.clear} />
         </View>
-        <View style={styles.filtersBar}>
-          <DietFilterChips selected={diet.selected} onToggle={diet.toggle} contentContainerStyle={styles.chips} />
-        </View>
-      </Animated.View>
+      </Reanimated.View>
 
       <Animated.View
         pointerEvents={bagCount > 0 ? 'auto' : 'none'}
@@ -240,9 +350,11 @@ export default function StoreMenuScreen({ navigation, route }) {
           <View style={styles.bagBarCount}>
             <Text style={styles.bagBarCountText}>{bagCount}</Text>
           </View>
-          <Text style={styles.bagBarText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {bagCount} {bagCount === 1 ? 'item' : 'items'} · {formatMoney(cartTotals.subtotal)}
-          </Text>
+          <View style={styles.bagBarTextBox}>
+            <Text style={styles.bagBarText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {bagCount} {bagCount === 1 ? 'item' : 'items'} · </Text>
+            <AnimatedNumber value={cartTotals.subtotal} format={formatMoney} style={styles.bagBarText} />
+          </View>
           <Text style={styles.bagBarAction} maxFontSizeMultiplier={MAX_FONT_SCALE}>View bag</Text>
           <Ionicons name="arrow-forward" size={18} color={colors.textOnDark} />
         </PressableScale>

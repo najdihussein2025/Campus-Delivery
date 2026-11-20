@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ProductImage from './ProductImage';
@@ -10,11 +10,15 @@ import { createStyles } from './ProductCard.styles';
 import useThemedStyles from '../hooks/useThemedStyles';
 import { useTheme } from '../context/ThemeContext';
 
-// Fixed-width product tile for horizontal lists; out-of-stock items get a grey overlay + pill
-export default function ProductCard({ product, onPress, storeOpen = true, index = 0 }) {
+// Fixed-width product tile for horizontal lists; out-of-stock items get a grey overlay + pill.
+// The "+" adds a product without options straight to the bag (onQuickAdd, with the fly-to-bag animation);
+// products with sizes or extras open the product sheet instead.
+export default function ProductCard({ product, onPress, onQuickAdd, storeOpen = true, index = 0 }) {
+  const imageRef = useRef(null);
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const addable = product.inStock && storeOpen;
+  const hasOptions = Boolean((product.options?.sizes || []).length || (product.options?.extras || []).length);
   return (
     <StaggerItem index={index}>
       <PressableScale
@@ -22,7 +26,7 @@ export default function ProductCard({ product, onPress, storeOpen = true, index 
         accessibilityLabel={`${product.name}, ${formatMoney(product.price)}${product.inStock ? '' : ', out of stock'}`}
         style={styles.card}
       >
-        <View>
+        <View ref={imageRef} collapsable={false}>
           <ProductImage category={product.category} productId={product.id} size={110} rounded={14} />
           {!product.inStock ? (
             <View style={styles.overlay}>
@@ -42,9 +46,14 @@ export default function ProductCard({ product, onPress, storeOpen = true, index 
               {formatMoney(product.price)}
             </Text>
             {addable ? (
-              <View style={styles.plus}>
+              <PressableScale
+                onPress={() => (hasOptions || !onQuickAdd ? onPress() : onQuickAdd(product, imageRef))}
+                hitSlop={8}
+                style={styles.plus}
+                accessibilityLabel={hasOptions ? `Choose options for ${product.name}` : `Add ${product.name} to bag`}
+              >
                 <Ionicons name="add" size={18} color={colors.textOnDark} />
-              </View>
+              </PressableScale>
             ) : null}
           </View>
         </View>

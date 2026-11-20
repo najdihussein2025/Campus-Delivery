@@ -34,12 +34,13 @@ If the university Wi-Fi blocks the connection, ask the team to start the app wit
 
 The **Home** tab shows:
 
-- A banner with the **next break you can still order for** and your **wallet balance** (with a **Top up** button).
+- A banner with the **next break you can still order for** (a ring around the clock shows the time left, amber in the last 5 minutes), your **wallet balance** (with a **Top up** button) and your **coffee-stamp progress**.
+- The greeting shrinks when you scroll and the **search bar stays pinned** at the top, with a **Diet** chip next to it.
 - Four stores: **UA Cafeteria**, **Coffee Corner**, **Bookstore & Stationery** and **Printing Office**. Each card shows the logo, the category, where the store is, the average preparation time ("≈ 15 min") and its opening hours.
 - **Open / Closed:** a green badge means you can order now. A red "Closed · opens 08:00" badge means you can still browse the menu, but you cannot add items or check out.
 - **Search:** type a store or a product name. Products that match appear under the stores.
 - **Category chips:** All, Food, Drinks, Stationery, Printing.
-- **Dietary filters:** Vegetarian, Vegan, Siyami (Lenten fasting food), Halal, Iftar. You can pick several: a product must match **all** of them. Save your favourites in **Profile → My diet**.
+- **Dietary filters:** tap the **Diet** chip to choose Vegetarian, Vegan, Siyami (Lenten fasting food), Halal or Iftar. You can pick several: a product must match **all** of them. The chip shows how many are on. Save your favourites in **Profile → My diet**.
 - Pull down to refresh.
 
 ![Home](screenshots/home.png)
@@ -48,12 +49,13 @@ The **Home** tab shows:
 
 1. Tap a store, then a product.
 2. On the product sheet choose a **size** and **extras** (each shows its extra price), and the **quantity**.
-3. Tap **Add to bag**. A message at the bottom confirms it.
+3. Tap **Add to bag**. The button turns into **✓ Added** and the picture flies into your bag. On a menu, the **+** on a product without sizes or extras adds it straight away.
+   (With the phone's *Reduce Motion* setting on, the picture does not fly; you get a message instead.)
 4. Items marked **Out of stock** cannot be added.
 
 **One store per bag.** A bag can only contain items from one store. If you try to add something from another store, the app asks whether to empty your bag first.
 
-In the **Bag** tab you can change quantities (the − button turns into a bin at 1), remove items (with **Undo**), or clear the bag.
+In the **Bag** tab you can change quantities (the − button is greyed at 1), remove an item with the **✕** or by **swiping it to the left** (with **Undo**), or clear the bag. When you pass $10.00 a little confetti celebrates free delivery.
 
 Prices:
 
@@ -91,7 +93,7 @@ Price = pages × copies × page price + binding × copies. The total updates liv
 Tap **Checkout** in the bag. There are three steps; each finished step folds into one line you can tap to change.
 
 1. **Where:** choose a **saved place** (one tap) or a **new location**: building, floor and room number (1–99). The app builds the real room code like **G.2.15** (Building G, 2nd floor, room 15) and shows it on a door sign. Tick **Save this location** to reuse it next time.
-2. **When:** choose a **delivery break**. We deliver between classes, never during.
+2. **When:** choose a **delivery break**. We deliver between classes, never during. Available breaks come first; the ones that have passed are folded into one row ("5 earlier breaks passed") that you can open. If you already have a saved place (or used one last time) it is pre-selected.
    - UA's breaks are 09:45, 11:15, 12:45, **14:15–15:30 (the long break)**, 16:45, 18:15 and 19:45.
    - A break is **greyed out** if it already started (**Passed**), if the store cannot prepare your order in time (**Too close – needs N min**), or if it starts after the store closes (**Store closed**).
    - Available breaks show "Order by HH:MM".
@@ -137,7 +139,8 @@ In the **Profile** tab:
 ## 10. Extras
 
 - **Coffee stamps:** every coffee (espresso, americano, cappuccino, latte, iced latte) gives **1 stamp** once the order is **delivered**. At 10 stamps you get a **free coffee**: switch on **Use my free coffee** in the bag. Cancelled orders earn nothing and give the reward back.
-- **Dark mode:** **Profile → Appearance** – System, Light or Dark.
+- **Dark mode:** **Profile → Appearance** – System, Light or Dark (the screen fades smoothly when you switch).
+- **Animations:** all motion respects your phone's *Reduce Motion* setting (Android: *Remove animations*).
 - **Notifications:** **Profile → Notifications**. The app can tell you when your order is being prepared, on the way and delivered, even with the phone locked. You can also turn on **break reminders** (10, 15 or 20 minutes before a break). Use **Send a test notification** to check your phone.
 - **Offline mode:** without internet a banner says "You're offline – showing saved data". You can still browse stores, your bag, orders and wallet history. Placing an order and topping up need a connection.
 - **Spending insights:** in the **Wallet**, see how much you spent this week or month, by day or by store, compared with the previous period.

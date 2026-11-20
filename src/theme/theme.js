@@ -4,6 +4,10 @@ import { Platform } from 'react-native';
 // colour to use for TEXT and ICONS (in dark mode it is lighter so it stays readable);
 // `primary` is for filled surfaces that carry white text.
 export const lightColors = {
+  // Header surfaces: UA blue in light mode, a deep navy with a subtle border in dark mode
+  headerBg: '#005BAA',
+  headerText: '#FFFFFF',
+  headerBorder: 'transparent',
   primary: '#005BAA',
   primaryText: '#005BAA',
   primaryDark: '#0C2640',
@@ -42,6 +46,9 @@ export const lightColors = {
 // `successSolid` / `dangerSolid` are fills that carry white text.
 // Same token names as lightColors, tuned for dark surfaces (text pairs checked for WCAG AA)
 export const darkColors = {
+  headerBg: '#0B1E36',
+  headerText: '#FFFFFF',
+  headerBorder: '#1E3550',
   primary: '#005BAA',
   primaryText: '#6CB4F0',
   primaryDark: '#0C2640',

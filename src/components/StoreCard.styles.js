@@ -22,10 +22,9 @@ export const createStyles = (c) => StyleSheet.create({
     marginRight: spacing.lg,
   },
   info: { flex: 1, marginRight: spacing.sm },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  name: { ...makeTypography(c).h3, flexShrink: 1 },
+  name: { ...makeTypography(c).h3 },
+  locIcon: { marginLeft: spacing.sm },
   categoryPill: {
-    marginLeft: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: radius.pill,

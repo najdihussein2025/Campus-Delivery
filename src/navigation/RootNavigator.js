@@ -17,10 +17,10 @@ const Stack = createNativeStackNavigator();
 
 // Header and background colours follow the active theme
 const makeScreenOptions = (colors) => ({
-  headerStyle: { backgroundColor: colors.primary },
-  headerTintColor: colors.textOnDark,
+  headerStyle: { backgroundColor: colors.headerBg },
+  headerTintColor: colors.headerText,
   headerTitleStyle: { fontFamily: fonts.extrabold, fontSize: 18 },
-  headerShadowVisible: false,
+  headerShadowVisible: colors.headerBorder !== 'transparent', // dark mode: subtle bottom border
   headerBackButtonDisplayMode: 'minimal',
   contentStyle: { backgroundColor: colors.background },
   animation: 'slide_from_right',

@@ -5,7 +5,10 @@ export const createStyles = (c) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: c.background },
   flex: { flex: 1 },
   content: { padding: spacing.lg, paddingBottom: spacing.xxl },
-  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg },
+  // Pinned header (greeting + bag + search); the list scrolls under it
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10, elevation: 4, backgroundColor: c.background, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  categoryRow: { flexGrow: 0, marginTop: spacing.lg },
   greetingBox: { flex: 1, paddingRight: spacing.md },
   caption: makeTypography(c).micro,
   greeting: { ...makeTypography(c).h1, marginTop: 2 },
@@ -73,7 +76,8 @@ export const createStyles = (c) => StyleSheet.create({
     height: 34,
   },
   againPillText: { fontFamily: fonts.bold, fontSize: 13, color: c.textOnDark, marginLeft: 4 },
-  search: { marginTop: spacing.lg, marginBottom: spacing.md },
+  searchRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
+  searchInput: { flex: 1, marginRight: spacing.sm },
   sectionHeader: { marginTop: spacing.md },
   productRow: {
     flexDirection: 'row',

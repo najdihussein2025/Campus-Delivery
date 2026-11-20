@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Switch, Text, View } from 'react-native';
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
@@ -12,7 +13,8 @@ import PriceSummary from '../../components/PriceSummary';
 import RoomPicker from '../../components/RoomPicker';
 import StepIndicator from '../../components/StepIndicator';
 import StickyBar from '../../components/StickyBar';
-import { PressableScale, ShakeView, animateLayout } from '../../components/motion';
+import { PressableScale, ShakeView, StaggerItem, animateLayout, useReduceMotion } from '../../components/motion';
+import { durations, easings } from '../../theme/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { closedReason, getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
@@ -25,6 +27,22 @@ import { useNetwork } from '../../context/NetworkContext';
 
 const STEPS = ['Where', 'When', 'Pay'];
 
+// Place order morph: the button shrinks to a circle (width + radius) while placing; the success screen follows
+function MorphWidth({ active, children }) {
+  const reduceMotion = useReduceMotion();
+  const [full, setFull] = useState(0);
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = reduceMotion ? 0 : withTiming(active ? 1 : 0, { duration: durations.medium, easing: easings.standard });
+  }, [active, reduceMotion]);
+  const style = useAnimatedStyle(() => (full ? { width: full - (full - 52) * p.value, borderRadius: 12 + 14 * p.value } : {}));
+  return (
+    <View onLayout={(e) => !full && setFull(e.nativeEvent.layout.width)} style={{ alignItems: 'center' }}>
+      <Reanimated.View style={[{ overflow: 'hidden', alignSelf: 'center' }, full ? style : { alignSelf: 'stretch' }]}>{children}</Reanimated.View>
+    </View>
+  );
+}
+
 // Checkout: 3-step flow (Where → When → Pay) in ONE FlatList (slots are the data, steps are header/footer)
 export default function CheckoutScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
@@ -32,19 +50,26 @@ export default function CheckoutScreen({ navigation }) {
   const { isOnline } = useNetwork();
   const {
     campus, cart, cartTotals, wallet, savedLocations, timeOffsetMs, userCampusId, campusBuildings,
-    getStore, getBuilding, getSlot, placeOrder, formatLocation, rewardApplied,
+    getStore, getBuilding, getSlot, placeOrder, formatLocation, rewardApplied, orders,
   } = useApp();
+  const reduceMotion = useReduceMotion();
 
   const campusLocations = savedLocations.filter((loc) => getBuilding(loc.buildingId)?.campusId === userCampusId);
 
+  // Pre-select a saved place: the only one, or the one used by the last order (the student can still change it)
+  const lastUsed = campusLocations.find((loc) => orders.some((o) => !o.cancelled && o.building === loc.buildingId && o.room === loc.room));
+  const defaultSaved = campusLocations.length === 1 ? campusLocations[0] : lastUsed || null;
   const [mode, setMode] = useState(campusLocations.length ? 'saved' : 'new');
-  const [savedId, setSavedId] = useState(null);
+  const [savedId, setSavedId] = useState(defaultSaved ? defaultSaved.id : null);
   const [roomValue, setRoomValue] = useState({ buildingId: null, floor: null, roomNumber: '' });
   const [saveLocation, setSaveLocation] = useState(false);
   const [locationLabel, setLocationLabel] = useState('');
   const [slotId, setSlotId] = useState(null);
   const [payment, setPayment] = useState(null);
-  const [openStep, setOpenStep] = useState(0);
+  const [openStep, setOpenStep] = useState(defaultSaved ? 1 : 0);
+  const [showUnavailable, setShowUnavailable] = useState(false);
+  const [placing, setPlacing] = useState(false);
+  const listRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [showSummary, setShowSummary] = useState(false);
   const [successOrder, setSuccessOrder] = useState(null);
@@ -61,6 +86,19 @@ export default function CheckoutScreen({ navigation }) {
     const id = setInterval(() => setTick((t) => t + 1), 30000);
     return () => clearInterval(id);
   }, []);
+
+  // When opens: scroll to the first available break (available breaks come first)
+  useEffect(() => {
+    if (openStep !== 1) return undefined;
+    const id = setTimeout(() => {
+      try {
+        listRef.current?.scrollToIndex({ index: 0, viewOffset: 120, animated: !reduceMotion });
+      } catch (error) {
+        // list not measured yet
+      }
+    }, 200);
+    return () => clearTimeout(id);
+  }, [openStep]);
 
   // Clear the chosen slot if time moved on and it is no longer available
   useEffect(() => {
@@ -191,18 +229,22 @@ export default function CheckoutScreen({ navigation }) {
   };
 
   const confirmOrder = () => {
-    const order = placeOrder({
-      buildingId,
-      room,
-      slotId,
-      payment,
-      saveLocation: mode === 'new' && saveLocation,
-      locationLabel,
-    });
     setShowSummary(false);
-    if (!order) return;
-    haptics.success();
-    setSuccessOrder(order);
+    setPlacing(true); // the button shrinks to a spinner, then the success screen opens
+    setTimeout(() => {
+      const order = placeOrder({
+        buildingId,
+        room,
+        slotId,
+        payment,
+        saveLocation: mode === 'new' && saveLocation,
+        locationLabel,
+      });
+      setPlacing(false);
+      if (!order) return;
+      haptics.success();
+      setSuccessOrder(order);
+    }, reduceMotion ? 0 : 650);
   };
 
   // ----- Step header (number/check + title + summary or edit link) -----
@@ -334,11 +376,41 @@ export default function CheckoutScreen({ navigation }) {
   );
 
   // ----- When (FlatList data) -----
-  const renderSlot = ({ item }) => {
-    const state = getSlotState(item, store, timeOffsetMs);
+  // Available breaks come first; the passed / unavailable ones fold into ONE row ("5 earlier breaks passed") that expands
+  const slotStates = campus.deliverySlots.map((slotItem) => ({ slot: slotItem, state: getSlotState(slotItem, store, timeOffsetMs) }));
+  const availableSlots = slotStates.filter((x) => !x.state.disabled);
+  const unavailableSlots = slotStates.filter((x) => x.state.disabled);
+  const allPassed = unavailableSlots.every((x) => x.state.reason === 'Passed');
+  const slotRows = [
+    ...availableSlots.map((x) => ({ id: x.slot.id, type: 'slot', ...x })),
+    ...(unavailableSlots.length ? [{ id: 'collapsed', type: 'collapsed' }] : []),
+    ...(showUnavailable ? unavailableSlots.map((x) => ({ id: x.slot.id, type: 'slot', ...x })) : []),
+  ];
+
+  const renderSlot = ({ item: row, index }) => {
+    if (row.type === 'collapsed') {
+      const n = unavailableSlots.length;
+      const label = allPassed ? `${n} earlier ${n === 1 ? 'break' : 'breaks'} passed` : `${n} unavailable ${n === 1 ? 'break' : 'breaks'}`;
+      return (
+        <View style={styles.slotWrap}>
+          <PressableScale
+            onPress={() => {
+              animateLayout();
+              setShowUnavailable((v) => !v);
+            }}
+            style={styles.collapsedRow}
+            accessibilityLabel={`${label}, ${showUnavailable ? 'hide' : 'show'}`}
+          >
+            <Text style={styles.collapsedText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
+            <Ionicons name={showUnavailable ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+          </PressableScale>
+        </View>
+      );
+    }
+    const { slot: item, state } = row;
     const selected = slotId === item.id;
     return (
-      <View style={styles.slotWrap}>
+      <StaggerItem index={index} style={styles.slotWrap}>
         <PressableScale
           disabled={state.disabled}
           onPress={() => pickSlot(item.id)}
@@ -360,7 +432,7 @@ export default function CheckoutScreen({ navigation }) {
           </View>
           {selected ? <Ionicons name="checkmark-circle" size={24} color={colors.primaryText} /> : null}
         </PressableScale>
-      </View>
+      </StaggerItem>
     );
   };
 
@@ -431,19 +503,23 @@ export default function CheckoutScreen({ navigation }) {
   return (
     <View style={styles.screen}>
       <FlatList
-        data={openStep === 1 ? campus.deliverySlots : []}
+        ref={listRef}
+        onScrollToIndexFailed={() => {}}
+        data={openStep === 1 ? slotRows : []}
         keyExtractor={(item) => item.id}
         renderItem={renderSlot}
         ListHeaderComponent={header}
         ListFooterComponent={footer}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        extraData={{ slotId, tick, timeOffsetMs, openStep }}
+        extraData={{ slotId, tick, timeOffsetMs, openStep, showUnavailable }}
         showsVerticalScrollIndicator={false}
       />
 
       <StickyBar>
+        <MorphWidth active={placing}>
         <AppButton
+          loading={placing}
           title={`Place order · ${formatMoney(cartTotals.total)}`}
           icon="checkmark-circle"
           onPress={handlePlaceOrder}
@@ -451,6 +527,7 @@ export default function CheckoutScreen({ navigation }) {
           dimmed={Boolean(nextHint)}
           reason={blockReason || nextHint}
         />
+        </MorphWidth>
       </StickyBar>
 
       <ConfirmModal

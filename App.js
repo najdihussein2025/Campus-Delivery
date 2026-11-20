@@ -1,14 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Asset } from 'expo-asset';
-import { StatusBar, View } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
+import Reanimated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts, Karla_600SemiBold, Karla_700Bold, Karla_800ExtraBold } from '@expo-google-fonts/karla';
 import { Roboto_400Regular, Roboto_500Medium, Roboto_700Bold } from '@expo-google-fonts/roboto';
 import { AppProvider, useApp } from './src/context/AppContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { NetworkProvider } from './src/context/NetworkContext';
 import { ToastProvider } from './src/components/motion/Toast';
+import { FlyToBagProvider } from './src/components/motion/FlyToBag';
 import OfflineBanner from './src/components/OfflineBanner';
 import RootNavigator from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
@@ -35,6 +38,27 @@ const makeNavTheme = (colors, isDark) => {
   };
 };
 
+// Theme switch: the screen cross-fades (~200 ms) instead of flashing. An overlay in the OLD background colour is laid
+// over the app and fades out, revealing the new theme underneath.
+function ThemeFade() {
+  const { colors } = useTheme();
+  const previous = useRef(colors.background);
+  const [overlay, setOverlay] = useState(null);
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    if (previous.current === colors.background) return;
+    setOverlay(previous.current);
+    previous.current = colors.background;
+    opacity.value = 1;
+    opacity.value = withTiming(0, { duration: 200 }, (finished) => {
+      if (finished) runOnJS(setOverlay)(null);
+    });
+  }, [colors.background]);
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  if (!overlay) return null;
+  return <Reanimated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: overlay, zIndex: 500 }, style]} />;
+}
+
 // Waits for fonts and campus data, then mounts the single NavigationContainer
 function Inner({ fontsLoaded }) {
   const { loading, user } = useApp();
@@ -44,13 +68,16 @@ function Inner({ fontsLoaded }) {
   return (
     <ToastProvider>
       {/* Headers are UA blue in both modes, so the status bar content is always light */}
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
-      <View style={{ flex: 1 }}>
-        <NavigationContainer ref={navigationRef} theme={makeNavTheme(colors, isDark)} onReady={onReady}>
-          <RootNavigator />
-        </NavigationContainer>
-        <OfflineBanner />
-      </View>
+      <StatusBar barStyle="light-content" backgroundColor={colors.headerBg} />
+      <FlyToBagProvider>
+        <View style={{ flex: 1 }}>
+          <NavigationContainer ref={navigationRef} theme={makeNavTheme(colors, isDark)} onReady={onReady}>
+            <RootNavigator />
+          </NavigationContainer>
+          <OfflineBanner />
+          <ThemeFade />
+        </View>
+      </FlyToBagProvider>
     </ToastProvider>
   );
 }
@@ -80,6 +107,7 @@ export default function App() {
   }, []);
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <ThemeProvider>
         <NetworkProvider>
@@ -89,5 +117,6 @@ export default function App() {
         </NetworkProvider>
       </ThemeProvider>
     </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
