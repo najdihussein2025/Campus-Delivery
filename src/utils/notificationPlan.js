@@ -1,10 +1,12 @@
 // What to notify and when. Pure functions: the OS scheduling lives in services/notifications.js.
 import { toMinutes } from './time';
+import { scheduledEta } from './orderDetails';
 import { getDayStatus } from './calendar';
 
 // Three order notifications (Preparing, On the way, Delivered), only those still in the future.
 // `at` is an absolute real-time timestamp, the same one the order's statusSchedule uses.
 export const buildOrderPlan = ({ order, storeName, slotLabel, buildingName, completesCard, nowMs }) => {
+  const eta = scheduledEta(order);
   const count = order.items.reduce((sum, i) => sum + i.qty, 0);
   const items = `${count} ${count === 1 ? 'item' : 'items'}`;
   const steps = [
@@ -12,7 +14,7 @@ export const buildOrderPlan = ({ order, storeName, slotLabel, buildingName, comp
       step: 'preparing',
       at: order.statusSchedule.preparing,
       title: `☕ ${storeName} is preparing your order`,
-      body: `${items} · arriving ${slotLabel} at ${order.room}`,
+      body: `${items} · arriving ${eta || slotLabel} at ${order.room}`,
     },
     {
       step: 'onTheWay',
@@ -28,7 +30,7 @@ export const buildOrderPlan = ({ order, storeName, slotLabel, buildingName, comp
     },
   ];
   return steps
-    .map((s) => ({ ...s, seconds: Math.ceil((s.at - nowMs) / 1000) }))
+    .map((s) => ({ ...s, title: order.simulatedTracking ? 'Demo: ' + s.title : s.title, seconds: Math.ceil((s.at - nowMs) / 1000) }))
     .filter((s) => s.seconds >= 1);
 };
 

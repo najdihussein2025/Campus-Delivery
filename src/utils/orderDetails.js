@@ -1,3 +1,5 @@
+import { formatTime } from './time';
+
 const deliveryDateFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
 export const isPastOrder = (status) => status === 'Delivered' || status === 'Cancelled';
@@ -6,6 +8,9 @@ export const deliveryBreakLabel = (slot) => {
   if (!slot?.label) return '';
   return slot.label.replace(/\s*\(long break\)(?:\s+break)?\s*$/i, ' · Long break');
 };
+
+export const scheduledEta = (order) => !order.cancelled && order.scheduledDelivery
+  ? formatTime(new Date(order.scheduledDelivery.delivered)) : '';
 
 export const deliveryDateLabel = (order) => {
   const [year, month, day] = (order.deliveryDate || '').split('-').map(Number);

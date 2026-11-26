@@ -43,7 +43,7 @@ export default function StoreCard({ store, isOpen, onPress, location, statusLabe
               <Text style={styles.category} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store.category}</Text>
               <View style={styles.prep}>
                 <Ionicons name="time-outline" size={13} color={colors.textMuted} />
-                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min</Text>
+                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min prep</Text>
               </View>
             </View>
             <Text style={[styles.status, isOpen ? styles.open : styles.closed]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{status}</Text>

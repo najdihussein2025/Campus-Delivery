@@ -57,7 +57,7 @@ function PopCircle({ reached, style, children }) {
 }
 
 // Vertical order timeline: done = UA blue, current = cyan ring with a pulse, future = muted.
-export default function StatusTimeline({ currentIndex = 0, recordedTimes = [], preparationIcon, deliveryLocation, cancelled = false, cancelledTime }) {
+export default function StatusTimeline({ currentIndex = 0, recordedTimes = [], showScheduledTimes = false, preparationIcon, deliveryLocation, cancelled = false, cancelledTime }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
@@ -70,7 +70,7 @@ export default function StatusTimeline({ currentIndex = 0, recordedTimes = [], p
     const reached = done || current || finished;
     const iconColor = done || finished ? colors.textOnDark : current ? colors.primary : colors.textMuted;
     const timeText = [cancelled && !done ? 'Skipped' : current ? 'In progress' : reached ? 'Completed' : 'Pending',
-      reached ? recordedTimes[i] : null].filter(Boolean).join(' · ');
+      reached || (showScheduledTimes && !cancelled) ? recordedTimes[i] : null].filter(Boolean).join(' · ');
 
     return (
       <View key={step} style={styles.row}>

@@ -154,7 +154,7 @@ While UA is closed: **Add to bag, Reorder, Print → Add to bag and Place order 
 
 **Accounts**
 - Email must end with `@ua.edu.lb` (typing only the username adds the domain automatically); password ≥ 6 characters;
-- **UA ID**: 8 digits whose first 4 are the year of enrolment (1996 → the current demo year), constant `UA_ID_REGEX` in `src/utils/validation.js`. It is looked up in the **mock UA registry** (`uaRegistry` in `campus.json`, 25 records incl. the demo account `20231234`; the app cannot reach UA's real student system, so this is simulated). Not found → "This ID isn't in Antonine University's records. Check your student card." Found → faculty and campus are filled from the record and locked, with a "✓ Verified UA ID" badge. The first name typed must match the record (case-insensitive, titles like Dr. ignored), otherwise "Name doesn't match the UA record for this ID". One account per ID ("An account already exists for this ID"). Example IDs to try: `20240101` Rami Khoury, `20240215` Maya Haddad, `20230342` Karim Nassar, `20250123` Elie Frem, `20230876` Georges Sleiman (Zahle), `20231390` Charbel Rahme (Zgharta). Login accepts the university email and password.
+- **UA ID**: Sign-up accepts any unused ID with exactly 9 numeric digits. Students choose their faculty and campus and use their university email and password to sign in.
 - phone matches `03xxxxxx`, `7Xxxxxxx` or `81xxxxxx`; passwords must match; an email can only be registered once.
 
 ## Project structure

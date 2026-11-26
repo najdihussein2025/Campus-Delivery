@@ -15,7 +15,7 @@ import { StaggerItem, animateLayout, useToast } from '../../components/motion';
 import { getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
-import { deliveryBreakLabel, isPastOrder } from '../../utils/orderDetails';
+import { deliveryBreakLabel, isPastOrder, scheduledEta } from '../../utils/orderDetails';
 import { bagItemDetails, getPrintOrderIssue, printOptionsFor } from '../../utils/cart';
 import { fileKind, validateFile } from '../../utils/pdfPages';
 import { formatDate } from '../../utils/time';
@@ -216,7 +216,7 @@ export default function OrdersScreen({ navigation }) {
               <Text style={styles.storeName} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store ? store.name : 'Store'}</Text>
               <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>#{item.number} · {formatDate(item.placedAt)}</Text>
               {breakLabel ? (
-                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{breakLabel}</Text>
+                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{breakLabel}{scheduledEta(item) ? ', ETA ' + scheduledEta(item) : ''}</Text>
               ) : null}
               <Badge status={status} style={styles.status} />
             </View>

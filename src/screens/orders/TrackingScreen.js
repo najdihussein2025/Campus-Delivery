@@ -23,7 +23,7 @@ import { formatMoney } from '../../utils/money';
 import { getCampusStatusTime, getOrderStatus, getStepProgress, STATUS_STEPS } from '../../utils/orderStatus';
 import { formatDate, formatFloorLong, formatTime } from '../../utils/time';
 import { bagItemDetails } from '../../utils/cart';
-import { deliveryBreakLabel, deliveryDateLabel, isPastOrder, orderTotals } from '../../utils/orderDetails';
+import { deliveryBreakLabel, deliveryDateLabel, scheduledEta, isPastOrder, orderTotals } from '../../utils/orderDetails';
 import { stampsForOrder } from '../../utils/loyalty';
 import { dismissOrderNotifications, setViewing } from '../../services/notifications';
 import * as haptics from '../../utils/haptics';
@@ -153,6 +153,8 @@ export default function TrackingScreen({ route, navigation }) {
   const recordedTimes = [
     timestamp(order.placedAt ?? order.placedAtMs),
     ...['preparing', 'onTheWay', 'delivered'].map((step, index) => {
+      const scheduled = order.scheduledDelivery?.[step];
+      if (scheduled && !order.cancelled) return timestamp(scheduled);
       const recorded = order[step + 'At'];
       if (recorded) return timestamp(recorded);
       const realTime = order.statusSchedule?.[step];
@@ -234,7 +236,10 @@ export default function TrackingScreen({ route, navigation }) {
           <Text style={styles.micro} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>Scheduled delivery</Text>
           <Text style={styles.etaTime} maxFontSizeMultiplier={MAX_FONT_SCALE}>{breakLabel || 'Delivery break unavailable'}</Text>
           {scheduledDate ? <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>{scheduledDate}</Text> : null}
-          {active && order.statusSchedule?.delivered ? (
+          {scheduledEta(order) ? (
+            <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>Estimated arrival {scheduledEta(order)}</Text>
+          ) : null}
+          {active && !order.scheduledDelivery && order.statusSchedule?.delivered ? (
             <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               Simulated ETA: {formatTime(new Date(getCampusStatusTime(order, order.statusSchedule.delivered)))}
             </Text>
@@ -250,8 +255,11 @@ export default function TrackingScreen({ route, navigation }) {
         </Card>
 
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>Order progress</Text>
-          <StatusTimeline currentIndex={progress.index} recordedTimes={recordedTimes}
+          <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>{order.simulatedTracking ? 'Simulated order progress' : 'Order progress'}</Text>
+          {order.scheduledDelivery && !order.cancelled ? (
+            <Text style={styles.caption} maxFontSizeMultiplier={MAX_FONT_SCALE}>Timeline times show the campus schedule.</Text>
+          ) : null}
+          <StatusTimeline currentIndex={progress.index} recordedTimes={recordedTimes} showScheduledTimes={Boolean(order.scheduledDelivery)}
             preparationIcon={PREPARATION_ICONS[order.storeId]}
             deliveryLocation={[building?.name, order.room && 'Room ' + order.room].filter(Boolean).join(', ')}
             cancelled={order.cancelled} cancelledTime={timestamp(order.cancelledAt)} />

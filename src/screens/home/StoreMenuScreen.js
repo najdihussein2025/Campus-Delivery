@@ -375,7 +375,7 @@ export default function StoreMenuScreen({ navigation, route }) {
                 </View>
                 <View style={styles.meta}>
                   <Ionicons name="flame-outline" size={14} color={fixedColors.white} />
-                  <Text style={styles.metaText} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min</Text>
+                  <Text style={styles.metaText} maxFontSizeMultiplier={MAX_FONT_SCALE}>≈ {store.prepTime} min prep</Text>
                 </View>
               </View>
             </View>

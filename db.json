@@ -1115,175 +1115,200 @@
   ],
   "uaRegistry": [
     {
-      "id": "20231234",
+      "id": "202312340",
+      "legacyId": "20231234",
       "name": "Demo Student",
       "faculty": "Faculty of Engineering and Technology",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20240101",
+      "id": "202401010",
+      "legacyId": "20240101",
       "name": "Rami Khoury",
       "faculty": "Faculty of Engineering and Technology",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20240215",
+      "id": "202402150",
+      "legacyId": "20240215",
       "name": "Maya Haddad",
       "faculty": "Antonine School of Business",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20230342",
+      "id": "202303420",
+      "legacyId": "20230342",
       "name": "Karim Nassar",
       "faculty": "Faculty of Information and Communication",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20220587",
+      "id": "202205870",
+      "legacyId": "20220587",
       "name": "Nour Saade",
       "faculty": "Faculty of Public Health",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20250123",
+      "id": "202501230",
+      "legacyId": "20250123",
       "name": "Elie Frem",
       "faculty": "Faculty of Sport Sciences",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20210764",
+      "id": "202107640",
+      "legacyId": "20210764",
       "name": "Jad Aoun",
       "faculty": "Faculty of Music and Musicology",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20241109",
+      "id": "202411090",
+      "legacyId": "20241109",
       "name": "Lea Abi Nader",
       "faculty": "Faculty of Theology",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20230876",
+      "id": "202308760",
+      "legacyId": "20230876",
       "name": "Georges Sleiman",
       "faculty": "Antonine School of Business",
       "campusId": "zahle",
       "role": "student"
     },
     {
-      "id": "20240932",
+      "id": "202409320",
+      "legacyId": "20240932",
       "name": "Sarah Matar",
       "faculty": "Faculty of Engineering and Technology",
       "campusId": "zahle",
       "role": "student"
     },
     {
-      "id": "20221045",
+      "id": "202210450",
+      "legacyId": "20221045",
       "name": "Tony Daher",
       "faculty": "Faculty of Information and Communication",
       "campusId": "zahle",
       "role": "student"
     },
     {
-      "id": "20250278",
+      "id": "202502780",
+      "legacyId": "20250278",
       "name": "Maria Boutros",
       "faculty": "Faculty of Public Health",
       "campusId": "zahle",
       "role": "student"
     },
     {
-      "id": "20231390",
+      "id": "202313900",
+      "legacyId": "20231390",
       "name": "Charbel Rahme",
       "faculty": "Antonine School of Business",
       "campusId": "zgharta",
       "role": "student"
     },
     {
-      "id": "20240417",
+      "id": "202404170",
+      "legacyId": "20240417",
       "name": "Joelle Karam",
       "faculty": "Faculty of Engineering and Technology",
       "campusId": "zgharta",
       "role": "student"
     },
     {
-      "id": "20220651",
+      "id": "202206510",
+      "legacyId": "20220651",
       "name": "Antoine Mansour",
       "faculty": "Faculty of Information and Communication",
       "campusId": "zgharta",
       "role": "student"
     },
     {
-      "id": "20250566",
+      "id": "202505660",
+      "legacyId": "20250566",
       "name": "Rita Chidiac",
       "faculty": "Faculty of Sport Sciences",
       "campusId": "zgharta",
       "role": "student"
     },
     {
-      "id": "20190832",
+      "id": "201908320",
+      "legacyId": "20190832",
       "name": "Fadi Estephan",
       "faculty": "Faculty of Engineering and Technology",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20200419",
+      "id": "202004190",
+      "legacyId": "20200419",
       "name": "Christelle Azar",
       "faculty": "Antonine School of Business",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20180273",
+      "id": "201802730",
+      "legacyId": "20180273",
       "name": "Pascal Hakim",
       "faculty": "Faculty of Information and Communication",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20170655",
+      "id": "201706550",
+      "legacyId": "20170655",
       "name": "Rola Tannous",
       "faculty": "Faculty of Public Health",
       "campusId": "baabda",
       "role": "student"
     },
     {
-      "id": "20150901",
+      "id": "201509010",
+      "legacyId": "20150901",
       "name": "Dr. Michel Gerges",
       "faculty": "Faculty of Engineering and Technology",
       "campusId": "baabda",
       "role": "staff"
     },
     {
-      "id": "20120744",
+      "id": "201207440",
+      "legacyId": "20120744",
       "name": "Dr. Hala Yazbeck",
       "faculty": "Antonine School of Business",
       "campusId": "baabda",
       "role": "staff"
     },
     {
-      "id": "20080318",
+      "id": "200803180",
+      "legacyId": "20080318",
       "name": "Pr. Samir Khalil",
       "faculty": "Faculty of Theology",
       "campusId": "baabda",
       "role": "staff"
     },
     {
-      "id": "20050526",
+      "id": "200505260",
+      "legacyId": "20050526",
       "name": "Dr. Nadine Issa",
       "faculty": "Faculty of Music and Musicology",
       "campusId": "baabda",
       "role": "staff"
     },
     {
-      "id": "20010112",
+      "id": "200101120",
+      "legacyId": "20010112",
       "name": "Elias Moussa",
       "faculty": "Faculty of Information and Communication",
       "campusId": "zahle",

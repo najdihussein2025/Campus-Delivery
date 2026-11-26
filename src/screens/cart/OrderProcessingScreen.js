@@ -1,69 +1,36 @@
-import React, { useEffect, useEffectEvent, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, Easing, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused, usePreventRemove } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useReduceMotion from '../../components/motion/useReduceMotion';
-import { useApp } from '../../context/AppContext';
-import { useNetwork } from '../../context/NetworkContext';
 import { useTheme } from '../../context/ThemeContext';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { makeTypography, MAX_FONT_SCALE, radius, spacing } from '../../theme/theme';
 import * as haptics from '../../utils/haptics';
 
 const PROCESSING_MS = 1200;
-const ORDER_ERROR = 'Could not place the order. Check your bag, delivery slot and payment.';
 
 export default function OrderProcessingScreen({ navigation, route }) {
-  const { checkoutKey, request } = route.params;
-  const { placeOrder } = useApp();
-  const { isOnline } = useNetwork();
+  const { order } = route.params;
   const { colors, isDark } = useTheme();
   const styles = useThemedStyles(createStyles);
   const isFocused = useIsFocused();
   const reduceMotion = useReduceMotion();
   const [rotation] = useState(() => new Animated.Value(0));
-  const submitted = useRef(false);
-  const [result, setResult] = useState(null);
-  usePreventRemove(!result, () => {});
-
-  const submit = useEffectEvent(() => {
-    if (submitted.current) return;
-    submitted.current = true;
-    if (!isOnline) {
-      setResult({ error: "You're offline. Reconnect to place your order." });
-      return;
-    }
-    try {
-      const order = placeOrder(request);
-      setResult(order ? { order } : { error: ORDER_ERROR });
-    } catch (error) {
-      console.log('Checkout failed', error.message);
-      setResult({ error: ORDER_ERROR });
-    }
-  });
+  const [finished, setFinished] = useState(false);
+  usePreventRemove(!finished, () => {});
 
   useEffect(() => {
-    const timer = setTimeout(() => submit(), PROCESSING_MS);
+    const timer = setTimeout(() => setFinished(true), PROCESSING_MS);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!result) return;
-    if (result.error) {
-      navigation.popTo('Checkout', { processingError: result.error });
-      return;
-    }
-
-    const state = navigation.getState();
-    const checkoutIndex = state.routes.findIndex((entry) => entry.key === checkoutKey);
-    const routes = [
-      ...state.routes.slice(0, checkoutIndex),
-      { name: 'OrderConfirmation', params: { order: result.order } },
-    ];
+    if (!finished) return;
     haptics.success();
-    navigation.reset({ index: routes.length - 1, routes });
-  }, [checkoutKey, navigation, result]);
+    navigation.replace('OrderConfirmation', { order });
+  }, [finished, navigation, order]);
 
   useEffect(() => {
     if (reduceMotion) return undefined;
