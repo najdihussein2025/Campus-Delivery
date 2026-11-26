@@ -1,6 +1,6 @@
 # Phone test checklist (Expo Go)
 
-These features cannot be tested in the browser. Tick each box on **a real Android phone** and **a real iPhone**, in **Expo Go**, with the phone and laptop on the same Wi-Fi (`npx expo start`, or `--tunnel` on the university Wi-Fi).
+Use phones to verify the following device behavior. The empty boxes are a test plan. Tick each box on **a real Android phone** and **a real iPhone**, in **Expo Go**, with the phone and laptop on the same Wi-Fi (`npx expo start`, or `--tunnel` on the university Wi-Fi).
 
 Before you start: log in with **Use demo account**. Open **Profile → Demo settings**, set the demo date to a weekday (**Next weekday**) so UA is open, set time `11:00`, and set **Tracking speed → Demo** (20 s per step).
 
@@ -13,9 +13,9 @@ Legend: ☐ Android ☐ iPhone – tick both columns.
 | 1.1 | Place an order (Cafeteria, wallet) | A sheet explains notifications; **Turn on** shows the system permission prompt | ☐ | ☐ |
 | 1.2 | Tap **Allow** | Toast "Notifications are on" | ☐ | ☐ |
 | 1.3 | Profile → Notifications → **Send a test notification**, lock the phone | A notification "CampusGo test" arrives after about 5 s | ☐ | ☐ |
-| 1.4 | Place an order, then **lock the phone / send the app to the background** and wait about 20 s per step | "Preparing", "On the way" and "Delivered to Building …, Room …" arrive one after another | ☐ | ☐ |
+| 1.4 | Place an order, then **lock the phone / send the app to the background** and wait about 20 s per step | Demo-labeled order updates arrive in status order | ☐ | ☐ |
 | 1.5 | Tap the "Delivered" notification | CampusGo opens on **that order's** Tracking screen | ☐ | ☐ |
-| 1.6 | Swipe the app away (not Force stop), place an order first, wait | Notifications still arrive; tapping opens the right order after a cold start | ☐ | ☐ |
+| 1.6 | Place an order, then swipe the app away without force-stopping it | Notifications still arrive; tapping opens the right order after a cold start | ☐ | ☐ |
 | 1.7 | Deny the permission (reinstall or reset it in Settings). Profile → Notifications | "Notifications are off" + **Open settings**; tapping it opens the phone's Settings | ☐ | ☐ |
 | 1.8 | Allow it in the phone's Settings, come back to the app | The status turns on by itself; an active order's notifications are scheduled | ☐ | ☐ |
 | 1.9 | Turn on **Break reminders** (10 min) | No crash; reminders only for open UA days | ☐ | ☐ |
@@ -34,10 +34,10 @@ Legend: ☐ Android ☐ iPhone – tick both columns.
 
 | # | Step | Expected | Android | iPhone |
 | --- | --- | --- | --- | --- |
-| 3.1 | Printing Office → **Choose a file** → a PDF | File chip, page count detected, price updates | ☐ | ☐ |
+| 3.1 | Printing Office → **Choose a file** → a PDF | File chip appears. If a page estimate is available, check it and review the price | ☐ | ☐ |
 | 3.2 | Choose a **.docx** | Accepted; "Enter the number of pages" (Word files are not counted) | ☐ | ☐ |
-| 3.3 | Open the picker and **cancel** | Toast "No file selected", nothing breaks | ☐ | ☐ |
-| 3.4 | Choose a file bigger than 25 MB or an unsupported type (e.g. .zip) | Red message and a Toast, no crash | ☐ | ☐ |
+| 3.3 | Open the picker and **cancel** | The current print form stays unchanged | ☐ | ☐ |
+| 3.4 | Choose a file bigger than 25 MB or an unsupported type (e.g. .zip) | The file is rejected with an inline message when the picker returns it | ☐ | ☐ |
 | 3.5 | **Change** and **×** on the file chip | Works | ☐ | ☐ |
 
 ## 4. Display and layout
@@ -72,7 +72,7 @@ Note: airplane mode also cuts Expo Go from the laptop, so reload the app afterwa
 | 6.5 | Demo settings → **Independence Day (23 Nov)** | "UA is closed – Independence Day …" | ☐ | ☐ |
 | 6.6 | Demo settings → **Christmas break** | "🎄 UA is closed – Christmas & New Year's" and the next opening date | ☐ | ☐ |
 | 6.7 | Date = a weekday, time `13:50` | Banner shows the **14:15–15:30 (long break)** | ☐ | ☐ |
-| 6.8 | Time `21:00` | Only the Cafeteria is open; "No more breaks today – ordering opens tomorrow at 09:45" | ☐ | ☐ |
+| 6.8 | Time `21:00` | Cafeteria and Coffee Corner are open on an open weekday, but no delivery slots remain today | ☐ | ☐ |
 | 6.9 | Reset the demo clock | Real date and time again | ☐ | ☐ |
 
 ## 7. Sign-up with a UA ID
@@ -94,19 +94,19 @@ Tick on a real Android phone and a real iPhone. Then repeat the table with **Red
 | # | Step | Reduce Motion OFF | Reduce Motion ON | Android | iPhone |
 | --- | --- | --- | --- | --- | --- |
 | 8.1 | Onboarding: tap **Next** twice | Reaches slide 3 and the button says "Get started"; dots widen, illustration slides slower than the text | Same pages, only fades | ☐ | ☐ |
-| 8.2 | Home: scroll down a little | Greeting shrinks, date fades, search stays pinned | Search stays pinned, no shrinking | ☐ | ☐ |
-| 8.3 | Store menu: pull down, then scroll up | Hero stretches, then fades; store name appears in the header; underline slides under the tabs | No stretch; fades only | ☐ | ☐ |
-| 8.4 | **Fly-to-bag:** tap **+** on a product without options | Thumbnail flies in an arc to the bag icon, icon bumps, badge number bumps, light haptic | No flight; a toast says "Added … to bag" | ☐ | ☐ |
-| 8.5 | Product sheet: add a product with options | Button morphs to "✓ Added", sheet closes, thumbnail flies to the bag | No flight, toast only | ☐ | ☐ |
+| 8.2 | Home: scroll down a little | Greeting scrolls away and search stays pinned | Search stays pinned | ☐ | ☐ |
+| 8.3 | Store menu: pull down, then scroll up | Cover scrolls, and the selected category underline follows the menu | No stretch; fades only | ☐ | ☐ |
+| 8.4 | **Fly-to-bag:** tap **+** on a product without options | Thumbnail flies in an arc to the bag icon, icon bumps, badge number bumps, light haptic | One temporary added-to-bag confirmation appears | ☐ | ☐ |
+| 8.5 | Product sheet: add a product with options | Button morphs to "✓ Added", sheet closes, thumbnail flies to the bag | One temporary added-to-bag confirmation appears | ☐ | ☐ |
 | 8.6 | **Swipe-to-delete:** swipe a bag row to the left | Red action with a growing trash icon; releasing past the threshold deletes, the row fades out and the rows below slide up; Undo toast works | Row disappears with a short fade | ☐ | ☐ |
 | 8.7 | **Confetti:** raise the bag above $10.00 | A short burst (≤ 1 s) and "🎉 Free delivery unlocked" springs up | No confetti | ☐ | ☐ |
 | 8.8 | Checkout: complete a step | Connector line fills, circle pops, check mark draws | Instant | ☐ | ☐ |
-| 8.9 | Checkout: **Place order** | Full-screen processing, then order confirmation with the booked details. Back cannot return to submitted Checkout. | Same flow with reduced motion | ? | ? |
-| 8.10 | Tracking at Demo speed | Preparing, On the way, and Delivered appear at 20-second intervals from placement. The booked break stays visible. | Same timing with reduced motion | ☐ | ☐ |
-| 8.11 | **Stamp animation:** order 2 coffees from Coffee Corner, wait for delivery, open **Coffee stamps** | New stamps land like a rubber stamp with a haptic; at 10/10 a shimmer sweeps and the "Free coffee" badge bounces | Stamps just appear | ☐ | ☐ |
+| 8.9 | Checkout: **Place order** | Full-screen processing, then confirmation with the booked details. Bag does not flash, and Back does not reopen submitted Checkout. Test both payment methods. | Same flow with reduced motion | ☐ | ☐ |
+| 8.10 | Tracking at Demo speed | With demo time active, the stages advance at 20-second intervals. The booked break and scheduled ETA remain visible. | Same timing with reduced motion | ☐ | ☐ |
+| 8.11 | **Stamp animation:** order 2 coffees from Coffee Corner, wait for delivery, open **Coffee Rewards** | New stamps land like a rubber stamp with a haptic; at 10/10 a shimmer sweeps and the "Free coffee" badge bounces | Stamps just appear | ☐ | ☐ |
 | 8.12 | Wallet: switch Week / Month, tap a bar, top up | Bars grow one after another, the tapped bar lifts, the balance rolls to the new value, the new transaction slides in highlighted | Values swap | ☐ | ☐ |
 | 8.13 | **Tab bar:** tap each tab | Icon bounces, the indicator slides between tabs, content cross-fades, bag badge bumps when the count changes | Indicator jumps, no bounce | ☐ | ☐ |
 | 8.14 | Profile → Appearance → Dark | Whole screen cross-fades (~200 ms), headers turn deep navy with a thin bottom border | Same, instant | ☐ | ☐ |
-| 8.15 | Pull Home and Orders down to refresh | Skeleton cards shimmer while loading | Static skeletons | ☐ | ☐ |
+| 8.15 | Pull Home down to refresh | Skeleton cards shimmer while loading | Static skeletons | ☐ | ☐ |
 | 8.16 | Set the demo date to a Saturday | The "UA is closed" emoji drops in once, nothing keeps moving | Fade only | ☐ | ☐ |
 | 8.17 | Low-end Android (if available): scroll Home and the store menu quickly | No dropped taps, no visible stutter | — | ☐ | — |

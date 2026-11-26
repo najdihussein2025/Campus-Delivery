@@ -1,201 +1,91 @@
-# CampusGo – User Guide
+# CampusGo user guide
 
-**Your campus, delivered between classes.** CampusGo lets you order food, drinks, stationery and printing from the stores on the Université Antonine campus. Your order is brought to your building and room during a class break.
+CampusGo is a university course demo. You can place sample orders for campus-room delivery, but no money is charged and no food, supplies, or print jobs are dispatched.
 
-> Screenshots: the images below are placeholders. See [screenshots/README.md](screenshots/README.md) for the list of pictures to take.
+## 1. Open CampusGo
 
----
+1. On the computer, install Node.js LTS. Open the project folder and run `npm ci`, then `npm start`.
+2. Install a compatible version of **Expo Go** on your phone. Connect the phone and computer to the same network.
+3. On Android, scan the terminal QR code with Expo Go. On iPhone, scan it with the Camera app and open the link.
+4. On first launch, tap **Next** through the introduction and then **Get started**, or use **Skip**.
 
-## 1. Installing Expo Go and opening the app
+For a browser preview, run `npm run web`. Local notifications are a phone feature. See the [project README](../README.md) for emulator and connection options.
 
-1. On your phone, install **Expo Go** (Google Play on Android, App Store on iPhone).
-2. Make sure your phone and the laptop that runs the app are on the **same Wi-Fi**.
-3. On the laptop, the team runs `npx expo start`. A **QR code** appears in the terminal.
-4. **Android:** open Expo Go and tap **Scan QR code**. **iPhone:** open the normal **Camera** app, point it at the code and tap the banner.
-5. CampusGo opens. The first time you see three short introduction slides; tap **Next** (or **Skip**).
+## 2. Register or log in
 
-If the university Wi-Fi blocks the connection, ask the team to start the app with `npx expo start --tunnel`.
+- At Welcome, tap **Create account**. Enter your name, university email ending in `@ua.edu.lb`, and a password of at least six characters. Confirm the password and tap **Next**.
+- Enter an unused student or staff ID with **exactly nine digits**, select your faculty and campus, and enter a Lebanese phone number such as `71123456`. Tap **Create account**. The form checks the ID format and uniqueness. It requires a unique email. New accounts start with **$10.00** in simulated wallet credit.
+- To return to an existing account, tap **Log in** and enter your university email and password.
+- To try the app with seeded data, tap **Use demo account** on Welcome and then **Log in**. The credentials are `student@ua.edu.lb` and `campus123`.
 
-![Welcome screen](screenshots/welcome.png)
+## 3. Browse, search, and customize
 
-## 2. Signing up and logging in
+Open **Home** for the four campus stores. Search by store or product name, or tap **All**, **Food**, **Drinks**, **Stationery**, or **Printing** under **Campus stores**. Store cards show the location, approximate preparation time, and opening status. You can browse a closed store, but ordering is unavailable.
 
-- **Quick try:** on the Welcome screen tap **Use demo account**. It fills in `student@ua.edu.lb` / `campus123` for you. The demo account already has a wallet, past orders, a coffee card at 8/10 stamps and a saved place called "My Lab".
-- **Log in:** type your university email and your password. You can type only your username (for example `maya`): the app adds `@ua.edu.lb`.
-- **Sign up** (2 steps):
-  1. Name, university email (must end with **@ua.edu.lb**), password (at least 6 characters, typed twice).
-  2. Your **UA ID** (exactly 9 digits and unused by another account), Lebanese phone (such as 71123456), faculty, and campus.
-- An email can only be registered once. New accounts receive a **$10.00 welcome credit**.
-- Red messages under a field tell you exactly what to fix.
+In **UA Cafeteria** or **Coffee Corner**, search within the menu or tap the filter icon beside the search field. Select the filters you want and tap **Apply filters**. All selected filters must match. Remove a chip to remove one filter, or use **Clear all** in the filter sheet. Coffee Corner may show the customization needed for a match. Bookstore has category browsing and no dietary filters. Use **Profile → Dietary preferences → Save** to keep your dietary choices for future menu visits.
 
-![Login](screenshots/login.png)
+Tap a product to see its details. Select a size, extras, or cover color where available, choose a quantity, and tap **Add to bag**. Some cards have a **+** shortcut. Products marked **Out of stock** cannot be added. After a successful addition, the temporary confirmation links to the Bag.
 
-## 3. Browsing stores
+## 4. Order printed documents
 
-The **Home** tab shows:
+Open **Print** or tap **Printing Office** on Home.
 
-- A banner with the **next break you can still order for** (a ring around the clock shows the time left, amber in the last 5 minutes), your **wallet balance** (with a **Top up** button) and your **coffee-stamp progress**.
-- The greeting shrinks when you scroll and the **search bar stays pinned** at the top, with a **Diet** chip next to it.
-- Four stores: **UA Cafeteria**, **Coffee Corner**, **Bookstore & Stationery** and **Printing Office**. Each card shows the logo, the category, where the store is, the average preparation time ("≈ 15 min") and its opening hours.
-- **Open / Closed:** a green badge means you can order now. A red "Closed · opens 08:00" badge means you can still browse the menu, but you cannot add items or check out.
-- **Search:** type a store or a product name. Products that match appear under the stores.
-- **Category chips:** All, Food, Drinks, Stationery, Printing.
-- **Dietary filters:** tap the **Diet** chip to choose Vegetarian, Vegan, Siyami (Lenten fasting food), Halal or Iftar. You can pick several: a product must match **all** of them. The chip shows how many are on. Save your favourites in **Profile → My diet**.
-- Pull down to refresh.
+1. Tap **Choose a file** and select a PDF, Word file, or image of up to 25 MB. Tap **Use a sample document** to try the form without a file of your own.
+2. Review or enter **Pages per copy**. Automatic estimates are approximate and may be blank.
+3. Choose **Black & White** or **Color**, the double-sided option, and binding.
+4. Set the number of copies, review the price, and tap **Add to bag**.
 
-![Home](screenshots/home.png)
+Black and white is **$0.05** per page and color is **$0.25** per page. Staple binding adds **$0.25** per copy, spiral adds **$1.50**, and no binding is free. The price is pages per copy × copies × page rate, plus the binding charge for each copy. Double-sided printing changes the sheet count at the same price. The limit is **200 printed pages across all jobs in the Bag**.
 
-## 4. Ordering food and drinks
+## 5. Manage the Bag
 
-1. Tap a store, then a product.
-2. On the product sheet choose a **size** and **extras** (each shows its extra price), and the **quantity**.
-3. Tap **Add to bag**. The button turns into **✓ Added** and the picture flies into your bag. On a menu, the **+** on a product without sizes or extras adds it straight away.
-   (With the phone's *Reduce Motion* setting on, the picture does not fly; you get a message instead.)
-4. Items marked **Out of stock** cannot be added.
+Open **Bag** to review the items and estimated total. Use the quantity controls, **Edit options** where available, or remove a line and use **Undo** if needed. **Clear bag** asks for confirmation. The Bag accepts items from one store at a time and asks before replacing existing items with another store's order.
 
-**One store per bag.** A bag can only contain items from one store. If you try to add something from another store, the app asks whether to empty your bag first.
+The minimum is **$2.00** after any coffee reward. Delivery costs **$0.50** and becomes free automatically when the discounted subtotal exceeds **$10.00**. Tap **Proceed to checkout** when the Bag is eligible.
 
-In the **Bag** tab you can change quantities (the − button is greyed at 1), remove an item with the **✕** or by **swiping it to the left** (with **Undo**), or clear the bag. When you pass $10.00 a little confetti celebrates free delivery.
+## 6. Check out
 
-Prices:
+1. **Location.** Choose a saved location or select a building, floor, and room number at your campus. Use **Continue** for a new location. Turn on **Save this location** and enter a label to reuse it.
+2. **Delivery.** Choose an available break. Each available row shows **Order by** and an **ETA**. Preparation time depends on the store, and transportation takes three additional minutes. The app schedules the earliest arrival within the break. A break that has started can still accept orders if enough time remains. An expired break or a break that cannot be served in time is unavailable.
+3. **Payment.** Select **Campus wallet** or **Cash on delivery**. Wallet payments need enough balance. Use **Top up** or select cash if your balance is too low.
+4. Tap **Place order**, review **Confirm your order**, and tap **Place order** again. **Placing your order…** leads to **Order placed!**, where you can select **Track order** or **Back to home**.
 
-- **Minimum order: $2.00** (what you pay, after any free coffee).
-- **Delivery: $0.50, or free on orders over $10.00.** The bag tells you how far you are from free delivery.
+For example, at the Cafeteria, a **12:20** order for **12:45–13:00** is expected at **12:45**. The same order confirmed at **12:35** is expected at **12:53**. The last valid confirmation is **12:42:00** on an open day.
 
-![Product](screenshots/product.png)
-![Bag](screenshots/bag.png)
+## 7. Track, cancel, rate, or reorder
 
-## 5. Ordering printing
+**Track order** shows the selected break, estimated arrival, location, and progress through **Received**, **Preparing**, **On the way**, and **Delivered**. In normal time, statuses follow the saved campus schedule. If preparation starts immediately, you may already see **Preparing** when tracking opens.
 
-Open the **Printing Office** card (or the Print screen).
+- Tap **Cancel order** while the order is **Received**. Wallet payments are refunded. Preparation ends the cancellation window as soon as it starts.
+- After **Delivered**, select one to five stars and optionally add feedback. Tap **Submit rating**.
+- In **My orders**, switch between **Active** and **Past** and use store or status filters. Open an order to see its progress. Tap **Reorder** on an eligible past order and review current prices and available items before tapping **Add to bag**.
+- For a print reorder, the app reuses saved files when available. If a file is missing, tap **Select document again** beside that job, review the original print settings, then confirm the reorder. Cancelling leaves the Bag as it was.
 
-1. **Document:** Tap **Choose a file** (PDF, Word or image, up to 25 MB). The app estimates pages for supported files. You can also choose **Use a sample document**. When you add a real print job to the Bag, CampusGo saves a copy locally and keeps its reference with the job.
-2. **Pages per copy:** Enter the number of pages in one copy or check and correct the suggested count.
-3. **Options:** Black & white or Colour, double-sided (saves paper, same price), binding.
-4. **Copies:** use the + / − buttons.
+## 8. Profile, wallet, and rewards
 
-| Item | Price |
+- **Campus and saved locations.** Use **Profile → Campus** to select your campus. In **Saved locations**, tap **+ Add location**, choose the room, and tap **Save location**. Use the edit or delete icon to manage an existing place.
+- **Campus wallet.** Open it from Profile or tap **Top up** on Home. Choose **$5**, **$10**, **$20**, or enter a custom amount up to **$200**. Tap the top-up button to add simulated credit. **Transactions** shows top-ups, payments, and refunds. The wallet also shows spending insights.
+- **Coffee Rewards.** View progress at Coffee Corner or through **Profile → Coffee Rewards**. Each eligible paid coffee earns one stamp when delivered. Ten stamps earn one free coffee reward. With a qualifying coffee in the Bag, tap **Apply** in the reward card. The reward covers one eligible coffee and its size. Extras remain payable. You can remove the discount before placing the order. An eligible cancelled order restores a consumed reward.
+- **Appearance.** Choose **System**, **Light**, or **Dark** in Profile. System follows the device setting.
+- **Notifications.** Open **Profile → Notifications**. Enable notifications through the app or phone settings, then choose order updates or break reminders. Reminders can be set to **10**, **15**, or **20 minutes** before a break. Tap **Send a test notification** to check permissions.
+- **Log out.** Tap **Log out** in Profile and confirm.
+
+## 9. Demonstrate the app
+
+1. Sign in with the demo account and open **Profile → Demo settings**.
+2. Enter an open academic date and tap **Set date**, or use a quick date. Enter **12:20** and tap **Set time**.
+3. Under **Tracking speed (new orders)**, select **Fast** (8 seconds per stage), **Demo** (20 seconds), or **Slow** (60 seconds).
+4. Place a Cafeteria order for **12:45–13:00** and open tracking. The simulated statuses advance quickly while the scheduled ETA stays at **12:45**.
+5. Tap **Reset** to restore the real clock for new orders. Since saved orders keep their original schedules, resetting the clock does not change their progress. **Simulate offline** demonstrates the offline state. **Reset demo data** restores the demo account's starting order history, wallet, and stamps.
+
+## 10. Troubleshooting
+
+| Problem | What to check |
 | --- | --- |
-| Black & white page | $0.05 |
-| Colour page | $0.25 |
-| Binding – none | $0.00 |
-| Binding – staple | $0.25 per copy |
-| Binding – spiral | $1.50 per copy |
-
-Price = pages × copies × page price + binding × copies. The total updates live at the bottom (tap it to see the breakdown).
-
-**200-page limit.** Each order can have up to 200 printed pages across all print jobs. Four copies of 50 pages reach the limit. The Copies card also shows physical sheets, rounding up each double-sided copy separately.
-
-![Print](screenshots/print.png)
-
-## 6. Checkout
-
-Tap **Checkout** in the bag. There are three steps; each finished step folds into one line you can tap to change.
-
-1. **Location:** Select a **saved place** or confirm a **new location** with a building, floor, and room number (1–99). Every checkout starts with no location selected. A new room code such as **G.2.15** appears on the door sign. Choose **Save this location** and enter a name to reuse the location later.
-2. **Delivery:** Choose a **delivery break** for the displayed date. Available breaks come first, and the earlier or unavailable breaks are grouped below them.
-   - UA's breaks are 09:45, 11:15, 12:45, **14:15–15:30 (the long break)**, 16:45, 18:15 and 19:45.
-   - A break is **greyed out** if it already started (**Passed**), if the store cannot prepare your order in time (**Too close – needs N min**), or if it starts after the store closes (**Store closed**).
-   - Available breaks show "Order by HH:MM".
-3. **Payment:**
-   - **Campus wallet:** the amount is taken from your balance. If your balance is too low, the app shows how much is missing and a **Top up** button.
-   - **Cash on delivery:** pay the courier. Always allowed.
-
-The **Place order** button looks greyed while something is missing and says what (for example "Choose a delivery break to continue"). Press **Place order** to see a summary, then confirm.
-
-![Checkout](screenshots/checkout.png)
-
-## 7. Tracking, cancelling and rating
-
-After ordering, tap **Track order** (or open it from Home / My orders).
-
-- The timeline shows **Received → Preparing → On the way → Delivered to Building X, Room Y**, with the break you chose (for example "15:15–15:30 break").
-- A courier is assigned to your order.
-- **Cancel:** possible only while the order is still **Received**. Wallet payments are refunded immediately and the screen shows "Cancelled at HH:MM · Refunded $X to wallet".
-- **Rate:** when the order is delivered, give 1–5 stars, pick quick tags (Fast, Hot, Friendly courier, Accurate) and optionally write a comment.
-
-> The simulated status starts advancing after placement. The booked break is displayed separately.
-
-![Tracking](screenshots/tracking.png)
-
-## 8. Order history
-
-The **My orders** tab lists your orders. Use **Active / Past**, the store filter and the status filter (Received, Preparing, On the way, Delivered, Cancelled). Tap an order to open its tracking page. Tap **Reorder** on a past order to put its items in your bag again (items now out of stock are skipped, and the app asks before replacing a bag from another store). Print jobs can be reordered when their saved documents are available.
-
-![Orders](screenshots/orders.png)
-
-## 9. Profile, saved locations and wallet
-
-In the **Profile** tab:
-
-- Your details, **campus** (Hadat–Baabda, Nabi Ayla–Zahle or Mejdlaya–Zgharta: the buildings you can choose follow it).
-- **Saved locations:** places you use often (for example "My Lab – Building D, Room D.2.8"). Add them at checkout; remove them here.
-- **Wallet:** balance, **top-up** ($5, $10, $20 or a custom amount up to $200) and the list of **transactions** grouped by day (top-ups, payments, refunds).
-- **Log out** at the bottom.
-
-![Profile](screenshots/profile.png)
-![Wallet](screenshots/wallet.png)
-
-## 10. Extras
-
-- **Coffee Rewards:** Each eligible paid coffee earns a stamp when delivered. Ten stamps earn one free coffee. Choose **Apply reward** in the Bag to discount one eligible coffee per order. Size is included and extras stay payable. Cancelled orders earn no stamps and restore any redeemed reward.
-- **Dark mode:** **Profile → Appearance** – System, Light or Dark (the screen fades smoothly when you switch).
-- **Animations:** all motion respects your phone's *Reduce Motion* setting (Android: *Remove animations*).
-- **Notifications:** **Profile → Notifications**. The app can tell you when your order is being prepared, on the way and delivered, even with the phone locked. You can also turn on **break reminders** (10, 15 or 20 minutes before a break). Use **Send a test notification** to check your phone.
-- **Offline mode:** without internet a banner says "You're offline – showing saved data". You can still browse stores, your bag, orders and wallet history. Placing an order and topping up need a connection.
-- **Spending insights:** in the **Wallet**, see how much you spent this week or month, by day or by store, compared with the previous period.
-- **Seasons:** during Lent or Ramadan, a banner offers Siyami or Iftar filters in one tap.
-
-![Loyalty](screenshots/loyalty.png)
-
-## 11. For the presenter
-
-### Demo clock and tracking speed
-
-Stores and breaks depend on the time of day, so the app has a **demo clock**.
-
-1. **Profile → Demo settings.**
-2. Set the **date** (`YYYY-MM-DD`, or the quick buttons: Next weekday, A Saturday, Christmas break, Independence Day) and/or type a time such as `11:00` and press **Set time**. On a Saturday, a holiday or between semesters UA is closed: Home shows why and ordering is blocked (a great thing to show in the demo). **Reset** returns to the real date and time.
-3. Type a time such as `11:00` and press **Set time**. Everything (open/closed, breaks, greetings, banner) now uses it. **Reset** returns to the phone's time.
-3. **Tracking speed:** **Fast** (8 s), **Demo** (20 s, default) or **Slow** (60 s). The setting affects the interval between simulated stages for new orders.
-4. **Simulate offline** shows the offline mode without turning Wi-Fi off. **Reset demo data** restores the demo account.
-
-Tip: `11:00` opens every store and leaves most breaks available.
-
-### Suggested 5-minute demo script
-
-| Time | What to do | Requirement shown |
-| --- | --- | --- |
-| 0:00 | Welcome → **Use demo account** | Login, validation, demo data |
-| 0:30 | Home: point at the banner (next break + wallet), the 4 store cards (logo, category, location, prep time, hours), search "latte" and a dietary filter | Store list, search, open/closed |
-| 1:15 | Open **Coffee Corner**, add a **cappuccino** (size + extra), then try adding a sandwich from the **Cafeteria** → one-store prompt | Menu, options, one-store rule |
-| 2:00 | Open the **Bag**: change quantity, note the delivery line, minimum order | Cart, totals, minimum, free delivery |
-| 2:20 | **Printing Office** → **Use a sample document**, set 0 pages (price $0.00), then 60 pages × 4 copies (limit message), fix it, spiral binding, **Add to bag** | Printing price and 200-page rule |
-| 3:00 | **Checkout:** saved place **My Lab**, choose a break (point at greyed ones), pay with the **wallet** | Location, slots, payment |
-| 3:40 | **Track:** watch the timeline reach "Delivered to Building D, Room D.2.8"; show the estimated arrival; **Cancel** a second order to show the refund | Tracking, cancel, refund |
-| 4:20 | Rate the order; show the **stamp** added; open **My orders** filters and **Reorder** | Rating, history, loyalty |
-| 4:45 | **Profile:** wallet top-up, dark mode, offline simulation; then **Demo settings → A Saturday** to show "UA is closed on weekends" | Wallet, extras, closed days |
-
-## 12. FAQ and troubleshooting
-
-**The QR code does not open the app.** Check that the phone and the laptop use the same Wi-Fi, or ask the team to restart with `npx expo start --tunnel`.
-
-**A store says "Closed".** Stores have opening hours (for example the Cafeteria is open 07:30–22:00, Monday to Friday) and the university is closed on weekends, public holidays and between semesters. You can still browse, but not order: the banner on Home tells you why and when ordering opens (for example "UA is closed on weekends · Ordering opens Monday at 09:45"). Some holiday dates are marked "(date may change)" because they depend on the moon. In a demo, set the demo clock to `11:00` on a weekday.
-
-**All delivery breaks are greyed out.** Breaks that already started, that come before the store can prepare your order, or that start after closing are disabled. Pick a later one, or try tomorrow (the Home banner says when ordering opens).
-
-**"Add $X more to reach the $2.00 minimum".** The minimum order is $2.00 after any discount.
-
-**"Insufficient balance".** Top up your wallet or pay by cash on delivery.
-
-**I cannot cancel my order.** Cancelling is only possible while the order is "Received", before the store starts preparing.
-
-**The page count of my file is wrong or empty.** The app only estimates it. Type the right number yourself.
-
-**My document is over 200 pages.** One order can print at most 200 pages (pages × copies). Split it into two orders.
-
-**I do not get notifications.** Allow them in **Profile → Notifications** (or your phone's settings). Expo Go on Android does not support remote push, but CampusGo uses local notifications, which work. Force-stopping the app on Android cancels scheduled notifications.
-
-**I forgot my password.** The demo has no password reset: create a new account with another email, or use the demo account.
-
-**Start again.** In **Demo settings**, **Reset demo data** restores the demo account.
+| The QR code does not connect | Use the same network, check that Expo Go supports the project's SDK, or start Metro with `npx expo start --tunnel`. |
+| A store is closed | Check the store hours and campus calendar. In a demonstration, set an open weekday and a time during store hours. |
+| No breaks are available | The store may be closed, or there may be too little time for preparation and transportation. Try an eligible later break or return on the next open day. |
+| The Bag cannot check out | Meet the $2.00 discounted subtotal, check stock, and choose a valid room, break, and payment method. If offline, reconnect. |
+| The print estimate is wrong | Enter the correct number under **Pages per copy**. For a missing reorder file, select it again in the reorder sheet. |
+| A notification did not appear | Check system permissions on a phone and try **Send a test notification**. The web preview does not send local notifications. |
+| You forgot a password | This prototype has no password reset. To continue demonstrating, use the demo account or a different unused email and ID. |
