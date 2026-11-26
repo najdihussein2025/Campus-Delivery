@@ -1,50 +1,98 @@
 import React, { useState } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Chip from './Chip';
 import ConfirmModal from './ConfirmModal';
 import PressableScale from './motion/PressableScale';
+import BumpBadge from './motion/BumpBadge';
 import { DIET_TAGS } from '../utils/diet';
 import { MAX_FONT_SCALE, fonts, radius, spacing } from '../theme/theme';
 import { useTheme } from '../context/ThemeContext';
+import useThemedStyles from '../hooks/useThemedStyles';
 
-// One "Diet" chip (with a count badge when filters are on) that opens a small bottom sheet with the 5 diets.
-// Same filter logic as before: multi-select, a product must match ALL selected tags (see utils/diet.js).
-export default function DietChip({ selected, onToggle, onClear }) {
+const createStyles = (c) => StyleSheet.create({
+  iconButton: {
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: radius.md,
+    borderColor: c.border,
+    backgroundColor: c.surface,
+  },
+  active: { backgroundColor: c.primarySoft, borderColor: c.primary },
+  count: { position: 'absolute', top: -3, right: -3 },
+});
+
+export default function DietChip({ selected, onToggle, onClear, onApply, options = DIET_TAGS, iconOnly = false }) {
   const { colors } = useTheme();
+  const styles = useThemedStyles(createStyles);
   const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState([]);
+  const staged = Boolean(onApply);
+  const checked = staged ? draft : selected;
+  const close = () => setOpen(false);
+  const openFilters = () => {
+    if (staged) setDraft(selected);
+    setOpen(true);
+  };
   return (
     <>
-      <Chip
-        label="Diet"
-        icon="leaf-outline"
-        selected={selected.length > 0}
-        count={selected.length || undefined}
-        onPress={() => setOpen(true)}
-      />
+      {iconOnly ? (
+        <PressableScale
+          onPress={openFilters}
+          style={[styles.iconButton, selected.length > 0 && styles.active]}
+          accessibilityLabel={`Dietary filters, ${selected.length} active`}
+          accessibilityState={{ expanded: open }}
+        >
+          <Ionicons name="filter-outline" size={22} color={colors.primaryText} />
+          <BumpBadge value={selected.length} style={styles.count} />
+        </PressableScale>
+      ) : (
+        <Chip
+          label={staged ? 'Dietary filters' : 'Diet'}
+          icon={staged ? 'filter-outline' : 'leaf-outline'}
+          selected={selected.length > 0}
+          count={selected.length || undefined}
+          onPress={openFilters}
+        />
+      )}
       <ConfirmModal
         visible={open}
         icon="leaf"
-        title="Dietary preferences"
-        message="Show only products that match all the diets you pick."
-        confirmLabel="Done"
-        cancelLabel={selected.length ? 'Clear all' : undefined}
-        onConfirm={() => setOpen(false)}
-        onCancel={selected.length ? () => onClear && onClear() : undefined}
+        title={staged ? 'Dietary filters' : 'Dietary preferences'}
+        message="Show items that match all selected filters."
+        confirmLabel={staged ? 'Apply filters' : 'Done'}
+        cancelLabel={staged || selected.length ? 'Clear all' : undefined}
+        onConfirm={() => {
+          if (staged) onApply(draft);
+          close();
+        }}
+        onCancel={staged ? () => { onClear(); close(); } : selected.length ? onClear : undefined}
+        onDismiss={staged ? close : undefined}
       >
         <FlatList
-          data={DIET_TAGS}
-          scrollEnabled={false}
+          data={options}
           keyExtractor={(item) => item.id}
-          extraData={selected}
-          style={{ alignSelf: 'stretch', marginTop: spacing.md }}
+          style={{ alignSelf: 'stretch', marginTop: spacing.md, flexGrow: 0, maxHeight: 288 }}
           renderItem={({ item }) => {
-            const on = selected.includes(item.id);
+            const on = checked.includes(item.id);
             return (
               <PressableScale
-                onPress={() => onToggle(item.id)}
-                accessibilityLabel={`${item.label}${on ? ', selected' : ''}`}
-                accessibilityState={{ selected: on }}
+                key={item.id}
+                onPress={() => {
+                  if (staged) {
+                    setDraft((prev) => prev.includes(item.id)
+                      ? prev.filter((id) => id !== item.id)
+                      : [...prev, item.id]);
+                  } else {
+                    onToggle(item.id);
+                  }
+                }}
+                accessibilityLabel={item.label}
+                accessibilityRole={iconOnly ? 'checkbox' : 'button'}
+                accessibilityState={iconOnly ? { checked: on } : { selected: on }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -55,16 +103,19 @@ export default function DietChip({ selected, onToggle, onClear }) {
                   backgroundColor: on ? colors.primarySoft : colors.surfaceMuted,
                 }}
               >
-                <Text style={{ fontSize: 20, marginRight: spacing.md }}>{item.emoji}</Text>
+                {!staged ? <Text style={{ fontSize: 20, marginRight: spacing.md }}>{item.emoji}</Text> : null}
                 <Text style={{ flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.text }} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                   {item.label}
                 </Text>
-                <Ionicons name={on ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={on ? colors.primaryText : colors.textMuted} />
+                <Ionicons
+                  name={iconOnly ? (on ? 'checkbox' : 'square-outline') : (on ? 'checkmark-circle' : 'ellipse-outline')}
+                  size={24}
+                  color={on ? colors.primaryText : colors.textMuted}
+                />
               </PressableScale>
             );
           }}
         />
-        <View />
       </ConfirmModal>
     </>
   );

@@ -1,23 +1,25 @@
 import { StyleSheet } from 'react-native';
-import { fonts, radius, shadow, spacing, makeTypography } from '../../theme/theme';
+import { fonts, radius, spacing, makeTypography } from '../../theme/theme';
 
 export const HERO_HEIGHT = 200;
+export const COMPACT_HERO_HEIGHT = 160;
 export const TABS_HEIGHT = 60;
 
 export const createStyles = (c) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.background },
+  menuList: { flex: 1 },
   content: { paddingHorizontal: spacing.lg },
   header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: HERO_HEIGHT + TABS_HEIGHT,
     zIndex: 10,
     elevation: 6,
   },
   headerTitle: { fontFamily: fonts.extrabold, fontSize: 18, color: c.headerText, maxWidth: 220 },
   heroWrap: { height: HERO_HEIGHT, overflow: 'hidden', backgroundColor: c.primaryDark },
+  compactHero: { height: COMPACT_HERO_HEIGHT },
   heroImage: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
   hero: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.md, justifyContent: 'flex-end' },
   heroIcon: { position: 'absolute', right: spacing.lg, top: spacing.lg },
@@ -37,6 +39,16 @@ export const createStyles = (c) => StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: c.border,
   },
+  fullWidthTabs: { paddingLeft: 0, paddingRight: 0 },
+  menuControls: {
+    alignItems: 'flex-start',
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: c.background,
+  },
+  activeFilters: { flexDirection: 'row', flexWrap: 'wrap' },
+  searchRow: { alignSelf: 'stretch', flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  searchInput: { flex: 1, marginBottom: 0 },
   // The tab row: clips the sliding underline to the row (it never shows under the Diet chip)
   tabsClip: { flex: 1, height: TABS_HEIGHT - 1, justifyContent: 'center', overflow: 'hidden' },
   tab: { minHeight: 44, justifyContent: 'center', paddingHorizontal: spacing.md },
@@ -45,6 +57,7 @@ export const createStyles = (c) => StyleSheet.create({
   // Sliding underline: fixed 100 px wide, resized with scaleX from the active tab's measured width
   underline: { position: 'absolute', left: 0, bottom: 0, width: 100, height: 3, borderRadius: 2, backgroundColor: c.primaryText },
   countLine: { ...makeTypography(c).caption, marginTop: spacing.md },
+  loyalty: { marginTop: spacing.md },
   chips: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
   closedBanner: {
     flexDirection: 'row',
@@ -62,37 +75,4 @@ export const createStyles = (c) => StyleSheet.create({
   productRow: { paddingRight: spacing.lg, paddingBottom: spacing.sm },
   bagButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   bagBubble: { position: 'absolute', top: 2, right: -2 },
-  bagBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    backgroundColor: c.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    ...shadow.raised,
-  },
-  bagBarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 54,
-    borderRadius: radius.md,
-    backgroundColor: c.primary,
-    paddingHorizontal: spacing.lg,
-  },
-  bagBarCount: {
-    minWidth: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: c.accentWarm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  bagBarCountText: { fontFamily: fonts.extrabold, fontSize: 14, color: c.primaryDark },
-  bagBarTextBox: { flex: 1, flexDirection: 'row', alignItems: 'center', marginLeft: spacing.md },
-  bagBarText: { fontFamily: fonts.bold, fontSize: 15, color: c.textOnDark },
-  bagBarAction: { fontFamily: fonts.bold, fontSize: 15, color: c.textOnDark, marginRight: 6 },
 });

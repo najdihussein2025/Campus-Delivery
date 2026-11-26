@@ -2,13 +2,14 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { AccessibilityInfo, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loadCampusData } from '../services/api';
-import { calcCartTotals } from '../utils/money';
+import { calcCartTotals, calcPrintPrice } from '../utils/money';
+import { bagItemDetails, getCartItemIssue, getPrintOrderIssue, prepareReorder } from '../utils/cart';
 import { DEFAULT_SPEED, buildStatusSchedule, getOrderStatus, secondsForSpeed } from '../utils/orderStatus';
 import { dateKey } from '../utils/calendar';
-import { findAccount } from '../utils/validation';
-import { formatTime, getNow, getOrderingBlock, offsetForDateTime } from '../utils/time';
+import { findAccount, isRoomForBuilding, validateLogin, validatePrintJob } from '../utils/validation';
+import { formatTime, getNow, getOrderingBlock, getSlotState, isStoreOpen, offsetForDateTime, storeOpensText } from '../utils/time';
 import {
-  canUseReward, consumeReward, emptyLoyalty, refundReward, rewardDiscount, settleDeliveredOrders, willCompleteCard,
+  coffeeCount, consumeReward, emptyLoyalty, getRewardCoffee, refundReward, settleDeliveredOrders, willCompleteCard,
 } from '../utils/loyalty';
 import { activeSeasons } from '../utils/diet';
 import { setHapticsEnabled } from '../utils/haptics';
@@ -155,10 +156,15 @@ export function AppProvider({ children }) {
 
   // Always-current copies, so timers and listeners (and settleDeliveredOrders) never read stale state
   const ordersRef = useRef([]);
+  const cartRef = useRef(EMPTY_CART);
+  const walletRef = useRef(wallet);
   const loyaltyRef = useRef(emptyLoyalty());
   const campusRef = useRef(null);
   const sessionRef = useRef(0); // bumps on logout / demo reset so late async work can be dropped
+  const submittedCartRef = useRef(null);
   ordersRef.current = orders;
+  cartRef.current = cart;
+  walletRef.current = wallet;
   loyaltyRef.current = loyalty;
   campusRef.current = campus;
 
@@ -178,6 +184,11 @@ export function AppProvider({ children }) {
     ordersRef.current = next;
     setOrders(next);
   };
+  const commitCart = (next) => {
+    cartRef.current = next;
+    setCart(next);
+    if (next.storeId !== 'coffee' || !coffeeCount(next.items)) setUseReward(false);
+  };
   const commitLoyalty = (next) => {
     loyaltyRef.current = next;
     setLoyalty(next);
@@ -185,19 +196,19 @@ export function AppProvider({ children }) {
 
   const applyUserData = (raw, loyaltyRaw) => {
     const data = migrateData(raw);
-    setCart(data.cart || EMPTY_CART);
+    commitCart(data.cart || EMPTY_CART);
     setWallet(data.wallet || { balance: 0, transactions: [] });
     commitOrders(data.orders || []);
     commitLoyalty(loyaltyRaw || emptyLoyalty());
     setSavedLocations(data.savedLocations || []);
-    setUseReward(false);
+    setUseReward(Boolean(data.useReward && data.cart?.storeId === 'coffee' && coffeeCount(data.cart.items)));
     setDataReady(true);
   };
 
   // Reads one account's saved data. The demo account is seeded once if it has no orders yet.
   const loadBundle = async (account, campusData, offsetMs) => {
     let data = await readJson(KEYS.data(account.email), newUserData(0));
-    let loyaltyData = await readJson(KEYS.loyalty(account.email), emptyLoyalty());
+    let loyaltyData = data.loyalty ?? await readJson(KEYS.loyalty(account.email), emptyLoyalty());
     const alreadySeeded = await readJson(KEYS.demoSeeded, false);
     if (isDemo(account.email) && (data.orders || []).length === 0 && !alreadySeeded) {
       const bundle = buildDemoBundle(campusData, offsetMs);
@@ -211,7 +222,18 @@ export function AppProvider({ children }) {
       loyaltyData = bundle.loyalty;
       await writeJson(KEYS.demoSeeded, true);
     }
-    return { data, loyalty: loyaltyData };
+    const now = Date.now();
+    const orders = (data.orders || []).map(migrateOrder);
+    const rescheduled = [];
+    const updatedOrders = orders.map((order) => {
+      if (!order.deliveryWindowScheduled || ['Cancelled', 'Delivered'].includes(getOrderStatus(order, now))) return order;
+      const { deliveryWindowScheduled, ...rest } = order;
+      const statusSchedule = buildStatusSchedule(order.placedAtMs, order.stepSeconds || secondsForSpeed(DEFAULT_SPEED));
+      rescheduled.push(order);
+      return { ...rest, statusSchedule, notificationIds: [] };
+    });
+    await Promise.all(rescheduled.map((order) => cancelNotifications(order.notificationIds || [])));
+    return { data: { ...data, orders: updatedOrders }, loyalty: loyaltyData, rescheduled: rescheduled.length > 0 };
   };
 
   // Load campus data, accounts and the saved session once on mount
@@ -239,22 +261,18 @@ export function AppProvider({ children }) {
         const bundle = await loadBundle(sessionUser, campusData, offset);
         applyUserData(bundle.data, bundle.loyalty);
         setUser(sessionUser);
+        if (bundle.rescheduled) setTimeout(() => syncOrderNotifications(), 500);
       }
       setLoading(false);
     };
     init();
   }, []);
 
-  // Save the user's data whenever it changes (only after it was loaded)
+  // Keep orders and loyalty in the same saved snapshot so a restart cannot separate them.
   useEffect(() => {
     if (!user || !dataReady) return;
-    writeJson(KEYS.data(user.email), { cart, wallet, orders, savedLocations });
-  }, [cart, wallet, orders, savedLocations, user, dataReady]);
-
-  useEffect(() => {
-    if (!user || !dataReady) return;
-    writeJson(KEYS.loyalty(user.email), loyalty);
-  }, [loyalty, user, dataReady]);
+    writeJson(KEYS.data(user.email), { cart, wallet, orders, savedLocations, loyalty, useReward });
+  }, [cart, wallet, orders, savedLocations, loyalty, useReward, user, dataReady]);
 
   const refreshCampus = async () => {
     const data = await loadCampusData();
@@ -363,8 +381,9 @@ export function AppProvider({ children }) {
   }, [user, dataReady, settle, syncBreakReminders]);
 
   // ---------- Auth ----------
-  const login = async (email) => {
-    const account = findAccount(users, email); // email or 8-digit UA ID
+  const login = async (email, password) => {
+    if (Object.keys(validateLogin({ email, password }, users)).length) return false;
+    const account = findAccount(users, email);
     if (!account) return false;
     setDataReady(false);
     const bundle = await loadBundle(account, campus, timeOffsetMs);
@@ -403,7 +422,7 @@ export function AppProvider({ children }) {
     await writeJson(KEYS.session, null);
     setDataReady(false);
     setUser(null);
-    setCart(EMPTY_CART);
+    commitCart(EMPTY_CART);
     commitOrders([]);
     commitLoyalty(emptyLoyalty());
     setUseReward(false);
@@ -421,71 +440,134 @@ export function AppProvider({ children }) {
 
   // ---------- Cart (one store only) ----------
   const addToCart = (item, storeId) => {
-    if (getClosedBlock()) return 'closed';
-    if (cart.items.length > 0 && cart.storeId !== storeId) return 'conflict';
-    setCart((prev) => {
-      const existing = prev.items.find((i) => i.key === item.key);
-      const items = existing
-        ? prev.items.map((i) => (i.key === item.key ? { ...i, qty: i.qty + item.qty } : i))
-        : [...prev.items, item];
-      return { storeId, items };
-    });
+    if (getClosedBlock() || (storeId === 'printing' && !isStoreOpen(getStore(storeId), timeOffsetMs))) return 'closed';
+    const currentCart = cartRef.current;
+    if (currentCart.items.length > 0 && currentCart.storeId !== storeId) return 'conflict';
+    const existing = currentCart.items.find((i) => i.key === item.key);
+    const items = existing
+      ? currentCart.items.map((i) => (i.key === item.key ? { ...i, qty: i.qty + item.qty } : i))
+      : [...currentCart.items, item];
+    if (getPrintOrderIssue(items, campus.printPrices.maxPages)) return 'print-limit';
+    commitCart({ storeId, items });
     return 'added';
   };
 
   const replaceCart = (item, storeId) => {
-    if (getClosedBlock()) return;
-    setCart({ storeId, items: [item] });
+    if (getClosedBlock() || (storeId === 'printing' && !isStoreOpen(getStore(storeId), timeOffsetMs))) return 'closed';
+    if (getPrintOrderIssue([item], campus.printPrices.maxPages)) return 'print-limit';
+    commitCart({ storeId, items: [item] });
+    return 'added';
   };
 
   const changeQty = (key, qty) => {
-    if (qty < 1) return;
-    setCart((prev) => ({
-      ...prev,
-      items: prev.items.map((i) => (i.key === key ? { ...i, qty } : i)),
-    }));
+    const current = cartRef.current;
+    const item = current.items.find((entry) => entry.key === key);
+    if (!Number.isSafeInteger(qty) || qty < 1 || !item || item.type !== 'product') return;
+    if (qty > item.qty && getCartItemIssue(item, getProduct, campus.printPrices.maxPages, current.storeId)) return;
+    commitCart({ ...current, items: current.items.map((entry) => entry.key === key ? { ...entry, qty } : entry) });
+  };
+
+  const updateCartItem = (key, replacement) => {
+    const current = cartRef.current;
+    const original = current.items.find((item) => item.key === key);
+    if (original?.type !== 'product' || original.productId !== replacement.productId
+      || getCartItemIssue(replacement, getProduct, campus.printPrices.maxPages, current.storeId)) return false;
+    const matching = current.items.find((item) => item.key !== key && item.key === replacement.key);
+    const updated = { ...replacement, qty: original.qty + (matching?.qty ?? 0) };
+    const items = current.items.filter((item) => item !== matching)
+      .map((item) => item.key === key ? updated : item);
+    commitCart({ ...current, items });
+    return true;
+  };
+
+  const updatePrintJob = (key, { pages, copies, color, doubleSided, binding }) => {
+    const current = cartRef.current;
+    const original = current.items.find((item) => item.key === key);
+    if (current.storeId !== 'printing' || original?.type !== 'print') return 'This print job is no longer in your Bag.';
+    const prices = campusRef.current.printPrices;
+    const form = { file: { name: original.file?.fileName || original.name }, pages, copies, color, doubleSided, binding };
+    const errors = validatePrintJob(form, prices.maxPages);
+    if (Object.keys(errors).length) return Object.values(errors)[0];
+    if (typeof color !== 'boolean' || typeof doubleSided !== 'boolean'
+      || !Object.hasOwn(prices.binding, binding)) return 'Choose valid print options.';
+
+    const update = {
+      ...original,
+      file: { ...original.file, fileName: form.file.name, pages: Number(pages) },
+      printOptions: { copies: Number(copies), color, doubleSided, binding },
+      unitPrice: calcPrintPrice(form, prices).total,
+    };
+    update.details = bagItemDetails(update);
+    const items = current.items.map((item) => item === original ? update : item);
+    const issue = getPrintOrderIssue(items, prices.maxPages);
+    if (issue) return issue;
+    commitCart({ ...current, items });
+    return null;
   };
 
   const removeItem = (key) => {
-    setCart((prev) => {
-      const items = prev.items.filter((i) => i.key !== key);
-      return { storeId: items.length ? prev.storeId : null, items };
-    });
+    const current = cartRef.current;
+    const items = current.items.filter((i) => i.key !== key);
+    commitCart({ storeId: items.length ? current.storeId : null, items });
   };
 
   // Undo for "Removed – Undo" toast: put the item back at its old position
   const restoreItem = (item, index, storeId) => {
-    setCart((prev) => {
-      if (prev.items.length && prev.storeId !== storeId) return prev;
-      const items = [...prev.items];
-      items.splice(Math.min(index, items.length), 0, item);
-      return { storeId, items };
-    });
+    const current = cartRef.current;
+    if (current.items.length && current.storeId !== storeId) return 'Your Bag contains items from another store.';
+    const items = [...current.items];
+    const match = items.findIndex((entry) => entry.key === item.key);
+    if (match === -1) items.splice(Math.min(index, items.length), 0, item);
+    else if (item.type === 'product') items[match] = { ...items[match], qty: items[match].qty + item.qty };
+    const issue = getPrintOrderIssue(items, campus.printPrices.maxPages);
+    if (issue) return issue;
+    commitCart({ storeId, items });
+    return null;
   };
 
-  const clearCart = () => {
-    setCart(EMPTY_CART);
-    setUseReward(false);
-  };
+  const clearCart = () => commitCart(EMPTY_CART);
 
   // ---------- Loyalty reward in the bag ----------
   // The switch only counts while the bag still has a coffee and a reward is available
-  const rewardAvailable = canUseReward(cart.items, loyalty);
+  const rewardCoffee = cart.storeId === 'coffee' ? getRewardCoffee(cart.items, getProduct) : null;
+  const rewardAvailable = loyalty.rewards > 0 && Boolean(rewardCoffee);
   const rewardApplied = useReward && rewardAvailable;
-  const rewardCents = rewardApplied ? rewardDiscount(cart.items) : 0;
+  const rewardCents = rewardApplied ? rewardCoffee.discount : 0;
   const cartTotals = calcCartTotals(cart.items, rewardCents);
+  useEffect(() => {
+    if (!rewardAvailable) setUseReward(false);
+  }, [rewardAvailable]);
 
   // ---------- Orders ----------
-  const placeOrder = ({ buildingId, room, slotId, payment, saveLocation, locationLabel }) => {
-    if (getClosedBlock()) return null; // UA is closed: no orders at all (the UI explains why)
-    const totals = calcCartTotals(cart.items, rewardCents);
-    if (payment === 'wallet' && wallet.balance < totals.total) return null;
-    const slotInfo = campus.deliverySlots.find((s) => s.id === slotId);
+  const placeOrder = ({ buildingId, room, slotId, deliveryDate, payment, saveLocation, locationLabel, expectedPricing }) => {
+    if (!cart.items.length || cartRef.current !== cart || submittedCartRef.current === cart || getClosedBlock()) return null;
+    const currentCatalog = campusRef.current;
+    const store = currentCatalog?.stores.find((entry) => entry.id === cart.storeId);
+    const destination = currentCatalog?.buildings.find((building) => building.id === buildingId);
+    const placedAtMs = Date.now();
+    const campusPlacedAt = placedAtMs + timeOffsetMs;
+    const orderDate = dateKey(new Date(campusPlacedAt));
+    if (destination?.campusId !== userCampusId || !isRoomForBuilding(destination, room)) return null;
+    if ((payment !== 'wallet' && payment !== 'cash') || (deliveryDate && deliveryDate !== orderDate)) return null;
+    if (!store || !isStoreOpen(store, timeOffsetMs)) return null;
+    if (getPrintOrderIssue(cart.items, currentCatalog.printPrices.maxPages)) return null;
+    if (cart.items.some((item) => getCartItemIssue(
+      item, (id) => currentCatalog.products.find((product) => product.id === id),
+      currentCatalog.printPrices.maxPages, store.id
+    ))) return null;
+    const redeemedCoffee = useReward && cart.storeId === 'coffee' && loyaltyRef.current.rewards > 0
+      ? getRewardCoffee(cart.items, (id) => currentCatalog.products.find((product) => product.id === id))
+      : null;
+    const totals = calcCartTotals(cart.items, redeemedCoffee?.discount);
+    if (totals.missingForMinimum || (payment === 'wallet' && walletRef.current.balance < totals.total)) return null;
+    if (expectedPricing && (expectedPricing.total !== totals.total || expectedPricing.discount !== totals.discount)) return null;
+    const slotInfo = currentCatalog.deliverySlots.find((s) => s.id === slotId);
+    if (!slotInfo || getSlotState(slotInfo, store, timeOffsetMs).disabled) return null;
 
     const couriers = campus.couriers;
     // The status is time-based: these real-time timestamps drive both the app and the phone notifications
-    const placedAtMs = Date.now();
     const stepSeconds = secondsForSpeed(trackingSpeed);
+    const statusSchedule = buildStatusSchedule(placedAtMs, stepSeconds);
     const order = {
       id: makeId('o'),
       number: String(placedAtMs).slice(-5),
@@ -499,23 +581,26 @@ export function AppProvider({ children }) {
       building: buildingId,
       room: room.trim().toUpperCase(),
       slotId,
+      deliveryDate: orderDate,
       slotLabel: slotInfo ? slotInfo.label : '',
       slotStart: slotInfo ? slotInfo.start : '',
       slotEnd: slotInfo ? slotInfo.end : '',
       payment,
       courier: couriers[Math.floor(Math.random() * couriers.length)],
-      placedAt: getNow(timeOffsetMs).getTime(),
+      placedAt: campusPlacedAt,
       placedAtMs,
       createdAt: placedAtMs,
       stepSeconds,
-      statusSchedule: buildStatusSchedule(placedAtMs, stepSeconds),
+      statusSchedule,
       notificationIds: [],
-      rewardUsed: rewardApplied,
+      rewardUsed: Boolean(redeemedCoffee),
+      ...(redeemedCoffee ? { rewardItemKey: redeemedCoffee.item.key } : {}),
       stampsCredited: false,
       cancelled: false,
     };
+    submittedCartRef.current = cart;
     commitOrders([order, ...ordersRef.current]);
-    if (rewardApplied) commitLoyalty(consumeReward(loyaltyRef.current, order.id, placedAtMs));
+    if (redeemedCoffee) commitLoyalty(consumeReward(loyaltyRef.current, order.id, placedAtMs));
 
     if (payment === 'wallet') {
       setWallet((prev) => ({
@@ -550,51 +635,53 @@ export function AppProvider({ children }) {
   };
 
   const rateOrder = (orderId, stars, comment) => {
+    const order = ordersRef.current.find((entry) => entry.id === orderId);
+    if (!order || order.rating || getOrderStatus(order, Date.now()) !== 'Delivered'
+      || !Number.isInteger(stars) || stars < 1 || stars > 5 || typeof comment !== 'string') return false;
     commitOrders(ordersRef.current.map((o) => (o.id === orderId ? { ...o, rating: stars, comment: comment.trim() } : o)));
+    return true;
   };
 
   // Read-only preview for the reorder confirm sheet: { items, skipped, conflict, storeName }
   const previewReorder = (orderId) => {
-    const order = orders.find((o) => o.id === orderId);
-    if (!order) return { items: [], skipped: [], conflict: false };
-    const items = [];
-    const skipped = [];
-    order.items.forEach((item) => {
-      const product = item.type === 'product' ? getProduct(item.productId) : null;
-      if (item.type === 'product' && !(product && product.inStock)) skipped.push(item.name);
-      else items.push(item);
-    });
-    const conflict = cart.items.length > 0 && cart.storeId !== order.storeId;
-    return { items, skipped, conflict, storeName: conflict ? getStore(cart.storeId)?.name : '' };
+    const order = ordersRef.current.find((o) => o.id === orderId);
+    if (!order) return { items: [], skipped: [], adjusted: [], conflict: false };
+    const current = cartRef.current;
+    const conflict = current.items.length > 0 && current.storeId !== order.storeId;
+    return { ...prepareReorder(order, getProduct, campus.printPrices), conflict, storeName: conflict ? getStore(current.storeId)?.name : '' };
   };
 
   // Returns { conflict, storeName } or { added, skipped: [names] }. The loyalty reward is never copied.
-  const reorder = (orderId, force = false) => {
-    const order = orders.find((o) => o.id === orderId);
+  const reorder = (orderId, force = false, replacementDocuments = new Map()) => {
+    const order = ordersRef.current.find((o) => o.id === orderId);
     if (!order) return { added: 0, skipped: [] };
     const closed = getClosedBlock();
     if (closed) return { closed: true, reason: closed.reason, opensText: closed.opensText, added: 0, skipped: [] };
-    if (!force && cart.items.length > 0 && cart.storeId !== order.storeId) {
-      return { conflict: true, storeName: getStore(cart.storeId)?.name };
+    const store = getStore(order.storeId);
+    if (store && !isStoreOpen(store, timeOffsetMs)) {
+      return { closed: true, reason: `${store.name} is closed`, opensText: storeOpensText(store, timeOffsetMs), added: 0, skipped: [] };
     }
-    const skipped = [];
-    const available = order.items.filter((item) => {
-      if (item.type !== 'product') return true;
-      const product = getProduct(item.productId);
-      if (product && product.inStock) return true;
-      skipped.push(item.name);
-      return false;
-    });
-    const base = force || cart.storeId !== order.storeId ? [] : cart.items;
+    const { items: available, skipped, adjusted, conflict, storeName } = previewReorder(orderId);
+    if (!available.length) return { added: 0, skipped, adjusted };
+    if (!force && conflict) return { conflict, storeName };
+    const current = cartRef.current;
+    const base = current.storeId === order.storeId ? current.items : [];
     const items = [...base];
-    available.forEach((item) => {
+    for (const original of available) {
+      const replacement = replacementDocuments.get(original.key);
+      const item = replacement ? { ...original, ...replacement } : original;
+      if (item.type === 'print' && !(item.file?.sample || item.file?.localPath || item.file?.browserFileKey)) {
+        return { printIssue: 'Select the missing documents again to reorder.', added: 0 };
+      }
       const index = items.findIndex((i) => i.key === item.key);
-      if (index >= 0) items[index] = { ...items[index], qty: items[index].qty + item.qty };
+      if (index >= 0) items[index] = { ...item, qty: items[index].qty + item.qty };
       else items.push({ ...item });
-    });
-    if (items.length) setCart({ storeId: order.storeId, items });
+    }
+    const printIssue = getPrintOrderIssue(items, campus.printPrices.maxPages);
+    if (printIssue) return { printIssue, added: 0 };
+    if (items.length) commitCart({ storeId: order.storeId, items });
     setUseReward(false);
-    return { added: available.length, skipped };
+    return { added: available.reduce((count, item) => count + item.qty, 0), skipped, adjusted };
   };
 
   // ---------- Wallet ----------
@@ -608,10 +695,22 @@ export function AppProvider({ children }) {
 
   // ---------- Saved locations ----------
   const addLocation = ({ label, buildingId, room }) => {
-    setSavedLocations((prev) => [
+    const normalizedRoom = room.trim().toUpperCase();
+    setSavedLocations((prev) => prev.some((place) =>
+      place.buildingId === buildingId && place.room.trim().toUpperCase() === normalizedRoom
+    ) ? prev : [
       ...prev,
-      { id: makeId('loc'), label: label.trim() || 'Saved place', buildingId, room: room.trim().toUpperCase() },
+      { id: makeId('loc'), label: label.trim() || 'Saved place', buildingId, room: normalizedRoom },
     ]);
+  };
+
+  const updateLocation = (id, { label, buildingId, room }) => {
+    const normalizedRoom = room.trim().toUpperCase();
+    setSavedLocations((prev) => prev.some((place) =>
+      place.id !== id && place.buildingId === buildingId && place.room.trim().toUpperCase() === normalizedRoom
+    ) ? prev : prev.map((place) => place.id === id
+      ? { ...place, label: label.trim() || 'Saved place', buildingId, room: normalizedRoom }
+      : place));
   };
 
   const removeLocation = (id) => setSavedLocations((prev) => prev.filter((l) => l.id !== id));
@@ -648,7 +747,7 @@ export function AppProvider({ children }) {
     sessionRef.current += 1;
     await cancelAllNotifications();
     const bundle = buildDemoBundle(campus, timeOffsetMs);
-    setCart(EMPTY_CART);
+    commitCart(EMPTY_CART);
     setUseReward(false);
     setWallet(bundle.data.wallet);
     commitOrders(bundle.data.orders);
@@ -696,6 +795,7 @@ export function AppProvider({ children }) {
     lastSettlement,
     settle,
     rewardAvailable,
+    rewardCoffee,
     rewardApplied,
     rewardCents,
     useReward,
@@ -725,6 +825,8 @@ export function AppProvider({ children }) {
     addToCart,
     replaceCart,
     changeQty,
+    updateCartItem,
+    updatePrintJob,
     removeItem,
     clearCart,
     placeOrder,
@@ -733,6 +835,7 @@ export function AppProvider({ children }) {
     reorder,
     topUp,
     addLocation,
+    updateLocation,
     removeLocation,
     setDemoTime,
     resetDemoTime,

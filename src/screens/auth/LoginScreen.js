@@ -61,7 +61,13 @@ export default function LoginScreen({ navigation, route }) {
       return;
     }
     setLoading(true);
-    await login(value);
+    try {
+      if (!await login(value, password)) setErrors({ password: 'Could not sign in. Check your credentials.' });
+    } catch {
+      setErrors({ password: 'Could not sign in. Try again.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,10 +89,10 @@ export default function LoginScreen({ navigation, route }) {
             <ShakeView ref={shakeRef} style={styles.form}>
               <AppInput
                 ref={emailRef}
-                label="University email or UA ID"
+                label="University email"
                 icon="mail-outline"
                 placeholder="your.name"
-                suffix={email.includes('@') || /^\d+$/.test(email) ? undefined : '@ua.edu.lb'}
+                suffix={email.includes('@') ? undefined : '@ua.edu.lb'}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}

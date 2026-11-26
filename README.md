@@ -16,7 +16,7 @@ CampusGo is a React Native (Expo) app for ordering food, drinks, stationery and 
 - Store menus grouped by category, product sizes and extras, quantity, out-of-stock handling
 - Printing service: live price, colour/B&W, double-sided, binding
 - Cart limited to one store, minimum order, free-delivery threshold
-- Checkout in 3 steps (Where → When → Pay): real campus buildings and room codes (`G.2.15`), delivery break slots with rules, campus wallet or cash
+- Checkout in 3 steps (Location → Delivery → Payment): real campus buildings and room codes (`G.2.15`), delivery break slots with rules, campus wallet or cash
 - Live order tracking (status advances every 8 / 20 / 60 seconds, even when the app is closed), cancel with refund, rating
 - Order history with filters and reorder
 - Profile: campus choice (3 UA campuses), saved locations with door-sign room codes, demo clock, campus wallet with top-ups and transactions grouped by day
@@ -119,13 +119,13 @@ While UA is closed: **Add to bag, Reorder, Print → Add to bag and Place order 
 **Totals** (money is stored in cents)
 - Subtotal = sum of unit price × quantity, minus the loyalty reward if used.
 - Minimum order is **$2.00** (counted on what you pay, after the loyalty reward); below it, checkout is disabled and the app shows how much is missing.
-- Delivery fee is **free above $10.00**, otherwise **$0.50**. The bag says "Free delivery on orders over $10.00 · you're $X away" (the rule is strictly *more than* $10.00, so the amount away is shown against $10.00, never as a confusing extra cent).
+- Delivery is **free above $10.00**, with a **$0.50** fee on paid subtotals up to and including $10.00. The Bag shows the subtotal after rewards and progress toward $10.01, the smallest qualifying subtotal.
 
 **Printing**
 - Price = pages × copies × ($0.05 B&W or $0.25 colour) + binding × copies.
 - Binding: none $0.00, staple $0.25, spiral $1.50 (per copy).
 - Double-sided does not change the price; the app shows how many sheets you save.
-- Pages and copies must be whole numbers ≥ 1, and pages × copies ≤ 200 (the Copies card shows "pages × copies = N of 200 max printed pages"). A document name is required.
+- Pages and copies must be positive whole numbers. The total printed pages across all jobs, copies, and quantities cannot exceed 200 per order. A document name is required.
 - With 0 pages (or 0 copies) the price is **$0.00**: the binding fee is only charged when something is printed.
 - The hint "Page count edited by you" appears only after the student changes the page count the app filled in (detected or sample document).
 
@@ -135,15 +135,15 @@ While UA is closed: **Add to bag, Reorder, Print → Add to bag and Place order 
 - The home banner shows the **next available break**: the first break the student can still order for. It uses the cart's store if the bag is not empty, otherwise the **shortest preparation time among the stores that are open now**, through the same `getSlotState` rule as checkout (`getNextAvailableSlot` in `src/utils/time.js`). A break that has not started but is already too close is skipped and mentioned in a small line ("14:00–14:15 break is too close to order"). If nothing is left today the banner says "No more breaks today – ordering opens tomorrow at 09:45" (or the next open day). On a closed day the banner is replaced by the reason, e.g. "🎄 UA is closed – Christmas & New Year's · Ordering opens Monday 18 Jan at 09:45". With 0 minutes left it says "Order now – last minute for this break".
 
 **Checkout**
-- Errors ("Choose a delivery break", missing room…) appear only after **Continue** or **Place order** is pressed, and are cleared when you move between steps. While something is missing the Place order button has the disabled look (with the reason under it) but can still be pressed to show what is missing.
+- Checkout starts at Location with no saved place selected. Choose a saved place or confirm a new room, then select a delivery break and payment method. Place order stays disabled while information is missing or the order cannot be placed.
 - Building, floor and room number (1–99) are required; together they form the real UA room code `Building.Floor.Room` (e.g. `G.2.15`). Delivery break and payment method are required too.
 - Only the buildings of the user's campus are shown.
 - Saved locations fill the location in one tap; a new place can be saved during checkout.
 - Wallet payment is refused if the balance is lower than the total (the app shows the missing amount and a Top up button). Cash on delivery is always allowed.
 
 **Tracking**
-- Status steps: Received → Preparing → On the way → Delivered, one step every **8 / 20 / 60 seconds** (Fast / **Demo, the default** / Slow, set in Demo settings when the order is placed). The status is computed from timestamps stored on the order, so it is correct even after closing the app.
-- **Displayed times follow the chosen break, not the demo timer** (`getDisplayTimes` in `src/utils/orderStatus.js`): *Received* = real placement time; *Preparing* = break start − store prep time ("planned"); *On the way* = break start − 5 min ("planned"); *Delivered* = the break window, e.g. "15:15–15:30 break · simulated". The same story is used in the timeline, the hero text, the notifications ("Scheduled for the 15:15–15:30 break (demo speed)") and the order history (which shows the break). When the speed is Fast/Demo the tracking screen adds "Demo speed: status changes every N s."
+- Simulated status steps: Received → Preparing → On the way → Delivered. Stages advance at the selected speed starting from placement. Status timestamps remain valid after reopening the app.
+- Tracking shows the scheduled break separately from order progress. The timeline shows recorded timestamps where available and leaves unrecorded stages without a time. The selected break records the delivery booking. Tracking and notifications use the simulated schedule.
 - The last step reads **"Delivered to Building D, Room D.2.8"** before and after delivery. Only the label changes; the status keys (`STATUS_STEPS`) and the history filters are unchanged.
 - A **cancelled** order keeps "Received" as done (with its time), shows the other steps as skipped, replaces "Arriving" by "Cancelled at HH:MM" (plus "Refunded $X to wallet" for wallet orders) and hides the courier card.
 - An order can be cancelled only while it is "Received". Wallet orders are refunded.
@@ -154,7 +154,7 @@ While UA is closed: **Add to bag, Reorder, Print → Add to bag and Place order 
 
 **Accounts**
 - Email must end with `@ua.edu.lb` (typing only the username adds the domain automatically); password ≥ 6 characters;
-- **UA ID**: 8 digits whose first 4 are the year of enrolment (1996 → the current demo year), constant `UA_ID_REGEX` in `src/utils/validation.js`. It is looked up in the **mock UA registry** (`uaRegistry` in `campus.json`, 25 records incl. the demo account `20231234`; the app cannot reach UA's real student system, so this is simulated). Not found → "This ID isn't in Antonine University's records. Check your student card." Found → faculty and campus are filled from the record and locked, with a "✓ Verified UA ID" badge. The first name typed must match the record (case-insensitive, titles like Dr. ignored), otherwise "Name doesn't match the UA record for this ID". One account per ID ("An account already exists for this ID"). Example IDs to try: `20240101` Rami Khoury, `20240215` Maya Haddad, `20230342` Karim Nassar, `20250123` Elie Frem, `20230876` Georges Sleiman (Zahle), `20231390` Charbel Rahme (Zgharta). Login accepts the email **or** the UA ID.
+- **UA ID**: 8 digits whose first 4 are the year of enrolment (1996 → the current demo year), constant `UA_ID_REGEX` in `src/utils/validation.js`. It is looked up in the **mock UA registry** (`uaRegistry` in `campus.json`, 25 records incl. the demo account `20231234`; the app cannot reach UA's real student system, so this is simulated). Not found → "This ID isn't in Antonine University's records. Check your student card." Found → faculty and campus are filled from the record and locked, with a "✓ Verified UA ID" badge. The first name typed must match the record (case-insensitive, titles like Dr. ignored), otherwise "Name doesn't match the UA record for this ID". One account per ID ("An account already exists for this ID"). Example IDs to try: `20240101` Rami Khoury, `20240215` Maya Haddad, `20230342` Karim Nassar, `20250123` Elie Frem, `20230876` Georges Sleiman (Zahle), `20231390` Charbel Rahme (Zgharta). Login accepts the university email and password.
 - phone matches `03xxxxxx`, `7Xxxxxxx` or `81xxxxxx`; passwords must match; an email can only be registered once.
 
 ## Project structure
@@ -286,20 +286,20 @@ Every 10th coffee is free. The pure rules live in `src/utils/loyalty.js`.
 - Only products with `"loyalty": "coffee"` count (espresso, americano, cappuccino, latte, iced latte; not tea, juice, water or hot chocolate). **1 stamp per cup** (2 cappuccinos = 2 stamps).
 - Stamps are credited **only when the order reaches Delivered**, never when it is placed, so cancelled orders earn nothing. `settleDeliveredOrders` is idempotent (it flags each order `stampsCredited`) and runs on app start, when the app returns to the foreground, every 2 s while logged in and on every tracking tick. This matters because an order can be delivered while the app is closed.
 - 10 stamps = 1 reward; the remainder carries over.
-- In the bag, **"Use my free coffee"** discounts the **most expensive single coffee** (size included, extras paid). One reward per order. The free coffee does not earn a stamp.
+- In the bag, **Apply reward** discounts the **most expensive single coffee** (size included, extras paid). One reward per order. The free coffee does not earn a stamp.
 - The reward is consumed when the order is placed and **given back if the order is cancelled** (history entry "refunded").
-- The **minimum order and the free-delivery threshold use the subtotal after the reward** ("Free coffee applied. Minimum order counts what you pay.").
-- Reorder never copies the reward.
-- Data: `campusgo:loyalty:<email>` in AsyncStorage (`{ stamps, rewards, history }`). The demo account starts at **8 / 10**.
+- The **minimum order and the free-delivery threshold use the subtotal after the reward**.
+- Reorder uses the current catalog prices and options for available products. It preserves the original order and its reward history. Print jobs can be reordered when the saved document is available. If it is unavailable, select it again in Print.
+- Loyalty, order history, and the Bag?s reward selection share the account snapshot in AsyncStorage. The demo account starts at **8 / 10**.
 
 ## Printing files
 
 The Print screen uses `expo-document-picker`.
 
-- Supported types: PDF, Word (`.doc`, `.docx`) and images. Maximum size **25 MB** ("This file is 31 MB, the limit is 25 MB").
-- Page count is **best effort** (`src/utils/pdfPages.js`) and never blocks: images count as 1 page; a PDF of up to 10 MB is read with `expo-file-system` (`expo-file-system/legacy`, base64) and the largest `/Count` of a `/Type /Pages` node is used (otherwise the `/Type /Page` objects are counted; accepted range 1-2000). Word files, bigger PDFs and compressed PDFs leave the field empty: "Enter the number of pages".
-- The existing 200-page rule and the live price are unchanged.
-- **Nothing is uploaded.** The cart item stores only `{ fileName, fileSize, mimeType, pages }`.
+- Supported types are PDF, Word (`.doc`, `.docx`) and images, up to **25 MB**.
+- Page suggestions are **best effort** (`src/utils/pdfPages.js`). Images count as one page, and PDFs up to 10 MB are scanned for page objects. Enter the page count manually when a suggestion is unavailable, such as for Word files or some compressed PDFs.
+- The Copies card shows printed pages against the 200-page limit and counts physical sheets. Double-sided jobs round up separately for each copy.
+- Adding a real job saves the document locally on the device or in the browser. The Bag and order history keep the local reference, file information, and print settings.
 - "Use a sample document" remains as a demo fallback.
 
 ## Dietary filters & seasons
@@ -357,7 +357,7 @@ In the Wallet: spending = every **non-cancelled** order (wallet **and** cash), d
 - iOS keeps at most 64 scheduled notifications per app, plenty here (3 per order + at most 30 reminders).
 - The step times in the notifications use the tracking speed chosen when the order was placed.
 
-**How to demo it:** Profile -> Demo settings -> Tracking speed **Demo** (20 s per step, the default). Open Profile -> Notifications and tap **Send a test notification** to check the phone first. Then place an order, **lock the phone** and wait about 20 s: Preparing arrives, then On the way, then Delivered. Tap one to open the order. To show stamps: the demo account has 8/10; order 2 coffees from the Coffee Corner and the card completes when the order is delivered.
+**How to demo it:** Set the demo clock shortly before a bookable break, leaving enough time for the selected store to prepare. Place an order and check its estimated arrival. Open Profile ? Notifications to send a test notification, or watch the order notifications as its booked delivery approaches.
 
 ## New packages
 

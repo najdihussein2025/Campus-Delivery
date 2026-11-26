@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FlatList, Switch, Text, View } from 'react-native';
-import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { FlatList, Keyboard, KeyboardAvoidingView, Platform, Switch, Text, View } from 'react-native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
@@ -8,124 +8,99 @@ import AppInput from '../../components/AppInput';
 import ConfirmModal from '../../components/ConfirmModal';
 import DoorSign from '../../components/DoorSign';
 import EmptyState from '../../components/EmptyState';
-import OrderSuccessModal from '../../components/OrderSuccessModal';
 import PriceSummary from '../../components/PriceSummary';
 import RoomPicker from '../../components/RoomPicker';
 import StepIndicator from '../../components/StepIndicator';
 import StickyBar from '../../components/StickyBar';
-import { PressableScale, ShakeView, StaggerItem, animateLayout, useReduceMotion } from '../../components/motion';
-import { durations, easings } from '../../theme/motion';
+import { PressableScale, ShakeView, StaggerItem, animateLayout, useReduceMotion, useToast } from '../../components/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { closedReason, getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
-import { makeRoomCode, validateCheckoutSteps, validateRoomParts } from '../../utils/validation';
+import { closedReason, getNow, getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
+import { dateKey } from '../../utils/calendar';
+import { bagItemDetails, getCartItemIssue, getPrintOrderIssue } from '../../utils/cart';
+import { isRoomForBuilding, makeRoomCode, validateRoomParts } from '../../utils/validation';
 import * as haptics from '../../utils/haptics';
 import { createStyles } from './CheckoutScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
 import { useNetwork } from '../../context/NetworkContext';
 
-const STEPS = ['Where', 'When', 'Pay'];
+const STEPS = ['Location', 'Delivery', 'Payment'];
+const deliveryDateFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 
-// Place order morph: the button shrinks to a circle (width + radius) while placing; the success screen follows
-function MorphWidth({ active, children }) {
-  const reduceMotion = useReduceMotion();
-  const [full, setFull] = useState(0);
-  const p = useSharedValue(0);
-  useEffect(() => {
-    p.value = reduceMotion ? 0 : withTiming(active ? 1 : 0, { duration: durations.medium, easing: easings.standard });
-  }, [active, reduceMotion]);
-  const style = useAnimatedStyle(() => (full ? { width: full - (full - 52) * p.value, borderRadius: 12 + 14 * p.value } : {}));
-  return (
-    <View onLayout={(e) => !full && setFull(e.nativeEvent.layout.width)} style={{ alignItems: 'center' }}>
-      <Reanimated.View style={[{ overflow: 'hidden', alignSelf: 'center' }, full ? style : { alignSelf: 'stretch' }]}>{children}</Reanimated.View>
-    </View>
-  );
-}
-
-// Checkout: 3-step flow (Where → When → Pay) in ONE FlatList (slots are the data, steps are header/footer)
-export default function CheckoutScreen({ navigation }) {
+export default function CheckoutScreen({ navigation, route }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { isOnline } = useNetwork();
+  const { showToast } = useToast();
+  const headerHeight = useHeaderHeight();
   const {
     campus, cart, cartTotals, wallet, savedLocations, timeOffsetMs, userCampusId, campusBuildings,
-    getStore, getBuilding, getSlot, placeOrder, formatLocation, rewardApplied, orders,
+    getStore, getProduct, getBuilding, formatLocation, rewardApplied,
   } = useApp();
   const reduceMotion = useReduceMotion();
 
   const campusLocations = savedLocations.filter((loc) => getBuilding(loc.buildingId)?.campusId === userCampusId);
 
-  // Pre-select a saved place: the only one, or the one used by the last order (the student can still change it)
-  const lastUsed = campusLocations.find((loc) => orders.some((o) => !o.cancelled && o.building === loc.buildingId && o.room === loc.room));
-  const defaultSaved = campusLocations.length === 1 ? campusLocations[0] : lastUsed || null;
   const [mode, setMode] = useState(campusLocations.length ? 'saved' : 'new');
-  const [savedId, setSavedId] = useState(defaultSaved ? defaultSaved.id : null);
+  const [location, setLocation] = useState(null);
   const [roomValue, setRoomValue] = useState({ buildingId: null, floor: null, roomNumber: '' });
   const [saveLocation, setSaveLocation] = useState(false);
   const [locationLabel, setLocationLabel] = useState('');
-  const [slotId, setSlotId] = useState(null);
+  const [delivery, setDelivery] = useState(null);
   const [payment, setPayment] = useState(null);
-  const [openStep, setOpenStep] = useState(defaultSaved ? 1 : 0);
+  const [openStep, setOpenStep] = useState(0);
   const [showUnavailable, setShowUnavailable] = useState(false);
-  const [placing, setPlacing] = useState(false);
   const listRef = useRef(null);
   const [errors, setErrors] = useState({});
-  const [showSummary, setShowSummary] = useState(false);
-  const [successOrder, setSuccessOrder] = useState(null);
+  const [reviewedPricing, setReviewedPricing] = useState(null);
   const [tick, setTick] = useState(0);
   const shakeRef = useRef(null);
+  const submitting = useRef(false);
+  const processingError = route.params?.processingError;
 
   const store = getStore(cart.storeId);
   const storeOpen = store ? isStoreOpen(store, timeOffsetMs) : false;
   const missing = cartTotals.total - wallet.balance;
   const walletShort = payment === 'wallet' && missing > 0;
 
-  // Chapter 19: useEffect with cleanup — re-check slots every 30 seconds
+  const now = getNow(timeOffsetMs);
+  const today = dateKey(now);
+  const deliveryDateLabel = deliveryDateFormat.format(now);
+  const slotStates = campus.deliverySlots.map((slot) => {
+    const state = getSlotState(slot, store, timeOffsetMs);
+    return { slot, state: !storeOpen && !state.disabled ? { disabled: true, reason: 'Store closed' } : state };
+  });
+  const availableSlots = slotStates.filter(({ state }) => !state.disabled);
+  const slot = delivery?.date === today ? availableSlots.find((entry) => entry.slot.id === delivery.id)?.slot : null;
+
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 30000);
-    return () => clearInterval(id);
+    const timer = setInterval(() => setTick((n) => n + 1), 10000);
+    return () => clearInterval(timer);
   }, []);
 
-  // When opens: scroll to the first available break (available breaks come first)
   useEffect(() => {
-    if (openStep !== 1) return undefined;
-    const id = setTimeout(() => {
-      try {
-        listRef.current?.scrollToIndex({ index: 0, viewOffset: 120, animated: !reduceMotion });
-      } catch (error) {
-        // list not measured yet
-      }
+    if (!delivery || slot) return;
+    setDelivery(null);
+    setReviewedPricing(null);
+    setOpenStep((current) => current === 0 ? 0 : 1);
+  }, [delivery, slot]);
+
+  useEffect(() => {
+    if (openStep !== 1 && openStep !== null) return;
+    const timer = setTimeout(() => {
+      if (openStep === null) listRef.current?.scrollToEnd({ animated: !reduceMotion });
+      else if (availableSlots.length) listRef.current?.scrollToIndex({ index: 0, viewOffset: 120, animated: !reduceMotion });
     }, 200);
-    return () => clearTimeout(id);
-  }, [openStep]);
+    return () => clearTimeout(timer);
+  }, [openStep, availableSlots.length, reduceMotion]);
 
-  // Clear the chosen slot if time moved on and it is no longer available
   useEffect(() => {
-    const slot = getSlot(slotId);
-    if (slot && getSlotState(slot, store, timeOffsetMs).disabled) setSlotId(null);
-  }, [tick, slotId, timeOffsetMs]);
-
-  // After the order is placed the cart is empty, so show only the success modal
-  if (successOrder) {
-    const slot = getSlot(successOrder.slotId);
-    return (
-      <View style={styles.screen}>
-        <OrderSuccessModal
-          visible
-          orderNumber={successOrder.number}
-          slotLabel={slot ? slot.label : ''}
-          roomCode={successOrder.room}
-          onTrack={() => {
-            const orderId = successOrder.id;
-            setSuccessOrder(null);
-            navigation.popToTop();
-            navigation.navigate('Tracking', { orderId });
-          }}
-        />
-      </View>
-    );
-  }
+    if (!processingError) return;
+    submitting.current = false;
+    navigation.setParams({ processingError: undefined });
+    showToast({ message: processingError, icon: 'alert-circle', tone: 'error' });
+  }, [navigation, processingError, showToast]);
 
   if (cart.items.length === 0) {
     return (
@@ -135,116 +110,124 @@ export default function CheckoutScreen({ navigation }) {
     );
   }
 
-  // ----- Derived location -----
-  const savedLocation = campusLocations.find((l) => l.id === savedId);
-  const newBuilding = getBuilding(roomValue.buildingId);
+  const building = campusBuildings.find((entry) => entry.id === roomValue.buildingId);
   const roomErrors = validateRoomParts(roomValue);
-  const newRoomCode = newBuilding && !Object.keys(roomErrors).length
-    ? makeRoomCode(newBuilding.code, roomValue.floor, roomValue.roomNumber)
-    : '';
-  const buildingId = mode === 'saved' ? savedLocation?.buildingId : roomValue.buildingId;
-  const room = mode === 'saved' ? savedLocation?.room : newRoomCode;
+  if (!building) roomErrors.building = 'Choose a building';
+  else if (!building.floors.includes(roomValue.floor)) roomErrors.floor = 'Choose a floor in this building';
+  const confirmedBuilding = campusBuildings.find(({ id }) => id === location?.buildingId);
+  const locationDone = Boolean(location && isRoomForBuilding(confirmedBuilding, location.room));
+  const paymentDone = payment === 'cash' || (payment === 'wallet' && !walletShort);
+  const completed = [locationDone, Boolean(slot), paymentDone];
 
-  const whereDone = Boolean(buildingId && room);
-  const whenDone = Boolean(slotId);
-  const payDone = Boolean(payment) && !walletShort;
-  const completed = [whereDone, whenDone, payDone];
-  const slot = getSlot(slotId);
-
-  // Moving between steps clears old errors: they only appear after Continue / Place order is pressed
   const goToStep = (index) => {
     animateLayout();
     setErrors({});
     setOpenStep(index);
   };
 
-  const pickSaved = (location) => {
+  const pickSaved = (place) => {
+    if (!isRoomForBuilding(getBuilding(place.buildingId), place.room)) {
+      setErrors({ building: 'Choose another place or enter a new location.' });
+      return;
+    }
     haptics.tap();
-    setSavedId(location.id);
-    setErrors((e) => ({ ...e, building: null, floor: null, room: null }));
+    setLocation({ ...place, savedId: place.id });
     goToStep(1);
   };
 
   const changeRoom = (next) => {
+    if (next.buildingId === roomValue.buildingId && next.floor === roomValue.floor && next.roomNumber === roomValue.roomNumber) return;
     setRoomValue(next);
-    setErrors((e) => ({ ...e, building: null, floor: null, room: null }));
+    if (location) setLocation(null);
+    setErrors({});
   };
 
   const confirmNewLocation = () => {
-    if (Object.keys(roomErrors).length) {
-      setErrors((e) => ({ ...e, ...roomErrors }));
+    const nextErrors = { ...roomErrors };
+    if (saveLocation && !locationLabel.trim()) nextErrors.label = 'Enter a name for this place.';
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
       shakeRef.current?.shake();
       return;
     }
+    Keyboard.dismiss();
+    setLocation({
+      buildingId: building.id,
+      room: makeRoomCode(building.code, roomValue.floor, roomValue.roomNumber),
+      saveLocation,
+      label: locationLabel.trim(),
+    });
     goToStep(1);
   };
 
-  const pickSlot = (id) => {
+  const pickSlot = (item) => {
+    const currentDate = dateKey(getNow(timeOffsetMs));
+    if (currentDate !== today || !store || !isStoreOpen(store, timeOffsetMs) || getSlotState(item, store, timeOffsetMs).disabled) {
+      setTick((n) => n + 1);
+      return;
+    }
     haptics.tap();
-    setSlotId(id);
-    setErrors((e) => ({ ...e, slot: null }));
+    setDelivery({ id: item.id, date: today });
     goToStep(2);
   };
 
   const pickPayment = (key) => {
     haptics.tap();
-    animateLayout();
     setPayment(key);
-    setErrors((e) => ({ ...e, payment: null }));
+    if (key === 'wallet' && missing > 0) return;
+    goToStep(locationDone && slot ? null : !locationDone ? 0 : 1);
   };
 
-  // Hard blocks disable the button (with a reason); missing steps keep it enabled and shake on press
-  let blockReason = '';
-  if (!isOnline) blockReason = "You're offline. Reconnect to place your order.";
-  else if (!storeOpen) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
-  else if (cartTotals.missingForMinimum > 0) blockReason = `Add ${formatMoney(cartTotals.missingForMinimum)} more to reach the $2.00 minimum`;
-  else if (walletShort) blockReason = `Top up ${formatMoney(missing)} or choose cash on delivery`;
-
-  let nextHint = '';
-  if (!whereDone) nextHint = 'Add your delivery room to continue';
-  else if (!whenDone) nextHint = 'Choose a delivery break to continue';
-  else if (!payment) nextHint = 'Choose how you want to pay';
+  const checkoutIssue = () => {
+    if (!isOnline) return "You're offline. Reconnect to place your order.";
+    if (!store) return 'This store is no longer available.';
+    if (!isStoreOpen(store, timeOffsetMs)) return closedReason(store, campus.deliverySlots, timeOffsetMs);
+    const printIssue = getPrintOrderIssue(cart.items, campus.printPrices.maxPages);
+    if (printIssue) return printIssue;
+    if (cart.items.some((item) => getCartItemIssue(item, getProduct, campus.printPrices.maxPages, cart.storeId))) {
+      return 'Review the unavailable or invalid items in your bag.';
+    }
+    if (!campus.deliverySlots.some((item) => !getSlotState(item, store, timeOffsetMs).disabled)) return 'No delivery slots available.';
+    if (cartTotals.missingForMinimum > 0) return `Add ${formatMoney(cartTotals.missingForMinimum)} more to reach the $2.00 minimum.`;
+    if (!locationDone) return 'Choose your delivery location to continue.';
+    if (!slot || today !== dateKey(getNow(timeOffsetMs)) || getSlotState(slot, store, timeOffsetMs).disabled) {
+      return 'Choose a delivery break to continue.';
+    }
+    if (!payment) return 'Choose a payment method to continue.';
+    if (walletShort) return 'Insufficient wallet balance.';
+    return '';
+  };
+  const blockReason = checkoutIssue();
 
   const handlePlaceOrder = () => {
-    const found = validateCheckoutSteps({
-      buildingId,
-      floor: roomValue.floor,
-      roomNumber: roomValue.roomNumber,
-      room: mode === 'saved' ? room : undefined,
-      slotId,
-      payment,
-    });
-    if (mode === 'saved' && !savedLocation) found.building = 'Choose a saved location or add a new one';
-    if (Object.keys(found).length) {
-      shakeRef.current?.shake();
-      if (found.building || found.floor || found.room) goToStep(0);
-      else if (found.slot) goToStep(1);
-      else goToStep(2);
-      setErrors(found); // after goToStep, which clears errors
-      return;
-    }
-    setErrors({});
+    if (submitting.current || checkoutIssue()) return;
+    Keyboard.dismiss();
     haptics.tap();
-    setShowSummary(true);
+    setReviewedPricing({ total: cartTotals.total, discount: cartTotals.discount });
   };
 
   const confirmOrder = () => {
-    setShowSummary(false);
-    setPlacing(true); // the button shrinks to a spinner, then the success screen opens
-    setTimeout(() => {
-      const order = placeOrder({
-        buildingId,
-        room,
-        slotId,
+    if (!reviewedPricing || submitting.current) return;
+    if (checkoutIssue()) {
+      setReviewedPricing(null);
+      setTick((n) => n + 1);
+      return;
+    }
+    submitting.current = true;
+    setReviewedPricing(null);
+    navigation.push('OrderProcessing', {
+      checkoutKey: route.key,
+      request: {
+        buildingId: location.buildingId,
+        room: location.room,
+        slotId: slot.id,
+        deliveryDate: delivery.date,
         payment,
-        saveLocation: mode === 'new' && saveLocation,
-        locationLabel,
-      });
-      setPlacing(false);
-      if (!order) return;
-      haptics.success();
-      setSuccessOrder(order);
-    }, reduceMotion ? 0 : 650);
+        saveLocation: location.saveLocation,
+        locationLabel: location.label,
+        expectedPricing: reviewedPricing,
+      },
+    });
   };
 
   // ----- Step header (number/check + title + summary or edit link) -----
@@ -257,6 +240,7 @@ export default function CheckoutScreen({ navigation }) {
         disabled={open}
         style={styles.stepHeader}
         accessibilityLabel={`${title} step${done ? ', completed' : ''}`}
+        accessibilityState={{ expanded: open, disabled: open }}
       >
         <View style={[styles.stepBadge, done && styles.stepBadgeDone, open && !done && styles.stepBadgeOpen]}>
           {done ? (
@@ -268,7 +252,7 @@ export default function CheckoutScreen({ navigation }) {
         <View style={styles.flex}>
           <Text style={styles.stepTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>{title}</Text>
           {!open && summary ? (
-            <Text style={styles.stepSummary} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{summary}</Text>
+            <Text style={styles.stepSummary} maxFontSizeMultiplier={MAX_FONT_SCALE}>{summary}</Text>
           ) : null}
         </View>
         {!open ? <Text style={styles.editLink}>{done ? 'Change' : 'Open'}</Text> : null}
@@ -276,19 +260,20 @@ export default function CheckoutScreen({ navigation }) {
     );
   };
 
-  const whereSummary = whereDone ? formatLocation(buildingId, room) : 'Not set yet';
-  const whenSummary = slot ? `${slot.label} break` : 'Not set yet';
-  const paySummary = payment === 'wallet' ? `Campus wallet · ${formatMoney(wallet.balance)}` : payment === 'cash' ? 'Cash on delivery' : 'Not set yet';
+  const whereSummary = locationDone ? formatLocation(location.buildingId, location.room) : 'Not set yet';
+  const whenSummary = slot ? `${deliveryDateLabel} \u00b7 ${slot.label}` : 'Not set yet';
+  const paySummary = payment === 'wallet' ? 'Campus wallet' : payment === 'cash' ? 'Cash on delivery' : 'Not set yet';
 
-  // ----- Where -----
   const whereContent = (
     <View>
       {campusLocations.length > 0 ? (
         <View style={styles.modeRow}>
-          <PressableScale onPress={() => { animateLayout(); setMode('saved'); }} style={[styles.modeBtn, mode === 'saved' && styles.modeBtnActive]}>
+          <PressableScale onPress={() => { animateLayout(); setMode('saved'); }} accessibilityState={{ selected: mode === 'saved' }}
+            style={[styles.modeBtn, mode === 'saved' && styles.modeBtnActive]}>
             <Text style={[styles.modeText, mode === 'saved' && styles.modeTextActive]}>Saved places</Text>
           </PressableScale>
-          <PressableScale onPress={() => { animateLayout(); setMode('new'); }} style={[styles.modeBtn, mode === 'new' && styles.modeBtnActive]}>
+          <PressableScale onPress={() => { animateLayout(); setMode('new'); }} accessibilityState={{ selected: mode === 'new' }}
+            style={[styles.modeBtn, mode === 'new' && styles.modeBtnActive]}>
             <Text style={[styles.modeText, mode === 'new' && styles.modeTextActive]}>New location</Text>
           </PressableScale>
         </View>
@@ -299,16 +284,16 @@ export default function CheckoutScreen({ navigation }) {
           data={campusLocations}
           keyExtractor={(item) => item.id}
           scrollEnabled={false}
-          extraData={savedId}
+          extraData={location?.savedId}
           renderItem={({ item }) => {
-            const selected = savedId === item.id;
+            const selected = location?.savedId === item.id;
             const b = getBuilding(item.buildingId);
             return (
-              <PressableScale onPress={() => pickSaved(item)} style={[styles.savedCard, selected && styles.savedCardSelected]} accessibilityLabel={`Deliver to ${item.label}`}>
+              <PressableScale onPress={() => pickSaved(item)} style={[styles.savedCard, selected && styles.savedCardSelected]} accessibilityState={{ selected }} accessibilityLabel={`Deliver to ${item.label}, ${formatLocation(item.buildingId, item.room)}`}>
                 <DoorSign code={item.room} size="sm" />
                 <View style={styles.savedInfo}>
                   <Text style={styles.savedLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.label}</Text>
-                  <Text style={styles.savedMeta} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                  <Text style={styles.savedMeta} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {b ? `${b.name} · ${b.landmarks}` : 'Saved place'}
                   </Text>
                 </View>
@@ -319,7 +304,7 @@ export default function CheckoutScreen({ navigation }) {
         />
       ) : (
         <View>
-          <RoomPicker buildings={campusBuildings} value={roomValue} onChange={changeRoom} errors={errors} />
+          <RoomPicker compact resetRoomOnBuildingChange buildings={campusBuildings} value={roomValue} onChange={changeRoom} errors={errors} />
           <View style={styles.switchRow}>
             <View style={styles.flex}>
               <Text style={styles.switchLabel}>Save this location</Text>
@@ -327,14 +312,14 @@ export default function CheckoutScreen({ navigation }) {
             </View>
             <Switch
               value={saveLocation}
-              onValueChange={(v) => { animateLayout(); setSaveLocation(v); }}
+              onValueChange={(v) => { animateLayout(); setSaveLocation(v); if (location && !location.savedId) setLocation(null); }}
               trackColor={{ false: colors.border, true: colors.primarySoft }}
               thumbColor={saveLocation ? colors.primary : colors.surface}
               accessibilityLabel="Save this location"
             />
           </View>
           {saveLocation ? (
-            <AppInput icon="bookmark-outline" placeholder="Label, e.g. My Lab" value={locationLabel} onChangeText={setLocationLabel} style={styles.labelInput} returnKeyType="done" />
+            <AppInput icon="bookmark-outline" placeholder="Label, e.g. My Lab" value={locationLabel} onChangeText={(value) => { setLocationLabel(value); if (location && !location.savedId) setLocation(null); }} error={errors.label} maxLength={40} style={styles.labelInput} returnKeyType="done" />
           ) : null}
           <AppButton title="Continue" variant="secondary" icon="arrow-forward" small onPress={confirmNewLocation} style={styles.continueBtn} />
         </View>
@@ -358,28 +343,26 @@ export default function CheckoutScreen({ navigation }) {
 
       <ShakeView ref={shakeRef}>
         <View style={[styles.stepCard, openStep === 0 && styles.stepCardOpen]}>
-          {stepHeader(0, 'Where', whereSummary)}
+          {stepHeader(0, STEPS[0], whereSummary)}
           {openStep === 0 ? whereContent : null}
         </View>
 
         <View style={[styles.stepCard, openStep === 1 && styles.stepCardOpen]}>
-          {stepHeader(1, 'When', whenSummary)}
+          {stepHeader(1, STEPS[1], whenSummary)}
           {openStep === 1 ? (
             <Text style={styles.stepHelp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              We deliver between classes, never during. {store ? `${store.name} needs ${store.prepTime} min to prepare.` : ''}
+              {deliveryDateLabel} {'\u00b7'} {store ? `${store.name} needs ${store.prepTime} min to prepare.` : ''}
             </Text>
           ) : null}
-          {openStep === 1 && errors.slot ? <Text style={styles.error}>{errors.slot}</Text> : null}
+          {openStep === 1 && !availableSlots.length ? (
+            <Text style={styles.stepHelp} accessibilityLiveRegion="polite" maxFontSizeMultiplier={MAX_FONT_SCALE}>No delivery slots available.</Text>
+          ) : null}
         </View>
       </ShakeView>
     </View>
   );
 
-  // ----- When (FlatList data) -----
-  // Available breaks come first; the passed / unavailable ones fold into ONE row ("5 earlier breaks passed") that expands
-  const slotStates = campus.deliverySlots.map((slotItem) => ({ slot: slotItem, state: getSlotState(slotItem, store, timeOffsetMs) }));
-  const availableSlots = slotStates.filter((x) => !x.state.disabled);
-  const unavailableSlots = slotStates.filter((x) => x.state.disabled);
+  const unavailableSlots = slotStates.filter(({ state }) => state.disabled);
   const allPassed = unavailableSlots.every((x) => x.state.reason === 'Passed');
   const slotRows = [
     ...availableSlots.map((x) => ({ id: x.slot.id, type: 'slot', ...x })),
@@ -408,12 +391,13 @@ export default function CheckoutScreen({ navigation }) {
       );
     }
     const { slot: item, state } = row;
-    const selected = slotId === item.id;
+    const selected = slot?.id === item.id;
     return (
       <StaggerItem index={index} style={styles.slotWrap}>
         <PressableScale
           disabled={state.disabled}
-          onPress={() => pickSlot(item.id)}
+          onPress={() => pickSlot(item)}
+          accessibilityState={{ selected, disabled: state.disabled }}
           style={[styles.slotCard, selected && styles.slotSelected, state.disabled && styles.slotDisabled]}
           accessibilityLabel={`${item.label} break${state.disabled ? `, unavailable: ${state.reason}` : ''}`}
         >
@@ -440,7 +424,7 @@ export default function CheckoutScreen({ navigation }) {
   const paymentCard = (key, icon, title, subtitle) => {
     const selected = payment === key;
     return (
-      <PressableScale onPress={() => pickPayment(key)} style={[styles.payCard, selected && styles.payCardSelected]} accessibilityLabel={title}>
+      <PressableScale onPress={() => pickPayment(key)} style={[styles.payCard, selected && styles.payCardSelected]} accessibilityLabel={title} accessibilityState={{ selected }}>
         <View style={[styles.payIcon, selected && styles.payIconSelected]}>
           <Ionicons name={icon} size={20} color={selected ? colors.textOnDark : colors.primary} />
         </View>
@@ -456,52 +440,65 @@ export default function CheckoutScreen({ navigation }) {
   const footer = (
     <View>
       <View style={[styles.stepCard, openStep === 2 && styles.stepCardOpen]}>
-        {stepHeader(2, 'Pay', paySummary)}
+        {stepHeader(2, STEPS[2], paySummary)}
         {openStep === 2 ? (
           <View>
             {paymentCard('wallet', 'wallet', 'Campus wallet', `Balance ${formatMoney(wallet.balance)}`)}
-            {walletShort ? (
+            {missing > 0 ? (
               <View style={styles.insufficient}>
                 <View style={styles.flex}>
                   <Text style={styles.insufficientTitle}>Missing {formatMoney(missing)}</Text>
-                  <Text style={styles.insufficientText}>Insufficient balance – top up and come back</Text>
+                  <Text style={styles.insufficientText}>Insufficient wallet balance. Top up or choose cash on delivery.</Text>
                 </View>
                 <AppButton title="Top up" small variant="danger" onPress={() => navigation.navigate('Wallet')} />
               </View>
             ) : null}
-            {paymentCard('cash', 'cash', 'Cash on delivery', 'Pay the courier when it arrives')}
-            {errors.payment ? <Text style={styles.error}>{errors.payment}</Text> : null}
+            {paymentCard('cash', 'cash', 'Cash on delivery', 'Pay when your order arrives.')}
+            {payment === 'wallet' && !walletShort ? (
+              <Text style={styles.stepHelp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                Balance after payment: {formatMoney(wallet.balance - cartTotals.total)}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>
 
-      <Text style={styles.sectionTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>Review</Text>
-      <View style={styles.reviewCard}>
-        <View style={styles.reviewRow}>
-          <Ionicons name="bag-handle-outline" size={18} color={colors.primaryText} />
-          <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {cartTotals.count} {cartTotals.count === 1 ? 'item' : 'items'} from {store ? store.name : 'the store'}
-          </Text>
-        </View>
-        {rewardApplied ? (
-          <View style={styles.reviewRow}>
-            <Text style={styles.rewardEmoji}>🎁</Text>
-            <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Free coffee applied</Text>
+      {completed.every(Boolean) ? (
+        <>
+          <Text style={styles.sectionTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>Review</Text>
+          <View style={styles.reviewCard}>
+            <View style={styles.reviewRow}>
+              <Ionicons name="bag-handle-outline" size={18} color={colors.primaryText} />
+              <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                {cartTotals.count} {cartTotals.count === 1 ? 'item' : 'items'} from {store ? store.name : 'the store'}
+              </Text>
+            </View>
+            <FlatList data={cart.items} scrollEnabled={false} keyExtractor={(item) => item.key} renderItem={({ item }) => {
+              const details = bagItemDetails(item);
+              return (
+                <View key={item.key} style={styles.reviewItem}>
+                  <Text style={styles.reviewItemTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.qty} {'\u00d7'} {item.name}</Text>
+                  {details ? <Text style={styles.reviewItemDetails} maxFontSizeMultiplier={MAX_FONT_SCALE}>{details}</Text> : null}
+                </View>
+              );
+            }} />
+            <SummaryRow label="Deliver to" value={whereSummary} />
+            <SummaryRow label="Delivery break" value={whenSummary} />
+            <SummaryRow label="Payment" value={paySummary} />
+            {payment === 'wallet' ? (
+              <SummaryRow label="Balance after payment" value={formatMoney(wallet.balance - cartTotals.total)} />
+            ) : null}
           </View>
-        ) : null}
-        {whereDone ? (
-          <View style={styles.reviewRow}>
-            <Ionicons name="location-outline" size={18} color={colors.primaryText} />
-            <Text style={styles.reviewText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{whereSummary}</Text>
-          </View>
-        ) : null}
-      </View>
-      <PriceSummary totals={cartTotals} showHints={false} />
+        </>
+      ) : null}
+      <PriceSummary title="Order summary" totals={cartTotals} showHints={false} style={styles.priceSummary} />
     </View>
   );
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}>
+
       <FlatList
         ref={listRef}
         onScrollToIndexFailed={() => {}}
@@ -512,43 +509,40 @@ export default function CheckoutScreen({ navigation }) {
         ListFooterComponent={footer}
         contentContainerStyle={styles.list}
         keyboardShouldPersistTaps="handled"
-        extraData={{ slotId, tick, timeOffsetMs, openStep, showUnavailable }}
+        extraData={{ delivery, tick, timeOffsetMs, openStep, showUnavailable }}
         showsVerticalScrollIndicator={false}
       />
 
-      <StickyBar>
-        <MorphWidth active={placing}>
+      <StickyBar style={styles.placeBar}>
         <AppButton
-          loading={placing}
           title={`Place order · ${formatMoney(cartTotals.total)}`}
           icon="checkmark-circle"
           onPress={handlePlaceOrder}
+          small
           disabled={Boolean(blockReason)}
-          dimmed={Boolean(nextHint)}
-          reason={blockReason || nextHint}
+          reason={blockReason}
         />
-        </MorphWidth>
       </StickyBar>
 
       <ConfirmModal
-        visible={showSummary}
+        visible={Boolean(reviewedPricing)}
         title="Confirm your order"
         icon="receipt"
         confirmLabel="Place order"
         onConfirm={confirmOrder}
-        onCancel={() => setShowSummary(false)}
+        onCancel={() => setReviewedPricing(null)}
       >
         <View style={styles.summaryBox}>
           <SummaryRow label="Store" value={store ? store.name : ''} />
           <SummaryRow label="Items" value={String(cartTotals.count)} />
-          <SummaryRow label="Deliver to" value={whereDone ? formatLocation(buildingId, room) : ''} />
-          <SummaryRow label="Break" value={slot ? slot.label : ''} />
+          <SummaryRow label="Deliver to" value={whereSummary} />
+          <SummaryRow label="Break" value={whenSummary} />
           <SummaryRow label="Payment" value={payment === 'wallet' ? 'Campus wallet' : 'Cash on delivery'} />
-          {rewardApplied ? <SummaryRow label="Free coffee" value={`−${formatMoney(cartTotals.discount)}`} /> : null}
+          {rewardApplied ? <SummaryRow label="Coffee reward discount" value={`−${formatMoney(cartTotals.discount)}`} /> : null}
           <SummaryRow label="Total" value={formatMoney(cartTotals.total)} strong />
         </View>
       </ConfirmModal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

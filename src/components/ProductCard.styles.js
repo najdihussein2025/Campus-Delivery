@@ -1,5 +1,12 @@
 import { StyleSheet } from 'react-native';
-import { fonts, radius, shadow, spacing } from '../theme/theme';
+import { fonts, MAX_FONT_SCALE, radius, shadow, spacing } from '../theme/theme';
+
+const NAME_LINE_HEIGHT = 19;
+const NAME_HEIGHT = Math.ceil(NAME_LINE_HEIGHT * 2 * MAX_FONT_SCALE);
+const FOOTER_HEIGHT = 30;
+const OPTION_HEIGHT = 34;
+export const PRODUCT_IMAGE_HEIGHT = 110;
+const CARD_HEIGHT = PRODUCT_IMAGE_HEIGHT + NAME_HEIGHT + FOOTER_HEIGHT + spacing.sm * 4 + 2;
 
 export const createStyles = (c) => StyleSheet.create({
   card: {
@@ -13,6 +20,9 @@ export const createStyles = (c) => StyleSheet.create({
     borderWidth: 1,
     borderColor: c.cardBorder,
   },
+  alignedCard: { height: CARD_HEIGHT },
+  cardWithOption: { height: CARD_HEIGHT + OPTION_HEIGHT },
+  alignedImage: { height: PRODUCT_IMAGE_HEIGHT, position: 'relative' },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 14,
@@ -20,6 +30,15 @@ export const createStyles = (c) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  rewardBadge: {
+    position: 'absolute',
+    top: spacing.xs,
+    right: spacing.xs,
+    padding: spacing.xs,
+    borderRadius: 12,
+    backgroundColor: c.accentWarmSoft,
+  },
+  photoBadge: { position: 'absolute', bottom: spacing.sm, alignSelf: 'center' },
   oosPill: {
     backgroundColor: c.primaryDark,
     borderRadius: radius.pill,
@@ -28,15 +47,19 @@ export const createStyles = (c) => StyleSheet.create({
   },
   oosText: { fontFamily: fonts.bold, fontSize: 12, color: c.textOnDark },
   body: { paddingHorizontal: spacing.xs, paddingTop: spacing.sm, flex: 1 },
-  name: { fontFamily: fonts.bold, fontSize: 14.5, lineHeight: 19, color: c.text, minHeight: 38 },
+  name: { fontFamily: fonts.bold, fontSize: 14.5, lineHeight: NAME_LINE_HEIGHT, color: c.text, minHeight: NAME_LINE_HEIGHT * 2 },
+  alignedName: { height: NAME_HEIGHT, includeFontPadding: false },
   muted: { color: c.textMuted },
+  option: { fontFamily: fonts.medium, fontSize: 12, color: c.textMuted },
+  optionSlot: { height: OPTION_HEIGHT },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: spacing.sm,
-    minHeight: 30,
+    minHeight: FOOTER_HEIGHT,
   },
+  alignedFooter: { height: FOOTER_HEIGHT },
   price: { fontFamily: fonts.extrabold, fontSize: 15.5, color: c.text },
   plus: {
     width: 30,

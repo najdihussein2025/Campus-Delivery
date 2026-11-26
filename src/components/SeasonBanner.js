@@ -9,7 +9,7 @@ import useThemedStyles from '../hooks/useThemedStyles';
 import { useTheme } from '../context/ThemeContext';
 
 // Seasonal banners (Lent, Ramadan): tap turns on the season's filter, × hides that season. Several can show at once.
-export default function SeasonBanner({ seasons, onSelectTag, onDismiss }) {
+export default function SeasonBanner({ seasons, onSelectTag, onDismiss, showSiyamiMarker = true }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   if (!seasons || seasons.length === 0) return null;
@@ -19,16 +19,18 @@ export default function SeasonBanner({ seasons, onSelectTag, onDismiss }) {
           icon: 'sparkles',
         };
         const lent = season.id === 'lent';
+        const text = lent && !showSiyamiMarker ? 'Lent – Browse fasting-friendly options' : banner.text;
+        const label = lent && !showSiyamiMarker ? 'Fasting-friendly' : tagLabel(season.highlightTag);
         return (
           <View style={[styles.banner, lent ? styles.bannerLent : styles.bannerInfo]}>
             <PressableScale
               onPress={() => onSelectTag(season.highlightTag)}
               style={styles.main}
-              accessibilityLabel={`${banner.text}. Tap to filter ${tagLabel(season.highlightTag)}`}
+              accessibilityLabel={`${text}. Tap to filter ${label}`}
             >
               <Ionicons name={banner.icon} size={20} color={lent ? colors.warningText : colors.infoText} />
               <Text style={[styles.text, lent ? styles.textLent : styles.textInfo]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                {banner.text}
+                {text}
               </Text>
             </PressableScale>
             <PressableScale

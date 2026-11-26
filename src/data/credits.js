@@ -12,29 +12,29 @@ export const PHOTO_CREDITS = [
   {
     "file": "products/p01.jpg",
     "subject": "Chicken Sub",
-    "title": "Grilled Chicken Sandwich from McDonald's Dongzhimenwai Store (20191222163031).jpg",
-    "author": "N509FZ",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Grilled_Chicken_Sandwich_from_McDonald%27s_Dongzhimenwai_Store_(20191222163031).jpg"
-  },
-  {
-    "file": "products/p02.jpg",
-    "subject": "Halloumi",
-    "title": "Halloumi & Roasted Vegetables sandwich - Sunbirds 2023-09-14.jpg",
-    "author": "Andy Li",
-    "license": "CC0",
-    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-    "url": "https://commons.wikimedia.org/wiki/File:Halloumi_%26_Roasted_Vegetables_sandwich_-_Sunbirds_2023-09-14.jpg"
-  },
-  {
-    "file": "products/p03.jpg",
-    "subject": "Tuna",
-    "title": "Tuna salad sandwich (1).jpg",
+    "title": "Jerked chicken, cheese, pickles, hoagie roll, mustard (4470125495).jpg (cropped and resized)",
     "author": "jeffreyw",
     "license": "CC BY 2.0",
     "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Tuna_salad_sandwich_(1).jpg"
+    "url": "https://commons.wikimedia.org/wiki/File:Jerked_chicken,_cheese,_pickles,_hoagie_roll,_mustard_(4470125495).jpg"
+  },
+  {
+    "file": "products/p02.jpg",
+    "subject": "Halloumi Sandwich",
+    "title": "Spicy & Smoky Halloumi Sandwich - T @ The Dials 2025-04-12.jpg (cropped and resized)",
+    "author": "Andy Li",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "url": "https://commons.wikimedia.org/wiki/File:Spicy_%26_Smoky_Halloumi_Sandwich_-_T_@_The_Dials_2025-04-12.jpg"
+  },
+  {
+    "file": "products/p03.jpg",
+    "subject": "Tuna Sandwich",
+    "title": "Tuna salad sandwich.jpg (cropped and resized)",
+    "author": "jeffreyw",
+    "license": "CC BY 2.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
+    "url": "https://commons.wikimedia.org/wiki/File:Tuna_salad_sandwich.jpg"
   },
   {
     "file": "products/p04.jpg",
@@ -47,147 +47,147 @@ export const PHOTO_CREDITS = [
   },
   {
     "file": "products/p05.jpg",
-    "subject": "Zaatar",
-    "title": "Za'atar with labneh manakish at Agasi, Lajpat Nagar, Delhi (2025-08-13).jpg",
-    "author": "Contrapunctus-1",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Za%27atar_with_labneh_manakish_at_Agasi,_Lajpat_Nagar,_Delhi_(2025-08-13).jpg"
+    "subject": "Za’atar Manoushe",
+    "title": "Israeli zaatar manakeesh.jpg (cropped and resized)",
+    "author": "Nsaum75",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "url": "https://commons.wikimedia.org/wiki/File:Israeli_zaatar_manakeesh.jpg"
   },
   {
     "file": "products/p06.jpg",
-    "subject": "Cheese",
-    "title": "Za'atar with cheese manakish at Agasi, Lajpat Nagar, Delhi (2025-10-04).jpg",
-    "author": "Contrapunctus-1",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Za%27atar_with_cheese_manakish_at_Agasi,_Lajpat_Nagar,_Delhi_(2025-10-04).jpg"
+    "subject": "Cheese Manoushe",
+    "title": "Delicious Cheese Manakish on a Tray (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/32471481/"
   },
   {
     "file": "products/p07.jpg",
-    "subject": "Lahm b'Ajeen",
-    "title": "Meat pizza.jpg",
-    "author": "Alpha from Melbourne, Australia",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Meat_pizza.jpg"
+    "subject": "Lahm b’Ajeen",
+    "title": "Acılı Lahmacun.jpg (cropped and resized)",
+    "author": "Garrett Ziegler",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "url": "https://commons.wikimedia.org/wiki/File:Ac%C4%B1l%C4%B1_Lahmacun.jpg"
   },
   {
     "file": "products/p08.jpg",
     "subject": "Fattoush",
-    "title": "Fattoush.JPG",
-    "author": "Unknown (see source page)",
-    "license": "Public domain",
-    "licenseUrl": "",
-    "url": "https://commons.wikimedia.org/wiki/File:Fattoush.JPG"
+    "title": "Fattoush mixed-salad.jpg (cropped and resized)",
+    "author": "Arousing Appetites",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
+    "url": "https://commons.wikimedia.org/wiki/File:Fattoush_mixed-salad.jpg"
   },
   {
     "file": "products/p09.jpg",
     "subject": "Chicken Caesar",
-    "title": "Chicken Caesar Salad at French Market Restaurant.jpg",
-    "author": "pattyonflickr",
-    "license": "CC BY 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Chicken_Caesar_Salad_at_French_Market_Restaurant.jpg"
+    "title": "Chicken Caesar salad - Auckland, New Zealand.jpg (cropped and resized)",
+    "author": "Daderot",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "url": "https://commons.wikimedia.org/wiki/File:Chicken_Caesar_salad_-_Auckland,_New_Zealand.jpg"
   },
   {
     "file": "products/p10.jpg",
-    "subject": "Croissant",
-    "title": "Two croissants on a plate (7326367390).jpg",
-    "author": "Scott Dexter from Brooklyn, US",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Two_croissants_on_a_plate_(7326367390).jpg"
+    "subject": "Plain Croissant",
+    "title": "Croissants au beurre (18953292873).jpg (cropped and resized)",
+    "author": "Herry Wibisono (herryway)",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "url": "https://commons.wikimedia.org/wiki/File:Croissants_au_beurre_(18953292873).jpg"
   },
   {
     "file": "products/p11.jpg",
     "subject": "Fruit Cup",
-    "title": "Fruktsallad (Fruit salad).jpg",
-    "author": "dnm",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Fruktsallad_(Fruit_salad).jpg"
+    "title": "Fresh Fruit Salad in Clear Plastic Cup (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/34636911/"
   },
   {
     "file": "products/p12.jpg",
     "subject": "Espresso",
-    "title": "Cup of espresso 02.jpg",
-    "author": "Kritzolina",
+    "title": "Gray espresso cup with amaretto 1.jpg (cropped and resized)",
+    "author": "Friedrich Haag",
     "license": "CC BY-SA 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Cup_of_espresso_02.jpg"
+    "url": "https://commons.wikimedia.org/wiki/File:Gray_espresso_cup_with_amaretto_1.jpg"
   },
   {
     "file": "products/p13.jpg",
     "subject": "Americano",
-    "title": "Espresso Americano.jpeg",
-    "author": "User:Sameer.siddhanti",
-    "license": "Public domain",
-    "licenseUrl": "",
-    "url": "https://commons.wikimedia.org/wiki/File:Espresso_Americano.jpeg"
+    "title": "A cup of Americano in Lano Coffee (Palembang, SS).jpg (cropped and resized)",
+    "author": "Firzafp",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "url": "https://commons.wikimedia.org/wiki/File:A_cup_of_Americano_in_Lano_Coffee_(Palembang,_SS).jpg"
   },
   {
     "file": "products/p14.jpg",
     "subject": "Cappuccino",
-    "title": "Classical Cappuccino in Savour Cafe.jpg",
-    "author": "Peachyeung316",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Classical_Cappuccino_in_Savour_Cafe.jpg"
+    "title": "Cappuccino in White Ceramic Cup (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/10355637/"
   },
   {
     "file": "products/p15.jpg",
     "subject": "Latte",
-    "title": "Caffè Latte at Sainsbury's Low Hall, Chingford, London 1.jpg",
-    "author": "Acabashi",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Caff%C3%A8_Latte_at_Sainsbury%27s_Low_Hall,_Chingford,_London_1.jpg"
+    "title": "Coffee Latte in a Glass (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/15023135/"
   },
   {
     "file": "products/p16.jpg",
     "subject": "Hot Chocolate",
-    "title": "Hot chocolate in western.jpg",
-    "author": "Geoffreyrabbit",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Hot_chocolate_in_western.jpg"
+    "title": "A Cup of Hot Chocolate Drink (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/9622378/"
   },
   {
     "file": "products/p17.jpg",
     "subject": "Tea",
-    "title": "Cup of black tea.JPG",
-    "author": "AntanO",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Cup_of_black_tea.JPG"
+    "title": "Close-Up Shot of Black Tea in a Cup (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/10936204/"
   },
   {
     "file": "products/p18.jpg",
     "subject": "Iced Latte",
-    "title": "Iced latte - Trading Post Coffee Roasters 2024-06-21.jpg",
-    "author": "Andy Li",
-    "license": "CC0",
-    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-    "url": "https://commons.wikimedia.org/wiki/File:Iced_latte_-_Trading_Post_Coffee_Roasters_2024-06-21.jpg"
+    "title": "Iced latte.jpg (cropped and resized)",
+    "author": "Kritzolina",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
+    "url": "https://commons.wikimedia.org/wiki/File:Iced_latte.jpg"
   },
   {
     "file": "products/p19.jpg",
     "subject": "Fresh Orange Juice",
-    "title": "Orange juice 1 edit1.jpg",
-    "author": "Agency of the United States Department of Agriculture Edited Version by: Arad",
-    "license": "Public domain",
-    "licenseUrl": "",
-    "url": "https://commons.wikimedia.org/wiki/File:Orange_juice_1_edit1.jpg"
+    "title": "Close-up of Fresh Orange Juice (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/15560947/"
   },
   {
     "file": "products/p20.jpg",
     "subject": "Water",
-    "title": "Glass of water ouside.jpg",
-    "author": "Kurt Kaiser",
-    "license": "CC0",
-    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-    "url": "https://commons.wikimedia.org/wiki/File:Glass_of_water_ouside.jpg"
+    "title": "Water Bottle with Blue Bottle Cap (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/11860563/"
   },
   {
     "file": "products/p21.jpg",
@@ -201,20 +201,20 @@ export const PHOTO_CREDITS = [
   {
     "file": "products/p22.jpg",
     "subject": "Spiral Notebook A5",
-    "title": "Newone - Grand spiral notebook A7.jpg",
-    "author": "Newone",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Newone_-_Grand_spiral_notebook_A7.jpg"
+    "title": "Open Notebook on White Surface (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/12039670/"
   },
   {
     "file": "products/p23.jpg",
     "subject": "Lab Notebook",
-    "title": "Otto Hahn's notebook 1938 - Deutsches Museum - Munich.jpg",
-    "author": "J Brew",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Otto_Hahn%27s_notebook_1938_-_Deutsches_Museum_-_Munich.jpg"
+    "title": "Opened Notebook on Top of Book Pages (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/8250896/"
   },
   {
     "file": "products/p24.jpg",
@@ -228,73 +228,82 @@ export const PHOTO_CREDITS = [
   {
     "file": "products/p25.jpg",
     "subject": "Highlighters Set",
-    "title": "Artful highlighter pens drawing on paper.jpg",
-    "author": "photosteve101",
-    "license": "CC BY 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Artful_highlighter_pens_drawing_on_paper.jpg"
+    "title": "Highlighters on White Background (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/5594285/"
   },
   {
     "file": "products/p26.jpg",
     "subject": "Pencil & Eraser",
-    "title": "Pencil eraser.jpg",
-    "author": "Alex Morfin",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Pencil_eraser.jpg"
+    "title": "A Worn Out Yellow Pencil in Close Up (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/6555379/"
   },
   {
     "file": "products/p27.jpg",
     "subject": "Scientific Calculator",
-    "title": "Poundland £1 scientific calculator (front).jpg",
-    "author": "Multicherry",
+    "title": "Casio fx-991ES-0622.jpg (cropped and resized)",
+    "author": "Raimond Spekking",
     "license": "CC BY-SA 4.0",
     "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Poundland_%C2%A31_scientific_calculator_(front).jpg"
+    "url": "https://commons.wikimedia.org/wiki/File:Casio_fx-991ES-0622.jpg"
   },
   {
     "file": "products/p28.jpg",
     "subject": "USB Flash 32GB",
-    "title": "Intuix USB flash drive, 256 MB.jpg",
-    "author": "Cjp24",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Intuix_USB_flash_drive,_256_MB.jpg"
+    "title": "Kingston usb 32gb datatraveler.JPG (cropped and resized)",
+    "author": "Varmin",
+    "license": "CC BY-SA 3.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0/",
+    "url": "https://commons.wikimedia.org/wiki/File:Kingston_usb_32gb_datatraveler.JPG"
   },
   {
     "file": "stores/cafeteria.jpg",
-    "subject": "UA Cafeteria (logo/photo)",
-    "title": "Cafeteria 2.jpg",
-    "author": "Tejeshmavinamar",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:Cafeteria_2.jpg"
+    "subject": "UA Cafeteria (representative stock photo)",
+    "title": "Empty school cafeteria.jpg (cropped and resized)",
+    "author": "The original uploader was Three Sixty at Wikimedia Commons.",
+    "license": "CC0",
+    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+    "url": "https://commons.wikimedia.org/wiki/File:Empty_school_cafeteria.jpg"
   },
   {
     "file": "stores/coffee.jpg",
-    "subject": "Coffee Corner (logo/photo)",
-    "title": "Food display case at the counter of French Coffee Shop, Dieppe 2026-05-11.jpg",
-    "author": "Andy Li",
-    "license": "CC0",
-    "licenseUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
-    "url": "https://commons.wikimedia.org/wiki/File:Food_display_case_at_the_counter_of_French_Coffee_Shop,_Dieppe_2026-05-11.jpg"
+    "subject": "Coffee Corner (representative stock photo)",
+    "title": "Cozy Coffee Shop Counter with Espresso Machine (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/35411022/"
   },
   {
     "file": "stores/bookstore.jpg",
-    "subject": "Bookstore & Stationery (logo/photo)",
-    "title": "School supplies.jpg",
-    "author": "DiwangPingkian",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "url": "https://commons.wikimedia.org/wiki/File:School_supplies.jpg"
+    "subject": "Bookstore & Stationery (representative stock photo)",
+    "title": "Cozy Stationery Shop with Sunlit Interior (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/30654939/"
   },
   {
     "file": "stores/printing.jpg",
-    "subject": "Printing Office (logo/photo)",
-    "title": "RICOH Aficio MP C3002 Color Laser Multifunction Printer.jpg",
-    "author": "Dinkun Chen",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "url": "https://commons.wikimedia.org/wiki/File:RICOH_Aficio_MP_C3002_Color_Laser_Multifunction_Printer.jpg"
+    "subject": "Printing Office (representative stock photo)",
+    "title": "Printer and a Computer in an Office (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/9574509/"
+  },
+  {
+    "file": "products/coffee-decaf-demo.jpg",
+    "subject": "Decaf Coffee (Demo) (representative black coffee photo)",
+    "title": "A Cup of Black Coffee on a Saucer (cropped and resized)",
+    "author": "Pexels contributor (see source)",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "url": "https://www.pexels.com/photo/11189947/"
   }
 ];

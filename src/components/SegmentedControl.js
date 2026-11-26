@@ -8,7 +8,7 @@ import { createStyles } from './SegmentedControl.styles';
 import useThemedStyles from '../hooks/useThemedStyles';
 
 // Segmented control: a white indicator slides (Animated.spring) under the selected option
-export default function SegmentedControl({ options = [], value, onChange, style, disabled = false }) {
+export default function SegmentedControl({ options = [], value, onChange, style, disabled = false, compact = false }) {
   const styles = useThemedStyles(createStyles);
   const reduceMotion = useReduceMotion();
   const [width, setWidth] = useState(0);
@@ -53,9 +53,9 @@ export default function SegmentedControl({ options = [], value, onChange, style,
             accessibilityRole="tab"
             accessibilityLabel={option.label}
             accessibilityState={{ selected, disabled }}
-            style={[styles.segment, { width: segmentWidth || undefined, flex: segmentWidth ? undefined : 1 }, disabled && styles.segmentDisabled]}
+            style={[styles.segment, compact && styles.compactSegment, { width: segmentWidth || undefined, flex: segmentWidth ? undefined : 1 }, disabled && styles.segmentDisabled]}
           >
-            <Text style={[styles.label, selected && styles.labelSelected]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            <Text style={[styles.label, compact && styles.compactLabel, selected && styles.labelSelected]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               {option.label}
             </Text>
             {option.subtitle ? (

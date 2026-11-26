@@ -20,6 +20,7 @@ export default function ConfirmModal({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  onDismiss,
   loading = false,
   children,
 }) {
@@ -34,13 +35,14 @@ export default function ConfirmModal({
   };
   const [toneColor, toneSoft] = toneColors[tone] || toneColors.primary;
   const showCancel = Boolean(cancelLabel && onCancel);
+  const close = onDismiss || onCancel || onConfirm;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onCancel || onConfirm}>
+    <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={close}>
       <View style={styles.root}>
         <Pressable
           style={styles.backdrop}
-          onPress={onCancel || onConfirm}
+          onPress={close}
           accessibilityRole="button"
           accessibilityLabel="Close"
         />

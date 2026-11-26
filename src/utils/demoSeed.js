@@ -16,7 +16,7 @@ const SEED_ORDERS = [
   [6, 's4', 'bookstore', [['p21', 1], ['p24', 1], ['p26', 1]], 'wallet', 'Elie'],
   [8, 's2', 'coffee', [['p18', 2, 'Large']], 'wallet', 'Jad'],
   [9, 's1', 'cafeteria', [['p05', 2], ['p08', 1]], 'cash', 'Rami'],
-  [10, 's2', 'coffee', [['p12', 2, 'Large']], 'cash', 'Nour'],
+  [10, 's2', 'coffee', [['p12', 2, 'Double']], 'cash', 'Nour'],
   [13, 's3', 'cafeteria', [['p09', 1]], 'wallet', 'Maya'],
   [15, 's2', 'coffee', [['p14', 1, 'Large'], ['p17', 1]], 'wallet', 'Karim'],
   [17, 's3', 'bookstore', [['p23', 1], ['p25', 1]], 'wallet', 'Elie'],

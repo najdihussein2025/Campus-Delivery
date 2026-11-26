@@ -12,9 +12,13 @@ export const PICKER_TYPES = [
 export const fileKind = ({ name = '', mimeType = '' }) => {
   const mime = (mimeType || '').toLowerCase();
   const ext = name.toLowerCase().split('.').pop();
-  if (mime === 'application/pdf' || ext === 'pdf') return 'pdf';
-  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(ext)) return 'image';
-  if (mime === 'application/msword' || mime.includes('wordprocessingml') || ['doc', 'docx'].includes(ext)) return 'word';
+  if (mime === 'application/pdf') return 'pdf';
+  if (mime.startsWith('image/')) return 'image';
+  if (mime === PICKER_TYPES[2] || mime === PICKER_TYPES[3]) return 'word';
+  if (mime && mime !== 'application/octet-stream') return null;
+  if (ext === 'pdf') return 'pdf';
+  if (['doc', 'docx'].includes(ext)) return 'word';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'bmp', 'tif', 'tiff', 'svg', 'avif'].includes(ext)) return 'image';
   return null;
 };
 
@@ -28,8 +32,9 @@ export const formatFileSize = (bytes) => {
 // Returns an error message, or '' when the file is fine
 export const validateFile = (file) => {
   if (!fileKind(file)) return 'Only PDF, Word or image files';
-  if (file.size && file.size > MAX_FILE_BYTES) {
-    return `This file is ${Math.round(file.size / (1024 * 1024))} MB, the limit is 25 MB`;
+  if (!Number.isFinite(file.size) || file.size <= 0) return 'Choose a non-empty file with a readable file size.';
+  if (file.size > MAX_FILE_BYTES) {
+    return `This file exceeds the 25 MB limit (${formatFileSize(file.size)}).`;
   }
   return '';
 };
@@ -53,13 +58,12 @@ export const countPagesInPdfText = (text) => {
 };
 
 // Never throws and never blocks: images = 1, small PDFs are scanned, everything else returns null
-export const detectPages = async (file, readBase64) => {
+export const detectPages = async (file, readPdfText) => {
   try {
     const kind = fileKind(file);
     if (kind === 'image') return 1;
     if (kind !== 'pdf' || !file.size || file.size > MAX_PDF_SCAN_BYTES) return null;
-    const base64 = await readBase64(file.uri);
-    return countPagesInPdfText(atob(base64));
+    return countPagesInPdfText(await readPdfText(file));
   } catch (error) {
     console.log('Page detection skipped', error.message);
     return null;

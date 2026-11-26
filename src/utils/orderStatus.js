@@ -1,5 +1,3 @@
-import { formatTime, minutesToTime, toMinutes } from './time';
-
 export const STATUS_STEPS = ['Received', 'Preparing', 'On the way', 'Delivered'];
 
 // Tracking speed (seconds per step), chosen in Demo settings. "Demo" leaves time to lock the phone.
@@ -21,29 +19,17 @@ export const buildStatusSchedule = (placedAtMs, stepSeconds) => ({
   delivered: placedAtMs + 3 * stepSeconds * 1000,
 });
 
+export const getCampusStatusTime = (order, realTimestamp) =>
+  realTimestamp + ((order.placedAt ?? startMs(order)) - startMs(order));
+
 // Orders saved before the schedule existed fall back to 12 s steps from their creation time
 const startMs = (order) => order.placedAtMs ?? order.createdAt ?? 0;
-const scheduleOf = (order) => order.statusSchedule || buildStatusSchedule(startMs(order), LEGACY_STEP_SECONDS);
+const scheduleOf = (order) => order.statusSchedule || buildStatusSchedule(startMs(order), order.stepSeconds || LEGACY_STEP_SECONDS);
 
 // [Received, Preparing, On the way, Delivered] start times
 export const getStepTimes = (order) => {
   const s = scheduleOf(order);
   return [startMs(order), s.preparing, s.onTheWay, s.delivered];
-};
-
-// Times SHOWN to the student. The status itself changes on the fast demo timer, but the story must match the
-// chosen break, so the displayed times are computed from the slot:
-//   Received   = real placement time (demo clock)
-//   Preparing  = break start − store prep time
-//   On the way = break start − 5 min
-//   Delivered  = the break window ("15:15–15:30")
-// Orders without a known slot fall back to the real step times.
-export const getDisplayTimes = (order, slot, store) => {
-  const received = formatTime(new Date(order.placedAt ?? startMs(order)));
-  if (!slot) return getStepTimes(order).map((t, i) => (i === 0 ? received : formatTime(new Date(t))));
-  const start = toMinutes(slot.start);
-  const prep = store ? store.prepTime : 10;
-  return [received, minutesToTime(start - prep), minutesToTime(start - 5), slot.label];
 };
 
 // Pure: the latest step whose timestamp has passed. Stays correct after the app was closed.

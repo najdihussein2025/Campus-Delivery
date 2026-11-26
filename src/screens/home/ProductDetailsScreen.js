@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, ScrollView, Switch, Text, View } from 'react-native';
-import Reanimated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
@@ -13,13 +13,13 @@ import QuantitySelector from '../../components/QuantitySelector';
 import SectionHeader from '../../components/SectionHeader';
 import SegmentedControl from '../../components/SegmentedControl';
 import StickyBar from '../../components/StickyBar';
-import { AnimatedNumber, FadeInView, PressableScale, useFlyToBag, useReduceMotion, useToast } from '../../components/motion';
-import { durations, easings, springs, REDUCED_FADE_MS } from '../../theme/motion';
+import { AnimatedNumber, FadeInView, PressableScale, useReduceMotion, useToast } from '../../components/motion';
+import { durations, easings, REDUCED_FADE_MS } from '../../theme/motion';
 import * as haptics from '../../utils/haptics';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { closedReason, isStoreOpen } from '../../utils/time';
-import { allergenLine, tagMeta } from '../../utils/diet';
+import { allergenLine, customizedDietTags, getDietMatch, matchesDrinkDiet, STORE_DIET_OPTIONS, tagMeta } from '../../utils/diet';
 import { createStyles } from './ProductDetailsScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
@@ -42,90 +42,125 @@ function ZoomImage({ children }) {
 export default function ProductDetailsScreen({ navigation, route }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
-  const { productId } = route.params;
-  const { campus, cart, getProduct, getStore, addToCart, replaceCart, timeOffsetMs } = useApp();
-  const { showToast } = useToast();
+  const { productId, drinkFilters = [], editKey, bagFeedbackScope } = route.params;
+  const { campus, cart, getProduct, getStore, addToCart, replaceCart, updateCartItem, timeOffsetMs, loyalty } = useApp();
+  const { showToast, showBagAddition } = useToast();
   const product = getProduct(productId);
+  const editingItem = editKey ? cart.items.find((item) => item.key === editKey && item.productId === productId) : null;
   const store = product ? getStore(product.storeId) : null;
-  const sizes = product?.options?.sizes || [];
-  const extras = product?.options?.extras || [];
+  const isBookstore = product?.storeId === 'bookstore';
+  const variants = (isBookstore ? product?.options?.coverColors : product?.options?.sizes) || [];
+  const extras = isBookstore ? [] : product?.options?.extras || [];
+  const isCoffee = product?.storeId === 'coffee';
+  const isCafeteria = product?.storeId === 'cafeteria';
+  const showMockDetails = isCafeteria || isCoffee;
+  const useFixedActions = showMockDetails || isBookstore;
+  const filters = isCoffee ? drinkFilters : [];
 
-  const [sizeLabel, setSizeLabel] = useState(sizes[0]?.label || null);
-  const [chosenExtras, setChosenExtras] = useState([]);
+  const [, savedVariant, savedExtras] = editingItem?.key.split('|') || [];
+  const [variantLabel, setVariantLabel] = useState(() => {
+    const label = editingItem?.configuration?.variant?.label || savedVariant;
+    return variants.find((option) => option.label === label)?.label || variants[0]?.label || null;
+  });
+  const [chosenExtras, setChosenExtras] = useState(() => {
+    if (editingItem) {
+      const labels = editingItem.configuration?.extras?.map(({ label }) => label) || savedExtras?.split(',') || [];
+      return extras.filter(({ label }) => labels.includes(label)).map(({ label }) => label);
+    }
+    const match = isCoffee ? getDietMatch(product, filters) : null;
+    return match?.extra ? [match.extra.label] : [];
+  });
   const [qty, setQty] = useState(1);
   const [conflictVisible, setConflictVisible] = useState(false);
-  const [added, setAdded] = useState(false);
+  const submitted = useRef(false);
   const [barHeight, setBarHeight] = useState(150);
-  const imageRef = useRef(null);
-  const reduceMotion = useReduceMotion();
-  const { fly } = useFlyToBag();
-  const pop = useSharedValue(1);
-  const popStyle = useAnimatedStyle(() => ({ transform: [{ scale: pop.value }] }));
 
   if (!product || !store) {
     return <EmptyState icon="cube-outline" title="Product not found" actionLabel="Go back" onAction={() => navigation.goBack()} />;
   }
+  if (editKey && !editingItem) {
+    return <EmptyState icon="bag-handle-outline" title="This item is no longer in your bag" actionLabel="Go back" onAction={() => navigation.goBack()} />;
+  }
 
-  const size = sizes.find((s) => s.label === sizeLabel) || null;
+  const variant = variants.find((option) => option.label === variantLabel) || null;
+  const selectedExtras = extras.filter(({ label }) => chosenExtras.includes(label));
+  const configuredTags = customizedDietTags(product, selectedExtras);
+  const tags = showMockDetails
+    ? STORE_DIET_OPTIONS[product.storeId].filter(({ id }) => configuredTags.includes(id)).map(({ id }) => id)
+    : isBookstore ? [] : configuredTags;
+  const specifications = isBookstore ? Object.entries(product.specifications || {}) : [];
+  const replacesDairy = selectedExtras.some((extra) => extra.replacesDairy);
+  const baseAllergens = (product.allergens || []).filter((allergen) => !replacesDairy || allergen !== 'dairy');
+  const mockAllergens = [...new Set([...baseAllergens, ...selectedExtras.flatMap((extra) => extra.allergens || [])])];
+  const allergens = isBookstore ? '' : allergenLine(product);
   const isOpen = isStoreOpen(store, timeOffsetMs);
   const unitPrice =
-    product.price + (size ? size.extra : 0) + chosenExtras.reduce((sum, label) => sum + extras.find((e) => e.label === label).extra, 0);
-  const total = unitPrice * qty;
+    product.price + (variant?.extra ?? 0) + selectedExtras.reduce((sum, extra) => sum + extra.extra, 0);
+  const quantity = editingItem?.qty ?? qty;
+  const total = unitPrice * quantity;
+  const protein = isCafeteria ? product.nutrition?.estimatedProteinGrams : null;
 
   let blockReason = '';
   if (!product.inStock) blockReason = 'This item is out of stock right now.';
-  else if (!isOpen) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
+  else if (!isOpen && !editingItem) blockReason = closedReason(store, campus.deliverySlots, timeOffsetMs);
+  else if (filters.length > 0 && !matchesDrinkDiet(product, filters, selectedExtras)) {
+    blockReason = 'Choose options that match your dietary filters.';
+  }
 
+  const extrasAfterToggle = (label) => extras.filter((extra) =>
+    extra.label === label ? !chosenExtras.includes(label) : chosenExtras.includes(extra.label)
+  );
   const toggleExtra = (label) => {
     setChosenExtras((prev) => (prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]));
   };
 
   const buildItem = () => {
     const sortedExtras = [...chosenExtras].sort();
-    const details = [size ? size.label : null, ...sortedExtras].filter(Boolean).join(' · ');
+    const details = [variant?.label, ...sortedExtras].filter(Boolean).join(' · ');
     return {
-      key: `${product.id}|${size ? size.label : ''}|${sortedExtras.join(',')}`,
+      key: `${product.id}|${variant?.label ?? ''}|${sortedExtras.join(',')}`,
       type: 'product',
       productId: product.id,
       name: product.name,
       unitPrice,
-      qty,
+      qty: quantity,
       details,
+      configuration: {
+        variant: variant ? { label: variant.label, extra: variant.extra } : null,
+        extras: selectedExtras.map(({ label, extra }) => ({ label, extra })),
+      },
       category: product.category,
       loyalty: product.loyalty || null,
     };
   };
 
-  // Success: the button morphs to "✓ Added", the thumbnail position is measured, the sheet closes and the thumbnail
-  // flies to the bag (fly-to-bag). Reduce Motion: no flight, just the toast.
   const confirmAdded = () => {
-    setAdded(true);
+    submitted.current = true;
     haptics.success();
-    if (!reduceMotion) {
-      pop.value = 0.94;
-      pop.value = withSpring(1, springs.bouncy);
+    showBagAddition({ scope: bagFeedbackScope, name: product.name, quantity });
+    navigation.goBack();
+  };
+
+  const canAdd = () => {
+    if (submitted.current || blockReason) return false;
+    if (!editingItem && useFixedActions && !isStoreOpen(store, timeOffsetMs)) {
+      showToast({ message: closedReason(store, campus.deliverySlots, timeOffsetMs), icon: 'moon', tone: 'error' });
+      return false;
     }
-    const finish = (from) => {
-      showToast({
-        message: `Added ${qty} × ${product.name} to bag`,
-        icon: 'bag-check',
-        tone: 'success',
-        actionLabel: 'View',
-        onAction: () => navigation.navigate('MainTabs', { screen: 'Cart' }),
-      });
-      navigation.goBack();
-      if (from) fly({ from, category: product.category, productId: product.id });
-    };
-    const node = imageRef.current;
-    if (reduceMotion || !node || !node.measureInWindow) {
-      setTimeout(() => finish(null), reduceMotion ? 0 : 350);
-      return;
-    }
-    node.measureInWindow((x, y, w, h) => setTimeout(() => finish({ x: x + w / 2, y: y + h / 2 }), 380));
+    return true;
   };
 
   const handleAdd = () => {
-    if (added) return;
+    if (!canAdd()) return;
+    if (editingItem) {
+      if (updateCartItem(editKey, buildItem())) {
+        showToast({ message: 'Bag item updated', icon: 'bag-check', tone: 'success' });
+        navigation.goBack();
+      } else {
+        showToast({ message: 'Could not update this bag item', icon: 'alert-circle', tone: 'error' });
+      }
+      return;
+    }
     const result = addToCart(buildItem(), store.id);
     if (result === 'conflict') setConflictVisible(true);
     else if (result === 'closed') showToast({ message: 'UA is closed – ordering is paused', icon: 'moon', tone: 'error' });
@@ -133,9 +168,14 @@ export default function ProductDetailsScreen({ navigation, route }) {
   };
 
   const handleReplace = () => {
-    replaceCart(buildItem(), store.id);
+    if (useFixedActions && !canAdd()) {
+      setConflictVisible(false);
+      return;
+    }
+    const result = replaceCart(buildItem(), store.id);
     setConflictVisible(false);
-    confirmAdded();
+    if (result === 'closed') showToast({ message: 'Ordering is paused', icon: 'moon', tone: 'error' });
+    else confirmAdded();
   };
 
   const cartStoreName = getStore(cart.storeId)?.name || 'another store';
@@ -149,9 +189,13 @@ export default function ProductDetailsScreen({ navigation, route }) {
         <Ionicons name="close" size={22} color={colors.text} />
       </PressableScale>
 
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: barHeight + 24 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={useFixedActions ? styles.detailsScroll : undefined}
+        contentContainerStyle={[styles.content, { paddingBottom: useFixedActions ? 24 : barHeight + 24 }]}
+        showsVerticalScrollIndicator={false}
+      >
         <ZoomImage>
-          <View ref={imageRef} collapsable={false}>
+          <View>
             <ProductImage category={product.category} productId={product.id} size={220} rounded={24} dimmed={!product.inStock} />
           </View>
         </ZoomImage>
@@ -164,9 +208,9 @@ export default function ProductDetailsScreen({ navigation, route }) {
             {!product.inStock ? <Badge variant="outOfStock" label="Out of stock" /> : null}
           </View>
           <Text style={styles.name} maxFontSizeMultiplier={MAX_FONT_SCALE}>{product.name}</Text>
-          {product.tags && product.tags.length > 0 ? (
+          {tags.length > 0 ? (
             <FlatList
-              data={product.tags}
+              data={tags}
               horizontal
               showsHorizontalScrollIndicator={false}
               keyExtractor={(tag) => tag}
@@ -174,26 +218,67 @@ export default function ProductDetailsScreen({ navigation, route }) {
               renderItem={({ item: tag }) => (
                 <View style={styles.tagPill}>
                   <Text style={styles.tagText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                    {tagMeta(tag) ? `${tagMeta(tag).emoji} ${tagMeta(tag).label}` : tag}
+                    {STORE_DIET_OPTIONS[product.storeId]?.find(({ id }) => id === tag)?.label
+                      || (tagMeta(tag) ? `${tagMeta(tag).emoji} ${tagMeta(tag).label}` : tag)}
                   </Text>
                 </View>
               )}
             />
           ) : null}
           <Text style={styles.description} maxFontSizeMultiplier={MAX_FONT_SCALE}>{product.description}</Text>
-          {allergenLine(product) ? (
-            <Text style={styles.allergens} maxFontSizeMultiplier={MAX_FONT_SCALE}>{allergenLine(product)}</Text>
+          {showMockDetails ? (
+            <Text style={styles.allergens} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {mockAllergens.length > 0
+                ? `Mock recipe allergens: ${mockAllergens.join(', ')}.`
+                : 'Allergen information is unspecified for this mock recipe.'}
+            </Text>
+          ) : allergens ? (
+            <Text style={styles.allergens} maxFontSizeMultiplier={MAX_FONT_SCALE}>{allergens}</Text>
+          ) : null}
+          {protein != null ? (
+            <Text style={styles.allergens} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              Estimated protein: {protein} g per base serving.
+            </Text>
+          ) : null}
+          {specifications.length > 0 ? (
+            <View style={styles.specifications}>
+              <Text style={styles.specTitle} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                Mock specifications
+              </Text>
+              <FlatList
+                data={specifications}
+                keyExtractor={([label]) => label}
+                scrollEnabled={false}
+                initialNumToRender={specifications.length}
+                renderItem={({ item: [label, value] }) => (
+                  <View style={styles.specRow}>
+                    <Text style={styles.specLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
+                    <Text style={styles.specValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>{value}</Text>
+                  </View>
+                )}
+              />
+            </View>
+          ) : null}
+          {isCoffee && product.loyalty === 'coffee' ? (
+            <Text style={styles.rewardNote} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              <Ionicons name="gift-outline" size={15} color={colors.primaryText} /> Eligible for coffee rewards
+              {loyalty.rewards > 0 ? '. Redeem in the Bag.' : ''}
+            </Text>
           ) : null}
           <AnimatedNumber value={unitPrice} format={formatMoney} style={styles.basePrice} />
         </FadeInView>
 
-        {sizes.length > 0 ? (
+        {variants.length > 0 ? (
           <FadeInView delay={120}>
-            <SectionHeader title="Size" />
+            <SectionHeader title={isBookstore ? 'Cover color' : 'Size'} />
             <SegmentedControl
-              options={sizes.map((s) => ({ value: s.label, label: s.label, subtitle: s.extra ? `+${formatMoney(s.extra)}` : 'Included' }))}
-              value={sizeLabel}
-              onChange={setSizeLabel}
+              options={variants.map(({ label, extra }) => ({
+                value: label,
+                label,
+                subtitle: extra ? `+${formatMoney(extra)}` : isBookstore ? undefined : 'Included',
+              }))}
+              value={variantLabel}
+              onChange={setVariantLabel}
               disabled={!product.inStock}
             />
           </FadeInView>
@@ -210,15 +295,17 @@ export default function ProductDetailsScreen({ navigation, route }) {
                 extraData={chosenExtras}
                 renderItem={({ item: extra, index }) => (
                 <View style={[styles.extraRow, index > 0 && styles.extraDivider, !product.inStock && styles.extraRowOff]}>
-                  <Text style={styles.extraLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{extra.label}</Text>
+                  <Text style={styles.extraLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+                    {extra.replacesDairy ? `${extra.label} substitution` : extra.label}
+                  </Text>
                   <Text style={styles.extraPrice} maxFontSizeMultiplier={MAX_FONT_SCALE}>+{formatMoney(extra.extra)}</Text>
                   <Switch
                     value={chosenExtras.includes(extra.label)}
                     onValueChange={() => toggleExtra(extra.label)}
-                    disabled={!product.inStock}
+                    disabled={!product.inStock || (filters.length > 0 && !matchesDrinkDiet(product, filters, extrasAfterToggle(extra.label)))}
                     trackColor={{ false: colors.border, true: colors.primary }}
                     thumbColor={colors.surface}
-                    accessibilityLabel={`${extra.label}, plus ${formatMoney(extra.extra)}`}
+                    accessibilityLabel={`${extra.label}${extra.replacesDairy ? ' substitution' : ''}, plus ${formatMoney(extra.extra)}`}
                   />
                 </View>
                 )}
@@ -230,28 +317,31 @@ export default function ProductDetailsScreen({ navigation, route }) {
         <FadeInView delay={200}>
           <SectionHeader title="Quantity" />
           <View style={styles.qtyRow}>
-            <QuantitySelector
+            {editingItem ? (
+              <Text style={styles.unitText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{quantity} in your bag</Text>
+            ) : <QuantitySelector
               qty={qty}
               allowRemove={false}
               disabled={!product.inStock}
               onIncrease={() => setQty(qty + 1)}
               onDecrease={() => setQty(Math.max(1, qty - 1))}
-            />
+            />}
             <Text style={styles.unitText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{formatMoney(unitPrice)} each · total {formatMoney(total)}</Text>
           </View>
         </FadeInView>
       </ScrollView>
 
-      <StickyBar onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
-        <Reanimated.View style={popStyle}>
-          <AppButton
-            title={added ? '✓ Added' : `Add ${qty} to bag · ${formatMoney(total)}`}
-            icon={added ? undefined : 'bag-add-outline'}
-            onPress={handleAdd}
-            disabled={!!blockReason}
-            reason={blockReason}
-          />
-        </Reanimated.View>
+      <StickyBar
+        style={useFixedActions ? styles.detailsActions : undefined}
+        onLayout={useFixedActions ? undefined : (e) => setBarHeight(e.nativeEvent.layout.height)}
+      >
+        <AppButton
+          title={editingItem ? `Save options · ${formatMoney(total)}` : `Add ${qty} to bag · ${formatMoney(total)}`}
+          icon="bag-add-outline"
+          onPress={handleAdd}
+          disabled={!!blockReason}
+          reason={blockReason}
+        />
       </StickyBar>
 
       <ConfirmModal

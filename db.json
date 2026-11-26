@@ -115,131 +115,134 @@
       "storeId": "cafeteria",
       "category": "Sandwiches",
       "name": "Chicken Sub",
-      "description": "Grilled chicken, garlic sauce, pickles and lettuce in a toasted sub.",
+      "description": "Grilled chicken (75 g), lemon and garlic sauce, dill pickles and lettuce on a toasted wheat sub roll.",
       "price": 350,
       "inStock": true,
+      "tags": [
+        "halal",
+        "iftar",
+        "high-protein"
+      ],
+      "allergens": [
+        "wheat (gluten)"
+      ],
+      "nutrition": {
+        "estimatedProteinGrams": 28
+      },
       "options": {
         "extras": [
           {
-            "label": "Extra cheese",
-            "extra": 50
+            "label": "Extra cheddar",
+            "extra": 50,
+            "allergens": [
+              "dairy"
+            ]
           },
           {
             "label": "Fries",
             "extra": 100
           }
         ]
-      },
-      "tags": [
-        "halal",
-        "iftar"
-      ],
-      "allergens": [
-        "gluten"
-      ]
+      }
     },
     {
       "id": "p02",
       "storeId": "cafeteria",
       "category": "Sandwiches",
-      "name": "Halloumi",
-      "description": "Grilled halloumi, tomato, mint and cucumber.",
+      "name": "Halloumi Sandwich",
+      "description": "Grilled vegetarian halloumi with tomato, cucumber and fresh mint in a warm wheat flatbread.",
       "price": 300,
       "inStock": true,
-      "options": {
-        "extras": [
-          {
-            "label": "Extra cheese",
-            "extra": 50
-          },
-          {
-            "label": "Fries",
-            "extra": 100
-          }
-        ]
-      },
       "tags": [
         "vegetarian",
         "iftar"
       ],
       "allergens": [
-        "gluten",
+        "wheat (gluten)",
         "dairy"
-      ]
+      ],
+      "options": {
+        "extras": [
+          {
+            "label": "Extra halloumi",
+            "extra": 75,
+            "allergens": [
+              "dairy"
+            ]
+          },
+          {
+            "label": "Extra vegetables",
+            "extra": 25
+          }
+        ]
+      }
     },
     {
       "id": "p03",
       "storeId": "cafeteria",
       "category": "Sandwiches",
-      "name": "Tuna",
-      "description": "Tuna, corn, olives and light mayo.",
+      "name": "Tuna Sandwich",
+      "description": "Flaked tuna with sweet corn, green olives and lemon mayonnaise on a wheat roll.",
       "price": 300,
       "inStock": false,
-      "options": {
-        "extras": [
-          {
-            "label": "Extra cheese",
-            "extra": 50
-          },
-          {
-            "label": "Fries",
-            "extra": 100
-          }
-        ]
-      },
       "tags": [
         "iftar"
       ],
       "allergens": [
-        "gluten",
+        "wheat (gluten)",
+        "fish",
         "eggs"
-      ]
+      ],
+      "options": {
+        "extras": [
+          {
+            "label": "Extra green olives",
+            "extra": 25
+          }
+        ]
+      }
     },
     {
       "id": "p04",
       "storeId": "cafeteria",
       "category": "Sandwiches",
       "name": "Turkey & Cheese",
-      "description": "Smoked turkey, cheddar and honey mustard.",
+      "description": "Smoked turkey, cheddar and honey mustard on a toasted wheat roll.",
       "price": 325,
       "inStock": true,
-      "options": {
-        "extras": [
-          {
-            "label": "Extra cheese",
-            "extra": 50
-          },
-          {
-            "label": "Fries",
-            "extra": 100
-          }
-        ]
-      },
       "tags": [
         "halal",
         "iftar"
       ],
       "allergens": [
-        "gluten",
-        "dairy"
-      ]
+        "wheat (gluten)",
+        "dairy",
+        "mustard"
+      ],
+      "options": {
+        "extras": [
+          {
+            "label": "Extra smoked turkey",
+            "extra": 75
+          },
+          {
+            "label": "Extra cheddar",
+            "extra": 50,
+            "allergens": [
+              "dairy"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "p05",
       "storeId": "cafeteria",
       "category": "Manakish",
-      "name": "Zaatar",
-      "description": "Classic zaatar and olive oil, baked fresh.",
+      "name": "Za’atar Manoushe",
+      "description": "Oven-baked wheat flatbread topped with thyme, sumac, sesame and olive oil.",
       "price": 100,
       "inStock": true,
-      "options": {
-        "extras": [
-          {
-            "label": "Vegetables",
-            "extra": 25
-          }
-        ]
-      },
       "tags": [
         "vegetarian",
         "vegan",
@@ -247,16 +250,24 @@
         "iftar"
       ],
       "allergens": [
-        "gluten",
+        "wheat (gluten)",
         "sesame"
-      ]
+      ],
+      "options": {
+        "extras": [
+          {
+            "label": "Tomato and cucumber",
+            "extra": 25
+          }
+        ]
+      }
     },
     {
       "id": "p06",
       "storeId": "cafeteria",
       "category": "Manakish",
-      "name": "Cheese",
-      "description": "Akkawi and mozzarella cheese blend.",
+      "name": "Cheese Manoushe",
+      "description": "Baked wheat flatbread topped with melted vegetarian Akkawi and mozzarella.",
       "price": 175,
       "inStock": true,
       "tags": [
@@ -264,32 +275,50 @@
         "iftar"
       ],
       "allergens": [
-        "gluten",
-        "dairy",
-        "sesame"
-      ]
+        "wheat (gluten)",
+        "dairy"
+      ],
+      "options": {
+        "extras": [
+          {
+            "label": "Extra Akkawi",
+            "extra": 50,
+            "allergens": [
+              "dairy"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "p07",
       "storeId": "cafeteria",
       "category": "Manakish",
-      "name": "Lahm b'Ajeen",
-      "description": "Spiced minced meat with tomato and onion.",
+      "name": "Lahm b’Ajeen",
+      "description": "Thin wheat flatbread topped with spiced minced beef, tomato and onion.",
       "price": 200,
       "inStock": true,
       "tags": [
         "halal"
       ],
       "allergens": [
-        "gluten"
-      ]
+        "wheat (gluten)"
+      ],
+      "options": {
+        "extras": [
+          {
+            "label": "Lemon wedges",
+            "extra": 15
+          }
+        ]
+      }
     },
     {
       "id": "p08",
       "storeId": "cafeteria",
       "category": "Salads",
       "name": "Fattoush",
-      "description": "Crispy bread, sumac, fresh vegetables and pomegranate molasses.",
+      "description": "Chopped lettuce, tomato, cucumber and radish with toasted wheat pita and a sumac and pomegranate dressing.",
       "price": 275,
       "inStock": true,
       "tags": [
@@ -298,33 +327,77 @@
         "siyami"
       ],
       "allergens": [
-        "gluten",
-        "sesame"
-      ]
+        "wheat (gluten)"
+      ],
+      "options": {
+        "sizes": [
+          {
+            "label": "Regular",
+            "extra": 0
+          },
+          {
+            "label": "Large",
+            "extra": 100
+          }
+        ],
+        "extras": [
+          {
+            "label": "Crumbled vegetarian feta",
+            "extra": 50,
+            "allergens": [
+              "dairy"
+            ],
+            "removesDietTags": [
+              "vegan",
+              "siyami"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "p09",
       "storeId": "cafeteria",
       "category": "Salads",
       "name": "Chicken Caesar",
-      "description": "Romaine, grilled chicken, parmesan and croutons.",
+      "description": "Romaine, grilled chicken (70 g), Parmesan and wheat croutons with a creamy anchovy dressing.",
       "price": 350,
       "inStock": true,
       "tags": [
-        "halal"
+        "halal",
+        "high-protein"
       ],
       "allergens": [
-        "gluten",
+        "wheat (gluten)",
         "dairy",
-        "eggs"
-      ]
+        "eggs",
+        "fish"
+      ],
+      "nutrition": {
+        "estimatedProteinGrams": 25
+      },
+      "options": {
+        "extras": [
+          {
+            "label": "Extra grilled chicken",
+            "extra": 100
+          },
+          {
+            "label": "Extra Parmesan",
+            "extra": 50,
+            "allergens": [
+              "dairy"
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "p10",
       "storeId": "cafeteria",
       "category": "Snacks",
-      "name": "Croissant",
-      "description": "Buttery plain croissant.",
+      "name": "Plain Croissant",
+      "description": "A flaky butter croissant with a golden egg-washed crust.",
       "price": 125,
       "inStock": true,
       "tags": [
@@ -332,7 +405,7 @@
         "iftar"
       ],
       "allergens": [
-        "gluten",
+        "wheat (gluten)",
         "dairy",
         "eggs"
       ]
@@ -342,7 +415,7 @@
       "storeId": "cafeteria",
       "category": "Snacks",
       "name": "Fruit Cup",
-      "description": "Seasonal fresh fruit, cut daily.",
+      "description": "Fresh-cut apple, orange and grapes served chilled.",
       "price": 150,
       "inStock": true,
       "tags": [
@@ -350,38 +423,25 @@
         "vegan",
         "siyami",
         "iftar"
-      ]
+      ],
+      "allergens": []
     },
     {
       "id": "p12",
       "storeId": "coffee",
       "category": "Hot Drinks",
       "name": "Espresso",
-      "description": "A rich, single shot of espresso.",
+      "description": "A concentrated shot of espresso with a rich crema.",
       "price": 100,
       "inStock": true,
       "options": {
         "sizes": [
           {
-            "label": "Small",
+            "label": "Single",
             "extra": 0
           },
           {
-            "label": "Medium",
-            "extra": 50
-          },
-          {
-            "label": "Large",
-            "extra": 100
-          }
-        ],
-        "extras": [
-          {
-            "label": "Extra shot",
-            "extra": 50
-          },
-          {
-            "label": "Oat milk",
+            "label": "Double",
             "extra": 50
           }
         ]
@@ -389,16 +449,19 @@
       "tags": [
         "vegetarian",
         "vegan",
-        "siyami"
+        "siyami",
+        "sugar-free",
+        "dairy-free"
       ],
-      "loyalty": "coffee"
+      "loyalty": "coffee",
+      "allergens": []
     },
     {
       "id": "p13",
       "storeId": "coffee",
       "category": "Hot Drinks",
       "name": "Americano",
-      "description": "Espresso topped with hot water.",
+      "description": "Espresso diluted with hot water, served black.",
       "price": 150,
       "inStock": true,
       "options": {
@@ -420,26 +483,25 @@
           {
             "label": "Extra shot",
             "extra": 50
-          },
-          {
-            "label": "Oat milk",
-            "extra": 50
           }
         ]
       },
       "tags": [
         "vegetarian",
         "vegan",
-        "siyami"
+        "siyami",
+        "sugar-free",
+        "dairy-free"
       ],
-      "loyalty": "coffee"
+      "loyalty": "coffee",
+      "allergens": []
     },
     {
       "id": "p14",
       "storeId": "coffee",
       "category": "Hot Drinks",
       "name": "Cappuccino",
-      "description": "Espresso with steamed milk and thick foam.",
+      "description": "Espresso with steamed milk and a thick layer of milk foam.",
       "price": 225,
       "inStock": true,
       "options": {
@@ -459,12 +521,15 @@
         ],
         "extras": [
           {
-            "label": "Extra shot",
-            "extra": 50
-          },
-          {
             "label": "Oat milk",
-            "extra": 50
+            "extra": 50,
+            "replacesDairy": true,
+            "addsDietTags": [
+              "dairy-free"
+            ],
+            "allergens": [
+              "oats"
+            ]
           }
         ]
       },
@@ -481,7 +546,7 @@
       "storeId": "coffee",
       "category": "Hot Drinks",
       "name": "Latte",
-      "description": "Espresso with silky steamed milk.",
+      "description": "Espresso with steamed milk and a light layer of foam.",
       "price": 250,
       "inStock": true,
       "options": {
@@ -506,7 +571,14 @@
           },
           {
             "label": "Oat milk",
-            "extra": 50
+            "extra": 50,
+            "replacesDairy": true,
+            "addsDietTags": [
+              "dairy-free"
+            ],
+            "allergens": [
+              "oats"
+            ]
           }
         ]
       },
@@ -523,7 +595,7 @@
       "storeId": "coffee",
       "category": "Hot Drinks",
       "name": "Hot Chocolate",
-      "description": "Creamy cocoa with steamed milk.",
+      "description": "Cocoa whisked into steamed milk with a little sugar.",
       "price": 200,
       "inStock": true,
       "options": {
@@ -554,21 +626,52 @@
       "storeId": "coffee",
       "category": "Hot Drinks",
       "name": "Tea",
-      "description": "Black or green tea, your choice.",
+      "description": "Plain black tea brewed with hot water.",
       "price": 75,
       "inStock": true,
       "tags": [
         "vegetarian",
         "vegan",
-        "siyami"
-      ]
+        "siyami",
+        "sugar-free",
+        "dairy-free"
+      ],
+      "allergens": []
+    },
+    {
+      "id": "coffee-decaf-demo",
+      "storeId": "coffee",
+      "category": "Hot Drinks",
+      "name": "Decaf Coffee (Demo)",
+      "description": "Black coffee brewed with decaffeinated beans and served plain. Demo catalog item.",
+      "price": 150,
+      "inStock": true,
+      "tags": [
+        "decaf",
+        "sugar-free",
+        "dairy-free"
+      ],
+      "loyalty": "coffee",
+      "allergens": [],
+      "options": {
+        "sizes": [
+          {
+            "label": "Regular",
+            "extra": 0
+          },
+          {
+            "label": "Large",
+            "extra": 75
+          }
+        ]
+      }
     },
     {
       "id": "p18",
       "storeId": "coffee",
       "category": "Cold Drinks",
       "name": "Iced Latte",
-      "description": "Espresso and cold milk over ice.",
+      "description": "Espresso poured over chilled milk and ice.",
       "price": 275,
       "inStock": true,
       "options": {
@@ -588,12 +691,19 @@
         ],
         "extras": [
           {
-            "label": "Extra shot",
-            "extra": 50
+            "label": "Oat milk",
+            "extra": 50,
+            "replacesDairy": true,
+            "addsDietTags": [
+              "dairy-free"
+            ],
+            "allergens": [
+              "oats"
+            ]
           },
           {
-            "label": "Oat milk",
-            "extra": 50
+            "label": "Vanilla syrup",
+            "extra": 25
           }
         ]
       },
@@ -610,110 +720,184 @@
       "storeId": "coffee",
       "category": "Cold Drinks",
       "name": "Fresh Orange Juice",
-      "description": "Squeezed to order.",
+      "description": "Orange juice squeezed to order, with the fruit’s natural sugars.",
       "price": 250,
       "inStock": false,
       "tags": [
         "vegetarian",
         "vegan",
         "siyami",
-        "iftar"
-      ]
+        "iftar",
+        "dairy-free"
+      ],
+      "allergens": [],
+      "options": {
+        "sizes": [
+          {
+            "label": "250 mL",
+            "extra": 0
+          },
+          {
+            "label": "400 mL",
+            "extra": 100
+          }
+        ]
+      }
     },
     {
       "id": "p20",
       "storeId": "coffee",
       "category": "Cold Drinks",
       "name": "Water",
-      "description": "500 ml bottled water.",
+      "description": "A sealed 500 mL bottle of still water.",
       "price": 50,
       "inStock": true,
       "tags": [
         "vegetarian",
         "vegan",
         "siyami",
-        "iftar"
-      ]
+        "iftar",
+        "sugar-free",
+        "dairy-free"
+      ],
+      "allergens": []
     },
     {
       "id": "p21",
       "storeId": "bookstore",
       "category": "Notebooks",
       "name": "A4 Notebook 100 sheets",
-      "description": "Ruled A4 notebook with a sturdy cover.",
+      "description": "A grid-ruled notebook for lecture notes, tables and problem sets.",
       "price": 300,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Paper size": "A4",
+        "Sheet count": "100 sheets",
+        "Ruling": "Grid-ruled"
+      },
+      "options": {
+        "coverColors": [
+          {
+            "label": "Blue",
+            "extra": 0
+          },
+          {
+            "label": "Green",
+            "extra": 0
+          },
+          {
+            "label": "Red",
+            "extra": 0
+          }
+        ]
+      }
     },
     {
       "id": "p22",
       "storeId": "bookstore",
       "category": "Notebooks",
       "name": "Spiral Notebook A5",
-      "description": "Pocket-size spiral notebook.",
+      "description": "A spiral-bound notebook with plain pages for notes and sketches.",
       "price": 200,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Paper size": "A5",
+        "Sheet count": "60 sheets",
+        "Ruling": "Plain",
+        "Binding": "Side spiral"
+      }
     },
     {
       "id": "p23",
       "storeId": "bookstore",
       "category": "Notebooks",
       "name": "Lab Notebook",
-      "description": "Grid pages for lab reports and experiments.",
+      "description": "A grid-ruled lab notebook for recording observations, measurements and calculations.",
       "price": 450,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Sheet count": "80 sheets",
+        "Ruling": "Grid-ruled",
+        "Binding": "Bound spine"
+      }
     },
     {
       "id": "p24",
       "storeId": "bookstore",
       "category": "Writing",
       "name": "Blue Pens ×3",
-      "description": "Smooth ballpoint pens, pack of three.",
+      "description": "Three blue ballpoint pens for everyday note-taking.",
       "price": 100,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Pen type": "Ballpoint",
+        "Ink color": "Blue",
+        "Pack quantity": "3 pens"
+      }
     },
     {
       "id": "p25",
       "storeId": "bookstore",
       "category": "Writing",
       "name": "Highlighters Set",
-      "description": "Five pastel highlighters.",
+      "description": "Four chisel-tip markers for highlighting notes and readings.",
       "price": 350,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Tip": "Chisel",
+        "Colors": "Green, blue, yellow and orange",
+        "Pack quantity": "4 highlighters"
+      }
     },
     {
       "id": "p26",
       "storeId": "bookstore",
       "category": "Writing",
       "name": "Pencil & Eraser",
-      "description": "HB pencil with a soft eraser.",
+      "description": "An HB graphite pencil with a built-in eraser for writing and sketching.",
       "price": 75,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Lead grade": "HB graphite",
+        "Pack quantity": "1 pencil",
+        "Eraser": "Built in"
+      }
     },
     {
       "id": "p27",
       "storeId": "bookstore",
       "category": "Accessories",
       "name": "Scientific Calculator",
-      "description": "Exam-approved scientific calculator.",
+      "description": "A scientific calculator for common math and science coursework.",
       "price": 1800,
       "inStock": true,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Display": "Single-line LCD",
+        "Functions": "Trigonometry, logarithms, powers and roots",
+        "Power": "Battery"
+      }
     },
     {
       "id": "p28",
       "storeId": "bookstore",
       "category": "Accessories",
       "name": "USB Flash 32GB",
-      "description": "Compact USB 3.0 flash drive.",
+      "description": "A compact flash drive for carrying documents and coursework between computers.",
       "price": 900,
       "inStock": false,
-      "tags": []
+      "tags": [],
+      "specifications": {
+        "Storage": "32 GB",
+        "Connector": "USB-A",
+        "Housing": "Retractable connector"
+      }
     }
   ],
   "buildings": [

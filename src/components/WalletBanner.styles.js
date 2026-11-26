@@ -4,7 +4,7 @@ import { fonts, radius, spacing, makeTypography } from '../theme/theme';
 export const createStyles = (c) => StyleSheet.create({
   card: {
     borderRadius: radius.xl,
-    padding: spacing.xl,
+    padding: spacing.lg,
     overflow: 'hidden',
   },
   circleBig: {
@@ -28,24 +28,8 @@ export const createStyles = (c) => StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'flex-start' },
   flex: { flex: 1 },
   micro: { ...makeTypography(c).micro, color: c.accentWarm },
-  slot: { fontFamily: fonts.extrabold, fontSize: 30, lineHeight: 37, color: c.textOnDark, marginTop: spacing.xs },
-  slotNone: { fontSize: 19, lineHeight: 26 },
+  slot: { fontFamily: fonts.extrabold, fontSize: 22, lineHeight: 28, color: c.textOnDark, marginTop: spacing.xs },
   countdown: { fontFamily: fonts.regular, fontSize: 13.5, lineHeight: 19, color: 'rgba(255,255,255,0.88)', marginTop: 2 },
-  missed: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 17, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
-  countdownStrong: { fontFamily: fonts.bodyBold, color: c.textOnDark },
-  closedRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs },
-  closedEmoji: { fontSize: 26, marginRight: spacing.sm },
-  stampChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    minHeight: 36,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  stampText: { fontFamily: fonts.bold, fontSize: 13, color: c.textOnDark, marginRight: spacing.xs },
   clock: {
     width: 46,
     height: 46,
@@ -54,7 +38,7 @@ export const createStyles = (c) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.16)', marginVertical: spacing.lg },
+  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.16)', marginVertical: spacing.md },
   bottomRow: { flexDirection: 'row', alignItems: 'center' },
   walletIcon: {
     width: 32,
@@ -64,8 +48,9 @@ export const createStyles = (c) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  walletLabel: { fontFamily: fonts.regular, fontSize: 14, color: 'rgba(255,255,255,0.85)', marginLeft: spacing.sm },
-  balance: { fontFamily: fonts.extrabold, fontSize: 19, color: c.textOnDark, marginLeft: spacing.sm, flex: 1 },
+  walletAmount: { flex: 1, marginHorizontal: spacing.sm },
+  walletLabel: { fontFamily: fonts.regular, fontSize: 13, color: 'rgba(255,255,255,0.85)' },
+  balance: { fontFamily: fonts.extrabold, fontSize: 19, color: c.textOnDark },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',

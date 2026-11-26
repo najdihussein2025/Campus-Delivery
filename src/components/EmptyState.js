@@ -12,7 +12,7 @@ import useThemedStyles from '../hooks/useThemedStyles';
 import { useTheme } from '../context/ThemeContext';
 
 // Friendly empty screen: icon in a soft UA-blue circle, title, one line of help and an action
-export default function EmptyState({ icon = 'sparkles-outline', title, subtitle, actionLabel, onAction, style }) {
+export default function EmptyState({ icon = 'sparkles-outline', title, subtitle, actionLabel, onAction, style, iconSize = 36 }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const reduceMotion = useReduceMotion();
@@ -31,7 +31,7 @@ export default function EmptyState({ icon = 'sparkles-outline', title, subtitle,
       <View style={styles.iconOuter}>
         <Animated.View style={[styles.iconCircle, circleStyle]}>
           <Animated.View style={iconStyle}>
-            <Ionicons name={icon} size={36} color={colors.primaryText} />
+            <Ionicons name={icon} size={iconSize} color={colors.primaryText} />
           </Animated.View>
         </Animated.View>
       </View>

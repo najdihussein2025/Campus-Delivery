@@ -101,8 +101,8 @@ Tick on a real Android phone and a real iPhone. Then repeat the table with **Red
 | 8.6 | **Swipe-to-delete:** swipe a bag row to the left | Red action with a growing trash icon; releasing past the threshold deletes, the row fades out and the rows below slide up; Undo toast works | Row disappears with a short fade | ☐ | ☐ |
 | 8.7 | **Confetti:** raise the bag above $10.00 | A short burst (≤ 1 s) and "🎉 Free delivery unlocked" springs up | No confetti | ☐ | ☐ |
 | 8.8 | Checkout: complete a step | Connector line fills, circle pops, check mark draws | Instant | ☐ | ☐ |
-| 8.9 | Checkout: **Place order** | Button shrinks to a spinner, then the success screen with a drawn check, ripples, confetti and a flipping door sign (≤ 1.5 s); tapping anywhere continues | Fades, no confetti | ☐ | ☐ |
-| 8.10 | Tracking with Demo speed | Scooter springs along the track and wobbles while "On the way"; step icons pop; the "Next update" ring drains; confetti on Delivered | Scooter jumps, no wobble or confetti | ☐ | ☐ |
+| 8.9 | Checkout: **Place order** | Full-screen processing, then order confirmation with the booked details. Back cannot return to submitted Checkout. | Same flow with reduced motion | ? | ? |
+| 8.10 | Tracking at Demo speed | Preparing, On the way, and Delivered appear at 20-second intervals from placement. The booked break stays visible. | Same timing with reduced motion | ☐ | ☐ |
 | 8.11 | **Stamp animation:** order 2 coffees from Coffee Corner, wait for delivery, open **Coffee stamps** | New stamps land like a rubber stamp with a haptic; at 10/10 a shimmer sweeps and the "Free coffee" badge bounces | Stamps just appear | ☐ | ☐ |
 | 8.12 | Wallet: switch Week / Month, tap a bar, top up | Bars grow one after another, the tapped bar lifts, the balance rolls to the new value, the new transaction slides in highlighted | Values swap | ☐ | ☐ |
 | 8.13 | **Tab bar:** tap each tab | Icon bounces, the indicator slides between tabs, content cross-fades, bag badge bumps when the count changes | Indicator jumps, no bounce | ☐ | ☐ |

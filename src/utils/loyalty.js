@@ -20,11 +20,20 @@ export const coffeeCount = (items) =>
 // Stamps an order earns: one per coffee, and the free coffee itself does not earn one
 export const stampsForOrder = (order) => Math.max(0, coffeeCount(order.items) - (order.rewardUsed ? 1 : 0));
 
-// The free coffee is the most expensive single coffee in the bag (size included, extras paid)
-export const rewardDiscount = (items) =>
-  items.reduce((best, item) => (item.loyalty === 'coffee' ? Math.max(best, item.unitPrice) : best), 0);
-
-export const canUseReward = (items, loyalty) => loyalty.rewards > 0 && coffeeCount(items) > 0;
+// A reward covers one coffee and its selected size. Extras remain payable.
+export const getRewardCoffee = (items, getProduct) => items.reduce((best, item) => {
+  if (item.loyalty !== 'coffee' || item.qty < 1) return best;
+  const savedExtras = item.configuration?.extras;
+  const legacyExtras = (item.key?.split('|')[2] || '').split(',').filter(Boolean);
+  const product = legacyExtras.length && !savedExtras ? getProduct?.(item.productId) : null;
+  const catalogExtras = product?.options?.extras || [];
+  const legacyOptions = legacyExtras.map((label) => catalogExtras.find((extra) => extra.label === label));
+  // A legacy label without a price cannot safely be treated as free.
+  if (!savedExtras && legacyOptions.some((option) => !option)) return best;
+  const extras = (savedExtras || legacyOptions).reduce((sum, option) => sum + (option.extra || 0), 0);
+  const discount = item.unitPrice - extras;
+  return discount > (best?.discount ?? 0) ? { item, discount } : best;
+}, null);
 
 // Add stamps; every 10 become a reward and the remainder carries over
 export const addStamps = (loyalty, count, orderId, at) => {
@@ -82,12 +91,4 @@ export const willCompleteCard = (loyalty, orders, order) => {
     .reduce((sum, o) => sum + stampsForOrder(o), 0);
   const earned = stampsForOrder(order);
   return earned > 0 && ((loyalty.stamps + pending) % STAMPS_PER_REWARD) + earned >= STAMPS_PER_REWARD;
-};
-
-export const describeProgress = (loyalty) => {
-  if (loyalty.rewards > 0) {
-    return loyalty.rewards === 1 ? '🎁 You have 1 free coffee' : `🎁 You have ${loyalty.rewards} free coffees`;
-  }
-  const left = STAMPS_PER_REWARD - loyalty.stamps;
-  return `${loyalty.stamps} / ${STAMPS_PER_REWARD} – ${left} more ${left === 1 ? 'coffee' : 'coffees'} for a free one`;
 };

@@ -24,8 +24,7 @@ export const buildOrderPlan = ({ order, storeName, slotLabel, buildingName, comp
       step: 'delivered',
       at: order.statusSchedule.delivered,
       title: `✅ Delivered to ${buildingName ? `${buildingName}, ` : ''}Room ${order.room}`,
-      // The break is the promised delivery window; the fast timer is only a demo
-      body: `${slotLabel ? `Scheduled for the ${slotLabel} break (demo speed). ` : ''}Tap to rate your order.${completesCard ? ' You also earned a free coffee 🎁' : ''}`,
+      body: `${slotLabel ? `Scheduled for the ${slotLabel} break. ` : ''}Tap to rate your order.${completesCard ? ' You also earned a free coffee 🎁' : ''}`,
     },
   ];
   return steps

@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Card from './Card';
+import { MAX_FONT_SCALE } from '../theme/theme';
 
 import { formatMoney } from '../utils/money';
 import { createStyles } from './PriceSummary.styles';
@@ -38,13 +39,16 @@ function Hint({ icon, text, danger }) {
 }
 
 // Subtotal / delivery fee / total with the minimum-order and free-delivery hints
-export default function PriceSummary({ totals, showHints = true, style }) {
+export default function PriceSummary({ totals, showHints = true, compact = false, style, title, children }) {
   const styles = useThemedStyles(createStyles);
   const { gross, discount = 0, subtotal, deliveryFee, total, missingForMinimum, missingForFreeDelivery } = totals;
   return (
     <Card style={style}>
-      <Row label="Subtotal" value={formatMoney(discount > 0 ? gross : subtotal)} />
-      {discount > 0 ? <Row label="Free coffee (loyalty)" value={`−${formatMoney(discount)}`} free /> : null}
+      {title ? <Text style={styles.title} accessibilityRole="header" maxFontSizeMultiplier={MAX_FONT_SCALE}>{title}</Text> : null}
+      {children}
+      <Row label={discount > 0 && !compact ? "Original subtotal" : "Subtotal"} value={formatMoney(discount > 0 ? gross : subtotal)} />
+      {discount > 0 ? <Row label={compact ? "Coffee reward" : "Coffee reward discount"} value={`−${formatMoney(discount)}`} free /> : null}
+      {discount > 0 && !compact ? <Row label="Discounted subtotal" value={formatMoney(subtotal)} /> : null}
       <Row label="Delivery fee" value={deliveryFee === 0 ? 'Free' : formatMoney(deliveryFee)} free={deliveryFee === 0} />
       <View style={styles.divider} />
       <Row label="Total" cents={total} strong />

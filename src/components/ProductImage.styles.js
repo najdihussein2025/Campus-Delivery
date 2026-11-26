@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 
 export const createStyles = (c) => StyleSheet.create({
   box: { width: '100%', overflow: 'hidden' },
+  placeholder: { backgroundColor: c.surfaceMuted },
   dimmed: { opacity: 0.45 },
   gradient: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   circle: {
