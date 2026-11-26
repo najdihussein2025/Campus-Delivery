@@ -10,7 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 
 // Stepper: the number bumps on change; at the minimum the minus turns into a trash icon
 // allowRemove=false: at the minimum the minus stays a (disabled) minus, e.g. on the product sheet before anything is added
-export default function QuantitySelector({ qty, onIncrease, onDecrease, min = 1, small = false, allowRemove = true, disabled = false }) {
+export default function QuantitySelector({ qty, onIncrease, onDecrease, min = 1, small = false, allowRemove = true, disabled = false, increaseDisabled = false }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const reduceMotion = useReduceMotion();
@@ -18,6 +18,7 @@ export default function QuantitySelector({ qty, onIncrease, onDecrease, min = 1,
   const first = useRef(true);
   const atMin = qty <= min && allowRemove;
   const minusDisabled = disabled || (qty <= min && !allowRemove);
+  const plusDisabled = disabled || increaseDisabled;
   const iconSize = small ? 15 : 18;
 
   useEffect(() => {
@@ -54,12 +55,12 @@ export default function QuantitySelector({ qty, onIncrease, onDecrease, min = 1,
         onPress={onIncrease}
         hitSlop={8}
         haptic
-        disabled={disabled}
+        disabled={plusDisabled}
         accessibilityLabel="Increase quantity"
-        accessibilityState={{ disabled }}
-        style={[styles.btn, styles.btnPlus, small && styles.btnSmall, disabled && styles.btnDisabled]}
+        accessibilityState={{ disabled: plusDisabled }}
+        style={[styles.btn, styles.btnPlus, small && styles.btnSmall, plusDisabled && styles.btnDisabled]}
       >
-        <Ionicons name="add" size={iconSize} color={colors.textOnDark} />
+        <Ionicons name="add" size={iconSize} color={plusDisabled ? colors.textMuted : colors.textOnDark} />
       </PressableScale>
     </View>
   );

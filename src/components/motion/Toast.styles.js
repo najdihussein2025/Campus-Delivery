@@ -16,6 +16,12 @@ export const createStyles = (c) => StyleSheet.create({
     borderWidth: 1,
     borderColor: c.cardBorder,
   },
+  bagLane: { height: 68, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
+  bagToast: { flex: 1, paddingVertical: 0 },
+  bagText: { flex: 1, minWidth: 0, marginLeft: spacing.sm },
+  bagMessage: { fontFamily: fonts.medium, fontSize: 14, lineHeight: 18, color: c.textOnDark },
+  bagFilename: { fontFamily: fonts.regular, fontSize: 12, lineHeight: 16, color: c.textOnDark },
+  bagAction: { minHeight: 44 },
   message: { flex: 1, fontFamily: fonts.medium, fontSize: 14, color: c.textOnDark, marginLeft: spacing.md },
   action: {
     minHeight: 36,

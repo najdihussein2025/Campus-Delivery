@@ -20,6 +20,8 @@ export function ToastProvider({ children }) {
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
   const [toast, setToast] = useState(null);
+  const [bagAddition, setBagAddition] = useState(null);
+  const bagTimer = useRef(null);
   const anim = useRef(new Animated.Value(0)).current;
   const hideTimer = useRef(null);
 
@@ -40,8 +42,23 @@ export function ToastProvider({ children }) {
     hideTimer.current = setTimeout(hide, duration);
   };
 
-  // Chapter 19: clear the pending timer when the provider unmounts
-  useEffect(() => () => hideTimer.current && clearTimeout(hideTimer.current), []);
+  const dismissBagAddition = () => {
+    clearTimeout(bagTimer.current);
+    setBagAddition(null);
+  };
+
+  const showBagAddition = (addition) => {
+    clearTimeout(bagTimer.current);
+    setBagAddition(addition);
+    bagTimer.current = setTimeout(() => {
+      setBagAddition((current) => current === addition ? null : current);
+    }, 3000);
+  };
+
+  useEffect(() => () => {
+    clearTimeout(hideTimer.current);
+    clearTimeout(bagTimer.current);
+  }, []);
 
   const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
 
@@ -52,7 +69,7 @@ export function ToastProvider({ children }) {
   };
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, bagAddition, showBagAddition, dismissBagAddition }}>
       <View style={styles.root}>
         {children}
         {toast ? (

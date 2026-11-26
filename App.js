@@ -64,7 +64,17 @@ function Inner({ fontsLoaded }) {
   const { loading, user } = useApp();
   const { colors, isDark } = useTheme();
   const { onReady } = useNotificationNavigation(user);
-  if (!fontsLoaded || loading) return <LoadingView message="Loading CampusGo…" />;
+  const [backgroundReady, setBackgroundReady] = useState(false);
+  const needsBackground = !loading && !user && !backgroundReady;
+  useEffect(() => {
+    if (!needsBackground) return;
+    let active = true;
+    Asset.loadAsync(campusBackground)
+      .catch((error) => console.log('Background preload skipped', error.message))
+      .finally(() => { if (active) setBackgroundReady(true); });
+    return () => { active = false; };
+  }, [needsBackground]);
+  if (!fontsLoaded || loading || needsBackground) return <LoadingView message="Loading CampusGo…" />;
   return (
     <ToastProvider>
       {/* Headers are UA blue in both modes, so the status bar content is always light */}
@@ -93,14 +103,6 @@ export default function App() {
     Roboto_700Bold,
   });
 
-  // Preload the campus photo during the splash so Welcome / Onboarding never flash white
-  const [assetsReady, setAssetsReady] = useState(false);
-  useEffect(() => {
-    Asset.loadAsync(campusBackground)
-      .catch((error) => console.log('Background preload skipped', error.message))
-      .finally(() => setAssetsReady(true));
-  }, []);
-
   // Notification handler + Android channels, once
   useEffect(() => {
     configureNotifications();
@@ -112,7 +114,7 @@ export default function App() {
       <ThemeProvider>
         <NetworkProvider>
           <AppProvider>
-            <Inner fontsLoaded={fontsLoaded && assetsReady} />
+            <Inner fontsLoaded={fontsLoaded} />
           </AppProvider>
         </NetworkProvider>
       </ThemeProvider>

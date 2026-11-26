@@ -2,6 +2,7 @@ import React from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
+import AppButton from '../../components/AppButton';
 import LoyaltyCard from '../../components/LoyaltyCard';
 import Card from '../../components/Card';
 import SectionHeader from '../../components/SectionHeader';
@@ -14,13 +15,13 @@ import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
 
 const HOW_IT_WORKS = [
-  { icon: 'cafe', text: 'Every coffee you order earns 1 stamp, once the order is delivered.' },
+  { icon: 'cafe', text: 'Each eligible paid coffee earns one stamp when delivered.' },
   { icon: 'gift', text: '10 stamps = 1 free coffee. Extra stamps carry over.' },
-  { icon: 'bag-check', text: 'Switch on "Use my free coffee" in your bag. The most expensive coffee is on us.' },
+  { icon: 'bag-check', text: 'Apply one reward per order in the Bag. It covers the highest-priced eligible coffee, including its size. Extras stay payable.' },
 ];
 
 // Loyalty screen: the big stamp card, how it works in 3 lines and the history (FlatList)
-export default function LoyaltyScreen() {
+export default function LoyaltyScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { loyalty, orders } = useApp();
@@ -68,6 +69,7 @@ export default function LoyaltyScreen() {
           )}
         />
       </Card>
+      <AppButton title="Browse Coffee Corner" icon="cafe-outline" variant="secondary" onPress={() => navigation.navigate('StoreMenu', { storeId: 'coffee' })} />
       <SectionHeader title="History" />
     </View>
   );

@@ -15,6 +15,7 @@ export const createStyles = (c) => StyleSheet.create({
     marginRight: spacing.sm,
   },
   buildingSelected: { borderColor: c.primary, backgroundColor: c.primarySoft },
+  compactBuilding: { width: 130, minHeight: 104, padding: spacing.sm },
   codeCircle: {
     width: 36,
     height: 36,
@@ -25,6 +26,7 @@ export const createStyles = (c) => StyleSheet.create({
     marginBottom: spacing.sm,
   },
   codeCircleSelected: { backgroundColor: c.primary },
+  compactCode: { width: 30, height: 30, borderRadius: 15, marginBottom: spacing.xs },
   codeText: { fontFamily: fonts.extrabold, fontSize: 17, color: c.primaryText },
   codeTextSelected: { color: c.textOnDark },
   buildingName: { fontFamily: fonts.bold, fontSize: 14, color: c.text },

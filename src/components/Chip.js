@@ -13,7 +13,7 @@ import { Text } from 'react-native';
 
 // Selectable pill (filters, options); optional subtitle line and count bubble.
 // The selected state cross-fades (interpolateColor, 150 ms); with Reduce Motion it switches instantly.
-export default function Chip({ label, selected = false, onPress, icon, disabled = false, subtitle, count, style }) {
+export default function Chip({ label, selected = false, onPress, icon, disabled = false, subtitle, count, style, accessibilityLabel = label, compact = false }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const reduceMotion = useReduceMotion();
@@ -35,14 +35,14 @@ export default function Chip({ label, selected = false, onPress, icon, disabled 
     <PressableScale
       onPress={onPress}
       disabled={disabled}
-      accessibilityLabel={label}
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled }}
-      style={[styles.chipOuter, disabled && styles.disabled, style]}
+      style={[styles.chipOuter, compact && styles.compactOuter, disabled && styles.disabled, style]}
     >
-      <Animated.View style={[styles.chipInner, subtitle && styles.chipTall, boxStyle]}>
+      <Animated.View style={[styles.chipInner, compact && styles.compactInner, subtitle && styles.chipTall, boxStyle]}>
         {icon ? <Ionicons name={icon} size={15} color={selected ? colors.textOnDark : colors.primary} style={styles.icon} /> : null}
         <View>
-          <Animated.Text style={[styles.label, labelStyle]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          <Animated.Text style={[styles.label, compact && styles.compactLabel, labelStyle]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {label}
           </Animated.Text>
           {subtitle ? (

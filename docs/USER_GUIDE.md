@@ -21,7 +21,7 @@ If the university Wi-Fi blocks the connection, ask the team to start the app wit
 ## 2. Signing up and logging in
 
 - **Quick try:** on the Welcome screen tap **Use demo account**. It fills in `student@ua.edu.lb` / `campus123` for you. The demo account already has a wallet, past orders, a coffee card at 8/10 stamps and a saved place called "My Lab".
-- **Log in:** type your university email **or your UA ID** and your password. You can type only your username (for example `maya`): the app adds `@ua.edu.lb`.
+- **Log in:** type your university email and your password. You can type only your username (for example `maya`): the app adds `@ua.edu.lb`.
 - **Sign up** (2 steps):
   1. Name, university email (must end with **@ua.edu.lb**), password (at least 6 characters, typed twice).
   2. Your **UA ID** (8 digits; the first 4 are the year you joined Antonine University, e.g. `20231234`), Lebanese phone (`03xxxxxx`, `7Xxxxxxx` or `81xxxxxx`). The app checks the ID against Antonine University's records: if it is found you see **✓ Verified UA ID** and your faculty and campus are filled in for you. The name you typed must match the record, and one ID can only have one account. If you see "This ID isn't in Antonine University's records", check your student card.
@@ -69,8 +69,8 @@ Prices:
 
 Open the **Printing Office** card (or the Print screen).
 
-1. **Document:** tap **Choose a file** (PDF, Word or image, up to 25 MB). The app tries to count the pages for you. No file? Tap **Use a sample document**. Your file is **not uploaded**: the app only keeps its name, size and page count.
-2. **Pages to print:** check the number and correct it if needed.
+1. **Document:** Tap **Choose a file** (PDF, Word or image, up to 25 MB). The app estimates pages for supported files. You can also choose **Use a sample document**. When you add a real print job to the Bag, CampusGo saves a copy locally and keeps its reference with the job.
+2. **Pages per copy:** Enter the number of pages in one copy or check and correct the suggested count.
 3. **Options:** Black & white or Colour, double-sided (saves paper, same price), binding.
 4. **Copies:** use the + / − buttons.
 
@@ -84,7 +84,7 @@ Open the **Printing Office** card (or the Print screen).
 
 Price = pages × copies × page price + binding × copies. The total updates live at the bottom (tap it to see the breakdown).
 
-**200-page limit:** *pages × copies* must be **200 or less** in one order. Example: 50 pages × 4 copies = 200 is allowed; 50 × 5 = 250 is not. The Copies card always shows "pages × copies = N of 200 max printed pages".
+**200-page limit.** Each order can have up to 200 printed pages across all print jobs. Four copies of 50 pages reach the limit. The Copies card also shows physical sheets, rounding up each double-sided copy separately.
 
 ![Print](screenshots/print.png)
 
@@ -92,12 +92,12 @@ Price = pages × copies × page price + binding × copies. The total updates liv
 
 Tap **Checkout** in the bag. There are three steps; each finished step folds into one line you can tap to change.
 
-1. **Where:** choose a **saved place** (one tap) or a **new location**: building, floor and room number (1–99). The app builds the real room code like **G.2.15** (Building G, 2nd floor, room 15) and shows it on a door sign. Tick **Save this location** to reuse it next time.
-2. **When:** choose a **delivery break**. We deliver between classes, never during. Available breaks come first; the ones that have passed are folded into one row ("5 earlier breaks passed") that you can open. If you already have a saved place (or used one last time) it is pre-selected.
+1. **Location:** Select a **saved place** or confirm a **new location** with a building, floor, and room number (1–99). Every checkout starts with no location selected. A new room code such as **G.2.15** appears on the door sign. Choose **Save this location** and enter a name to reuse the location later.
+2. **Delivery:** Choose a **delivery break** for the displayed date. Available breaks come first, and the earlier or unavailable breaks are grouped below them.
    - UA's breaks are 09:45, 11:15, 12:45, **14:15–15:30 (the long break)**, 16:45, 18:15 and 19:45.
    - A break is **greyed out** if it already started (**Passed**), if the store cannot prepare your order in time (**Too close – needs N min**), or if it starts after the store closes (**Store closed**).
    - Available breaks show "Order by HH:MM".
-3. **Pay:**
+3. **Payment:**
    - **Campus wallet:** the amount is taken from your balance. If your balance is too low, the app shows how much is missing and a **Top up** button.
    - **Cash on delivery:** pay the courier. Always allowed.
 
@@ -114,13 +114,13 @@ After ordering, tap **Track order** (or open it from Home / My orders).
 - **Cancel:** possible only while the order is still **Received**. Wallet payments are refunded immediately and the screen shows "Cancelled at HH:MM · Refunded $X to wallet".
 - **Rate:** when the order is delivered, give 1–5 stars, pick quick tags (Fast, Hot, Friendly courier, Accurate) and optionally write a comment.
 
-> In the demo, statuses change every few seconds so you do not have to wait. The screen tells you: "Demo speed: status changes every N s."
+> The simulated status starts advancing after placement. The booked break is displayed separately.
 
 ![Tracking](screenshots/tracking.png)
 
 ## 8. Order history
 
-The **My orders** tab lists your orders. Use **Active / Past**, the store filter and the status filter (Received, Preparing, On the way, Delivered, Cancelled). Tap an order to open its tracking page. Tap **Reorder** on a past order to put its items in your bag again (items now out of stock are skipped, and the app asks before replacing a bag from another store).
+The **My orders** tab lists your orders. Use **Active / Past**, the store filter and the status filter (Received, Preparing, On the way, Delivered, Cancelled). Tap an order to open its tracking page. Tap **Reorder** on a past order to put its items in your bag again (items now out of stock are skipped, and the app asks before replacing a bag from another store). Print jobs can be reordered when their saved documents are available.
 
 ![Orders](screenshots/orders.png)
 
@@ -138,7 +138,7 @@ In the **Profile** tab:
 
 ## 10. Extras
 
-- **Coffee stamps:** every coffee (espresso, americano, cappuccino, latte, iced latte) gives **1 stamp** once the order is **delivered**. At 10 stamps you get a **free coffee**: switch on **Use my free coffee** in the bag. Cancelled orders earn nothing and give the reward back.
+- **Coffee Rewards:** Each eligible paid coffee earns a stamp when delivered. Ten stamps earn one free coffee. Choose **Apply reward** in the Bag to discount one eligible coffee per order. Size is included and extras stay payable. Cancelled orders earn no stamps and restore any redeemed reward.
 - **Dark mode:** **Profile → Appearance** – System, Light or Dark (the screen fades smoothly when you switch).
 - **Animations:** all motion respects your phone's *Reduce Motion* setting (Android: *Remove animations*).
 - **Notifications:** **Profile → Notifications**. The app can tell you when your order is being prepared, on the way and delivered, even with the phone locked. You can also turn on **break reminders** (10, 15 or 20 minutes before a break). Use **Send a test notification** to check your phone.
@@ -157,7 +157,7 @@ Stores and breaks depend on the time of day, so the app has a **demo clock**.
 1. **Profile → Demo settings.**
 2. Set the **date** (`YYYY-MM-DD`, or the quick buttons: Next weekday, A Saturday, Christmas break, Independence Day) and/or type a time such as `11:00` and press **Set time**. On a Saturday, a holiday or between semesters UA is closed: Home shows why and ordering is blocked (a great thing to show in the demo). **Reset** returns to the real date and time.
 3. Type a time such as `11:00` and press **Set time**. Everything (open/closed, breaks, greetings, banner) now uses it. **Reset** returns to the phone's time.
-3. **Tracking speed:** **Fast** (8 s per step), **Demo** (20 s, default) or **Slow** (60 s). It applies to orders placed afterwards.
+3. **Tracking speed:** **Fast** (8 s), **Demo** (20 s, default) or **Slow** (60 s). The setting affects the interval between simulated stages for new orders.
 4. **Simulate offline** shows the offline mode without turning Wi-Fi off. **Reset demo data** restores the demo account.
 
 Tip: `11:00` opens every store and leaves most breaks available.
@@ -172,7 +172,7 @@ Tip: `11:00` opens every store and leaves most breaks available.
 | 2:00 | Open the **Bag**: change quantity, note the delivery line, minimum order | Cart, totals, minimum, free delivery |
 | 2:20 | **Printing Office** → **Use a sample document**, set 0 pages (price $0.00), then 60 pages × 4 copies (limit message), fix it, spiral binding, **Add to bag** | Printing price and 200-page rule |
 | 3:00 | **Checkout:** saved place **My Lab**, choose a break (point at greyed ones), pay with the **wallet** | Location, slots, payment |
-| 3:40 | **Track:** watch the timeline reach "Delivered to Building D, Room D.2.8"; show the demo-speed note; **Cancel** a second order to show the refund | Tracking, cancel, refund |
+| 3:40 | **Track:** watch the timeline reach "Delivered to Building D, Room D.2.8"; show the estimated arrival; **Cancel** a second order to show the refund | Tracking, cancel, refund |
 | 4:20 | Rate the order; show the **stamp** added; open **My orders** filters and **Reorder** | Rating, history, loyalty |
 | 4:45 | **Profile:** wallet top-up, dark mode, offline simulation; then **Demo settings → A Saturday** to show "UA is closed on weekends" | Wallet, extras, closed days |
 

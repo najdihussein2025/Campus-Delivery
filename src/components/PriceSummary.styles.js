@@ -2,6 +2,7 @@ import { StyleSheet } from 'react-native';
 import { fonts, radius, spacing, makeTypography } from '../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
+  title: { ...makeTypography(c).h3, marginBottom: spacing.xs },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 5 },
   label: { ...makeTypography(c).body, color: c.textMuted },
   labelStrong: { fontFamily: fonts.bold, color: c.text, fontSize: 17 },

@@ -2,12 +2,12 @@ import { StyleSheet } from 'react-native';
 import { fonts, radius, spacing } from '../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
-  row: { flexDirection: 'row', minHeight: 64 },
+  row: { flexDirection: 'row', minHeight: 54 },
   rail: { width: 44, alignItems: 'center' },
   circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: c.surfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',

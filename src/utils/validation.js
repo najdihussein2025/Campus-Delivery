@@ -25,22 +25,22 @@ export const checkUaId = (id, name, registry, users, currentYear = new Date().ge
 
 const isUaEmail = (email) => EMAIL_REGEX.test(email.trim());
 
-// The login field takes the university email or the 8-digit UA ID
-export const isUaIdInput = (value) => /^\d{8}$/.test(value.trim());
+// Numeric IDs are preserved during normalization so login can reject them.
+const isUaIdInput = (value) => /^\d{8}$/.test(value.trim());
 export const findAccount = (users, identifier) => {
   const value = identifier.trim().toLowerCase();
-  return users.find((u) => u.email.toLowerCase() === value || (isUaIdInput(value) && u.studentId === value));
+  return users.find((u) => u.email.toLowerCase() === value);
 };
 
 // Each validator returns an object of field -> error message (empty object = valid)
 export const validateLogin = ({ email, password }, users) => {
   const errors = {};
-  if (!isUaEmail(email) && !isUaIdInput(email)) errors.email = 'Use your university email (name@ua.edu.lb) or your 8-digit UA ID';
+  if (!isUaEmail(email)) errors.email = 'Use your university email (name@ua.edu.lb)';
   if (password.length < 6) errors.password = 'Password must be at least 6 characters';
   if (Object.keys(errors).length) return errors;
 
   const account = findAccount(users, email);
-  if (!account) errors.email = isUaIdInput(email) ? 'No account for this UA ID' : 'No account with this email';
+  if (!account) errors.email = 'No account with this email';
   else if (account.password !== password) errors.password = 'Wrong password';
   return errors;
 };
@@ -61,18 +61,35 @@ export const validateSignUp = (form, users, registry = [], currentYear = new Dat
   return errors;
 };
 
-export const validatePrintJob = ({ docName, pages, copies }, maxPages = 200) => {
+export const positiveWholeNumber = (value) => {
+  const number = Number(value);
+  return /^\d+$/.test(String(value)) && Number.isSafeInteger(number) && number > 0 ? number : 0;
+};
+
+export const validatePrintJob = ({ file, pages, copies }, maxPages = 200) => {
   const errors = {};
-  if (!docName.trim()) errors.docName = 'Document name is required';
-  if (!/^\d+$/.test(pages) || parseInt(pages, 10) < 1) errors.pages = 'Pages must be a whole number ≥ 1';
-  if (!/^\d+$/.test(copies) || parseInt(copies, 10) < 1) errors.copies = 'Copies must be a whole number ≥ 1';
-  if (!errors.pages && !errors.copies && parseInt(pages, 10) * parseInt(copies, 10) > maxPages) {
-    errors.pages = `Pages × copies cannot exceed ${maxPages}`;
+  const pageCount = positiveWholeNumber(pages);
+  const copyCount = positiveWholeNumber(copies);
+  if (!file?.name?.trim()) errors.file = 'Choose a document to print.';
+  if (!pageCount) errors.pages = 'Enter a positive whole number of pages.';
+  if (!copyCount) errors.copies = 'Select at least one copy.';
+  if (pageCount && copyCount && pageCount * copyCount > maxPages) {
+    errors.limit = `Reduce pages or copies to stay within ${maxPages} printed pages per job.`;
   }
   return errors;
 };
 
 export const isValidRoom = (room) => /^[a-zA-Z0-9]{1,5}$/.test(room.trim());
+
+export const isRoomForBuilding = (building, room) => {
+  if (!building || typeof room !== 'string' || !room.trim()) return false;
+  // Earlier versions saved free-text room numbers. Keep those places usable.
+  if (isValidRoom(room)) return true;
+  const [code, floor, roomNumber, ...extra] = room.trim().toUpperCase().split('.');
+  return extra.length === 0 && code === building.code.toUpperCase()
+    && /^-?\d+$/.test(floor) && building.floors.includes(Number(floor))
+    && /^\d{1,2}$/.test(roomNumber) && Number(roomNumber) >= 1;
+};
 
 export const validateCheckout = ({ buildingId, room, slotId, payment }) => {
   const errors = {};

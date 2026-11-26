@@ -1,25 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, StatusBar, Switch, Text, View } from 'react-native';
+import { FlatList, StatusBar, Switch, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import Card from '../../components/Card';
 import AppInput from '../../components/AppInput';
 import AppButton from '../../components/AppButton';
 import Chip from '../../components/Chip';
+import WrappedFlatList from '../../components/WrappedFlatList';
 import SectionHeader from '../../components/SectionHeader';
 import ConfirmModal from '../../components/ConfirmModal';
 import UALogo from '../../components/UALogo';
 import DoorSign from '../../components/DoorSign';
 import RoomPicker from '../../components/RoomPicker';
 import SegmentedControl from '../../components/SegmentedControl';
-import DietFilterChips from '../../components/DietFilterChips';
-import { FadeInView, PressableScale, ShakeView, StaggerItem, animateLayout, useScreenFocusAnimation, useToast } from '../../components/motion';
+import { PressableScale, ShakeView, useToast } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
 import { formatMoney } from '../../utils/money';
 import { formatFloorLong, formatTime, getNow, isValidTime } from '../../utils/time';
 import { addDays, dateKey, isValidDateKey, longDayLabel, nextOpenDay, parseKey } from '../../utils/calendar';
-import { makeRoomCode, validateRoomParts } from '../../utils/validation';
-import { tagLabel } from '../../utils/diet';
+import { isRoomForBuilding, makeRoomCode, validateRoomParts } from '../../utils/validation';
+import { STORE_DIET_OPTIONS } from '../../utils/diet';
 import * as haptics from '../../utils/haptics';
 import { gradients, MAX_FONT_SCALE } from '../../theme/theme';
 import { createStyles } from './ProfileScreen.styles';
@@ -30,7 +30,9 @@ import { TRACKING_SPEEDS } from '../../utils/orderStatus';
 import { PHOTO_CREDITS } from '../../data/credits';
 
 const EMPTY_ROOM = { buildingId: '', floor: null, roomNumber: '' };
-const APP_VERSION = '2.0.0';
+const DIET_GROUPS = [['cafeteria', 'UA Cafeteria'], ['coffee', 'Coffee Corner']];
+const DIET_IDS = new Set(Object.values(STORE_DIET_OPTIONS).flatMap((options) => options.map(({ id }) => id)));
+const APP_VERSION = require('../../../app.json').expo.version;
 const APPEARANCE_LABELS = { system: 'System', light: 'Light', dark: 'Dark' };
 
 const getInitials = (name) =>
@@ -41,18 +43,17 @@ const getInitials = (name) =>
     .map((part) => part[0].toUpperCase())
     .join('');
 
-// Chapter 19: FlatList with header/footer sections, useEffect interval with cleanup for the demo clock
+// Keep the demo clock in sync while Profile is open.
 export default function ProfileScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors, mode, setMode } = useTheme();
   const {
     user, wallet, campus, savedLocations, timeOffsetMs, campusBuildings, getBuilding, getCampus,
-    formatLocation, updateProfile, addLocation, removeLocation, setDemoTime, setDemoDate, resetDemoTime, logout, loyalty,
+    formatLocation, updateProfile, addLocation, updateLocation, removeLocation, setDemoTime, setDemoDate, resetDemoTime, logout, loyalty,
     trackingSpeed, setTrackingSpeed, resetDemoData, isDemoAccount,
   } = useApp();
   const { simulateOffline, setSimulateOffline } = useNetwork();
   const { showToast } = useToast();
-  const { animatedStyle } = useScreenFocusAnimation();
   const listRef = useRef(null);
   const shakeRef = useRef(null);
   const locationsY = useRef(0);
@@ -63,7 +64,8 @@ export default function ProfileScreen({ navigation }) {
   const [demoError, setDemoError] = useState('');
   const [dateInput, setDateInput] = useState('');
   const [dateError, setDateError] = useState('');
-  const [showAdd, setShowAdd] = useState(false);
+  const [locationEditor, setLocationEditor] = useState(null);
+  const [dietDraft, setDietDraft] = useState([]);
   const [label, setLabel] = useState('');
   const [room, setRoom] = useState(EMPTY_ROOM);
   const [locationErrors, setLocationErrors] = useState({});
@@ -80,13 +82,15 @@ export default function ProfileScreen({ navigation }) {
 
   const currentCampus = getCampus();
 
-  const toggleSection = (key) => {
-    animateLayout();
-    setOpenSection(openSection === key ? null : key);
-  };
+  const savedDiet = (user.myDiet || []).filter((id) => DIET_IDS.has(id));
+  const editingCampus = getBuilding(locationEditor?.buildingId)?.campusId;
+  const locationBuildings = editingCampus
+    ? campus.buildings.filter((building) => building.campusId === editingCampus)
+    : campusBuildings;
 
-  const scrollToLocations = () => {
-    listRef.current?.scrollToOffset({ offset: Math.max(0, locationsY.current - 8), animated: true });
+  const toggleSection = (key) => {
+    if (key === 'diet' && openSection !== key) setDietDraft(savedDiet);
+    setOpenSection(openSection === key ? null : key);
   };
 
   const handleSetTime = () => {
@@ -140,12 +144,14 @@ export default function ProfileScreen({ navigation }) {
     showToast({ message: 'Back to the real time', icon: 'refresh' });
   };
 
-  // My diet: default dietary filters, saved on the user's account
-  const toggleMyDiet = (tag) => {
-    const current = user.myDiet || [];
-    animateLayout();
-    haptics.tap();
-    updateProfile({ myDiet: current.includes(tag) ? current.filter((t) => t !== tag) : [...current, tag] });
+  const toggleDiet = (id) => {
+    setDietDraft((current) => current.includes(id) ? current.filter((tag) => tag !== id) : [...current, id]);
+  };
+
+  const saveDiet = async () => {
+    await updateProfile({ myDiet: dietDraft });
+    setOpenSection(null);
+    showToast({ message: 'Dietary preferences saved', icon: 'checkmark', tone: 'success' });
   };
 
   const handleResetDemo = async () => {
@@ -157,34 +163,44 @@ export default function ProfileScreen({ navigation }) {
 
   const handleCampus = (campusId) => {
     if (campusId === user.campusId) return;
-    animateLayout();
     updateProfile({ campusId });
     haptics.tap();
     showToast({ message: `Campus changed to ${getCampus(campusId)?.name}`, icon: 'location', tone: 'success' });
   };
 
-  const toggleAdd = () => {
-    animateLayout();
-    setShowAdd(!showAdd);
+  const openLocationEditor = (place = {}) => {
+    const [, floor, roomNumber] = place.room?.split('.') || [];
+    setLocationEditor(place);
     setLocationErrors({});
-    setRoom(EMPTY_ROOM);
-    setLabel('');
+    setLabel(place.label || '');
+    setRoom(place.id ? { buildingId: place.buildingId, floor: floor === undefined ? null : Number(floor), roomNumber: roomNumber || '' } : EMPTY_ROOM);
+    listRef.current?.scrollToOffset({ offset: locationsY.current, animated: true });
   };
 
-  const handleAddLocation = () => {
-    const errors = validateRoomParts(room);
+  const saveLocation = () => {
+    const building = locationBuildings.find(({ id }) => id === room.buildingId);
+    const legacyRoom = locationEditor.room && !locationEditor.room.includes('.') &&
+      locationEditor.buildingId === room.buildingId && room.floor === null && !room.roomNumber;
+    const errors = legacyRoom ? {} : validateRoomParts(room);
     if (!label.trim()) errors.label = 'Give this place a name, e.g. "My Lab"';
+    if (!errors.building && !building) errors.building = 'Choose a building';
+    if (!legacyRoom && !errors.floor && building && !building.floors.includes(room.floor)) errors.floor = 'Choose a floor';
+    const code = legacyRoom ? locationEditor.room.trim().toUpperCase()
+      : building && makeRoomCode(building.code, room.floor, room.roomNumber).toUpperCase();
+    if (!Object.keys(errors).length && !isRoomForBuilding(building, code)) errors.room = 'Enter a valid room';
+    if (!Object.keys(errors).length && savedLocations.some((place) =>
+      place.id !== locationEditor.id && place.buildingId === building.id && place.room.trim().toUpperCase() === code
+    )) errors.room = 'This room is already saved';
     setLocationErrors(errors);
     if (Object.keys(errors).length) {
       shakeRef.current?.shake();
       return;
     }
-    const building = getBuilding(room.buildingId);
-    addLocation({ label, buildingId: room.buildingId, room: makeRoomCode(building.code, room.floor, room.roomNumber) });
-    animateLayout();
-    setShowAdd(false);
-    setRoom(EMPTY_ROOM);
-    setLabel('');
+
+    const details = { label, buildingId: building.id, room: code };
+    if (locationEditor.id) updateLocation(locationEditor.id, details);
+    else addLocation(details);
+    setLocationEditor(null);
     haptics.success();
     showToast({ message: 'Location saved', icon: 'bookmark', tone: 'success' });
   };
@@ -192,45 +208,44 @@ export default function ProfileScreen({ navigation }) {
   const handleDelete = () => {
     const target = deleteTarget;
     setDeleteTarget(null);
-    animateLayout();
     removeLocation(target.id);
+    if (locationEditor?.id === target.id) setLocationEditor(null);
     haptics.warning();
     showToast({ message: `"${target.label}" removed`, icon: 'trash' });
   };
 
-  const header = (
-    <View>
-      <FadeInView>
-        <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-          <View style={styles.heroGlow} />
-          <View style={styles.heroTop}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{getInitials(user.name)}</Text>
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.name} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{user.name}</Text>
-              <Text style={styles.email} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{user.email}</Text>
-            </View>
+  const account = (
+    <>
+      <LinearGradient colors={gradients.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
+        <View style={styles.heroGlow} />
+        <View style={styles.heroTop}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText} maxFontSizeMultiplier={MAX_FONT_SCALE}>{getInitials(user.name)}</Text>
           </View>
-          <View style={styles.heroInfo}>
-            <HeroItem icon="school-outline" label="Faculty" value={user.faculty} />
-            <HeroItem icon="location-outline" label="Campus" value={currentCampus ? `${currentCampus.name} · ${currentCampus.subtitle}` : '—'} />
-            <View style={styles.heroRow}>
-              <HeroItem icon="card-outline" label="ID" value={user.studentId} half />
-              <HeroItem icon="call-outline" label="Phone" value={user.phone} half />
-            </View>
+          <View style={styles.flex}>
+            <Text style={styles.name} maxFontSizeMultiplier={MAX_FONT_SCALE}>{user.name}</Text>
+            <Text style={styles.email} maxFontSizeMultiplier={MAX_FONT_SCALE}>{user.email}</Text>
           </View>
-        </LinearGradient>
-      </FadeInView>
+        </View>
+        <View style={styles.heroInfo}>
+          <HeroItem icon="school-outline" label="Faculty" value={user.faculty} />
+          <HeroItem icon="location-outline" label="Campus" value={currentCampus ? `${currentCampus.name} · ${currentCampus.subtitle}` : '—'} />
+          <View style={styles.heroRow}>
+            <HeroItem icon="card-outline" label="ID" value={user.studentId} half />
+            <HeroItem icon="call-outline" label="Phone" value={user.phone} half />
+          </View>
+        </View>
+      </LinearGradient>
 
-      <SectionHeader title="Account" />
+      <SectionHeader style={styles.sectionHeader} title="Account" />
       <Card style={styles.menu}>
         <MenuRow icon="wallet" label="Campus wallet" value={formatMoney(wallet.balance)} onPress={() => navigation.navigate('Wallet')} />
         <View style={styles.divider} />
         <MenuRow
           icon="cafe"
-          label="Coffee stamps"
-          value={loyalty.rewards > 0 ? '🎁 Free coffee' : `${loyalty.stamps} / 10`}
+          label="Coffee Rewards"
+          value={loyalty.rewards > 0 ? 'Free coffee' + (loyalty.rewards > 1 ? ' × ' + loyalty.rewards : '') : loyalty.stamps + ' / 10'}
+          valueIcon={loyalty.rewards > 0 ? 'gift-outline' : undefined}
           onPress={() => navigation.navigate('Loyalty')}
         />
         <View style={styles.divider} />
@@ -264,22 +279,47 @@ export default function ProfileScreen({ navigation }) {
           </View>
         ) : null}
       </Card>
+    </>
+  );
 
-      <SectionHeader title="Preferences" />
+  const preferencesAndOther = (
+    <>
+      <SectionHeader style={styles.sectionHeader} title="Preferences" />
       <Card style={styles.menu}>
         <MenuRow
           icon="leaf"
-          label="My diet"
-          value={(user.myDiet || []).length ? (user.myDiet || []).map(tagLabel).join(', ') : 'None'}
+          label="Dietary preferences"
+          value={savedDiet.length ? savedDiet.length + ' saved' : 'None'}
           open={openSection === 'diet'}
           onPress={() => toggleSection('diet')}
         />
         {openSection === 'diet' ? (
           <View style={styles.expand}>
-            <DietFilterChips selected={user.myDiet || []} onToggle={toggleMyDiet} />
-            <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              These filters are turned on when you open a menu. You can remove them for a single visit.
-            </Text>
+            <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>Saved preferences apply when you open the corresponding store menu.</Text>
+            <FlatList
+              data={DIET_GROUPS}
+              keyExtractor={([storeId]) => storeId}
+              extraData={dietDraft}
+              scrollEnabled={false}
+              renderItem={({ item: [storeId, name] }) => (
+                <View>
+                  <Text style={styles.subLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{name}</Text>
+                  <WrappedFlatList
+                    data={STORE_DIET_OPTIONS[storeId]}
+                    keyExtractor={({ id }) => id}
+                    extraData={dietDraft}
+                    wrapStyle={styles.dietOptions}
+                    renderItem={({ item: { id, label: option } }) => (
+                      <Chip label={option} selected={dietDraft.includes(id)} onPress={() => toggleDiet(id)} />
+                    )}
+                  />
+                </View>
+              )}
+            />
+            <View style={styles.demoButtons}>
+              <AppButton title="Clear all" variant="secondary" small onPress={() => setDietDraft([])} style={styles.flex} />
+              <AppButton title="Save" accessibilityLabel="Save preferences" small onPress={saveDiet} style={[styles.flex, styles.resetButton]} />
+            </View>
           </View>
         ) : null}
         <View style={styles.divider} />
@@ -306,7 +346,7 @@ export default function ProfileScreen({ navigation }) {
         ) : null}
       </Card>
 
-      <SectionHeader title="Demo" />
+      <SectionHeader style={styles.sectionHeader} title="Other" />
       <Card style={styles.menu}>
         <MenuRow
           icon="time"
@@ -316,7 +356,8 @@ export default function ProfileScreen({ navigation }) {
           onPress={() => toggleSection('demo')}
         />
         {openSection === 'demo' ? (
-          <View style={styles.expand}>
+          <View style={[styles.expand, styles.detailPanel]}>
+            <Text style={styles.panelHeading} maxFontSizeMultiplier={MAX_FONT_SCALE}>Simulated time</Text>
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
               Set the app clock for a live demo (e.g. 11:00 so stores are open and breaks are available). Set time keeps the demo date; Reset returns to the real date and time.
             </Text>
@@ -370,7 +411,7 @@ export default function ProfileScreen({ navigation }) {
               onChange={setTrackingSpeed}
             />
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Demo (20 s) leaves time to lock the phone and watch the notifications arrive.
+              Simulated tracking starts when you place an order and advances at the selected speed.
             </Text>
 
             <View style={styles.switchRow}>
@@ -399,13 +440,10 @@ export default function ProfileScreen({ navigation }) {
             ) : null}
           </View>
         ) : null}
-      </Card>
-
-      <SectionHeader title="About" />
-      <Card style={styles.menu}>
+        <View style={styles.divider} />
         <MenuRow icon="information-circle" label="About CampusGo" open={openSection === 'about'} onPress={() => toggleSection('about')} />
         {openSection === 'about' ? (
-          <View style={styles.expand}>
+          <View style={[styles.expand, styles.detailPanel]}>
             <UALogo variant="blue" width={140} style={styles.aboutLogo} />
             <Text style={styles.aboutTitle} maxFontSizeMultiplier={MAX_FONT_SCALE}>CampusGo · v{APP_VERSION}</Text>
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
@@ -416,17 +454,14 @@ export default function ProfileScreen({ navigation }) {
               icon="images-outline"
               small
               variant="secondary"
-              onPress={() => {
-                animateLayout();
-                setShowCredits(!showCredits);
-              }}
+              onPress={() => setShowCredits((current) => !current)}
               style={styles.resetData}
             />
             {showCredits ? (
               <FlatList
                 data={PHOTO_CREDITS}
-                scrollEnabled={false}
                 keyExtractor={(item) => item.file}
+                scrollEnabled={false}
                 renderItem={({ item }) => (
                   <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
                     {item.subject}: “{item.title}” by {item.author} · {item.license}
@@ -438,69 +473,53 @@ export default function ProfileScreen({ navigation }) {
         ) : null}
       </Card>
 
-      <View onLayout={(e) => (locationsY.current = e.nativeEvent.layout.y)}>
-        <SectionHeader title="Saved locations" actionLabel={showAdd ? 'Close' : '+ Add'} onAction={toggleAdd} />
-      </View>
-
-      {showAdd ? (
-        <FadeInView>
-          <ShakeView ref={shakeRef}>
-            <Card style={styles.addCard}>
-              <AppInput
-                label="Name"
-                icon="bookmark-outline"
-                placeholder="e.g. My Lab"
-                value={label}
-                onChangeText={setLabel}
-                error={locationErrors.label}
-              />
-              <RoomPicker buildings={campusBuildings} value={room} onChange={setRoom} errors={locationErrors} />
-              <AppButton title="Save location" icon="checkmark" onPress={handleAddLocation} style={styles.saveButton} />
-            </Card>
-          </ShakeView>
-        </FadeInView>
-      ) : null}
-    </View>
+    </>
   );
 
   const footer = (
     <View style={styles.footer}>
       {/* Outlined danger button (not a solid red block); the ConfirmModal below asks before logging out */}
-      <AppButton title="Log out" icon="log-out-outline" variant="dangerOutline" onPress={() => setShowLogout(true)} />
+      <AppButton title="Log out" icon="log-out-outline" variant="dangerOutline" small onPress={() => setShowLogout(true)} />
       <UALogo variant="blue" width={120} style={styles.footerLogo} />
       <Text style={styles.version} maxFontSizeMultiplier={MAX_FONT_SCALE}>CampusGo v{APP_VERSION} · Université Antonine</Text>
     </View>
   );
 
-  const renderLocation = ({ item, index }) => {
+  const renderLocation = ({ item }) => {
     const building = getBuilding(item.buildingId);
     const parts = item.room.split('.');
     const floorText = parts.length === 3 ? formatFloorLong(parseInt(parts[1], 10)) : '';
     return (
-      <StaggerItem index={index}>
-        <View style={styles.locationCard}>
-          <DoorSign code={item.room} size="sm" />
-          <View style={styles.locationText}>
-            <Text style={styles.locationLabel} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.label}</Text>
-            <Text style={styles.locationDetail} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {building ? `${building.name}${floorText ? ` · ${floorText}` : ''}` : formatLocation(item.buildingId, item.room)}
-            </Text>
-          </View>
+      <View key={item.id} style={styles.locationCard}>
+        <View style={styles.locationHeading}>
+          <Text style={[styles.locationLabel, styles.locationText]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.label}</Text>
+          <PressableScale
+            onPress={() => openLocationEditor(item)}
+            accessibilityLabel={'Edit ' + item.label}
+            style={[styles.iconButton, styles.editButton]}
+          >
+            <Ionicons name="pencil-outline" size={19} color={colors.primaryText} />
+          </PressableScale>
           <PressableScale
             onPress={() => setDeleteTarget(item)}
-            accessibilityLabel={`Delete ${item.label}`}
-            hitSlop={8}
-            style={styles.deleteButton}
+            accessibilityLabel={'Delete ' + item.label}
+            style={[styles.iconButton, styles.deleteButton]}
           >
             <Ionicons name="trash-outline" size={19} color={colors.dangerText} />
           </PressableScale>
         </View>
-      </StaggerItem>
+        <View style={styles.locationRoom}>
+          <DoorSign code={item.room} size="sm" />
+          <Text style={styles.locationDetail} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {[building?.name, floorText].filter(Boolean).join(' · ') || formatLocation(item.buildingId, item.room)}
+          </Text>
+        </View>
+      </View>
     );
   };
 
   return (
-    <Animated.View style={[styles.screen, animatedStyle]}>
+    <View style={styles.screen}>
       <StatusBar barStyle="light-content" />
       <FlatList
         ref={listRef}
@@ -509,18 +528,38 @@ export default function ProfileScreen({ navigation }) {
         renderItem={renderLocation}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={header}
-        ListFooterComponent={footer}
-        ListEmptyComponent={
-          showAdd ? null : (
-            <PressableScale onPress={toggleAdd} accessibilityLabel="Add a saved location" style={styles.emptyCard}>
-              <Ionicons name="add-circle-outline" size={22} color={colors.primaryText} />
-              <Text style={styles.emptyText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-                Add your lab or classroom for one-tap checkout.
-              </Text>
-            </PressableScale>
-          )
-        }
+        ListHeaderComponent={(
+          <>
+            {account}
+            <View onLayout={(e) => (locationsY.current = e.nativeEvent.layout.y)}>
+              <SectionHeader style={styles.sectionHeader} title="Saved locations" actionLabel={locationEditor ? 'Close' : '+ Add location'} onAction={() => locationEditor ? setLocationEditor(null) : openLocationEditor()} />
+            </View>
+
+            {locationEditor ? (
+              <ShakeView ref={shakeRef}>
+                <Card style={styles.addCard}>
+                  <AppInput
+                    label={locationEditor.id ? 'Edit location name' : 'Location name'}
+                    icon="bookmark-outline"
+                    placeholder="e.g. My Lab"
+                    value={label}
+                    onChangeText={setLabel}
+                    error={locationErrors.label}
+                  />
+                  <RoomPicker buildings={locationBuildings} value={room} onChange={setRoom} errors={locationErrors} />
+                  <AppButton title="Save location" icon="checkmark" onPress={saveLocation} style={styles.saveButton} />
+                </Card>
+              </ShakeView>
+            ) : null}
+          </>
+        )}
+        ListEmptyComponent={!locationEditor ? (
+          <PressableScale onPress={() => openLocationEditor()} accessibilityLabel="Add a saved location" style={styles.emptyCard}>
+            <Ionicons name="bookmark-outline" size={22} color={colors.primaryText} />
+            <Text style={styles.emptyText} maxFontSizeMultiplier={MAX_FONT_SCALE}>No saved locations yet. Add a room to select it at checkout.</Text>
+          </PressableScale>
+        ) : null}
+        ListFooterComponent={<>{preferencesAndOther}{footer}</>}
       />
 
       <ConfirmModal
@@ -558,7 +597,7 @@ export default function ProfileScreen({ navigation }) {
           logout();
         }}
       />
-    </Animated.View>
+    </View>
   );
 }
 
@@ -569,23 +608,26 @@ function HeroItem({ icon, label, value, half }) {
       <Ionicons name={icon} size={16} color="rgba(255,255,255,0.75)" />
       <View style={styles.heroItemText}>
         <Text style={styles.heroLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
-        <Text style={styles.heroValue} numberOfLines={2} maxFontSizeMultiplier={MAX_FONT_SCALE}>{value}</Text>
+        <Text style={styles.heroValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>{value}</Text>
       </View>
     </View>
   );
 }
 
-function MenuRow({ icon, label, value, onPress, open }) {
+function MenuRow({ icon, label, value, valueIcon, onPress, open }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   return (
-    <PressableScale onPress={onPress} accessibilityLabel={label} scaleTo={0.98} style={styles.menuRow}>
+    <PressableScale onPress={onPress} accessibilityLabel={value ? label + ', ' + value : label} accessibilityState={open === undefined ? undefined : { expanded: open }} scaleTo={0.98} style={styles.menuRow}>
       <View style={styles.menuIcon}>
         <Ionicons name={icon} size={19} color={colors.primaryText} />
       </View>
       <Text style={styles.menuLabel} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
       {value ? (
-        <Text style={styles.menuValue} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{value}</Text>
+        <View style={styles.menuMeta}>
+          {valueIcon ? <Ionicons name={valueIcon} size={15} color={colors.primaryText} /> : null}
+          <Text style={styles.menuValue} maxFontSizeMultiplier={MAX_FONT_SCALE}>{value}</Text>
+        </View>
       ) : null}
       <Ionicons
         name={open === undefined ? 'chevron-forward' : open ? 'chevron-up' : 'chevron-down'}

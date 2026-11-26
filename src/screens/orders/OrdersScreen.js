@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FlatList, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,14 +6,18 @@ import { useApp } from '../../context/AppContext';
 import AppButton from '../../components/AppButton';
 import Badge from '../../components/Badge';
 import Chip from '../../components/Chip';
+import { canReusePrintDocument, discardPrintDocument, pickPrintDocument, savePrintDocument } from '../../services/printDocuments';
 import ConfirmModal from '../../components/ConfirmModal';
 import DoorSign from '../../components/DoorSign';
 import EmptyState from '../../components/EmptyState';
 import SegmentedControl from '../../components/SegmentedControl';
-import { PressableScale, StaggerItem, animateLayout, useToast } from '../../components/motion';
+import { StaggerItem, animateLayout, useToast } from '../../components/motion';
 import { getCategoryColors, getCategoryIcon, MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
+import { deliveryBreakLabel, isPastOrder } from '../../utils/orderDetails';
+import { bagItemDetails, getPrintOrderIssue, printOptionsFor } from '../../utils/cart';
+import { fileKind, validateFile } from '../../utils/pdfPages';
 import { formatDate } from '../../utils/time';
 import * as haptics from '../../utils/haptics';
 import Reanimated, { LinearTransition } from 'react-native-reanimated';
@@ -21,12 +25,11 @@ import { createStyles } from './OrdersScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { useTheme } from '../../context/ThemeContext';
 
-const SHORT_NAMES = { cafeteria: 'Cafeteria', coffee: 'Coffee', bookstore: 'Bookstore', printing: 'Printing' };
+const SHORT_NAMES = { cafeteria: 'Cafeteria', coffee: 'Coffee Corner', bookstore: 'Bookstore', printing: 'Printing' };
 const STATUS_FILTERS = {
   active: ['All', 'Received', 'Preparing', 'On the way'],
   past: ['All', 'Delivered', 'Cancelled'],
 };
-const isPastStatus = (status) => status === 'Delivered' || status === 'Cancelled';
 
 // Orders history: Active/Past segmented control + filter chips (horizontal FlatLists) + live status interval with cleanup
 export default function OrdersScreen({ navigation }) {
@@ -39,32 +42,23 @@ export default function OrdersScreen({ navigation }) {
   const [statusFilter, setStatusFilter] = useState('All');
   const [nowMs, setNowMs] = useState(Date.now());
   const [reorderPreview, setReorderPreview] = useState(null);
+  const [checkingDocuments, setCheckingDocuments] = useState(false);
+  const reorderPending = useRef(false);
+  const [missingDocuments, setMissingDocuments] = useState([]);
+  const [replacementFiles, setReplacementFiles] = useState(new Map());
+  const [documentError, setDocumentError] = useState('');
 
   useEffect(() => {
     const id = setInterval(() => setNowMs(Date.now()), 5000);
     return () => clearInterval(id);
   }, []);
 
-  if (orders.length === 0) {
-    return (
-      <View style={styles.screen}>
-        <EmptyState
-          icon="receipt-outline"
-          title="No orders yet"
-          subtitle="Your orders and their live status will appear here."
-          actionLabel="Start ordering"
-          onAction={() => navigation.navigate('Home')}
-        />
-      </View>
-    );
-  }
-
   const storeOptions = [{ id: 'all', label: 'All stores' }, ...campus.stores.map((s) => ({ id: s.id, label: SHORT_NAMES[s.id] || s.name }))];
 
   const sorted = [...orders].sort((a, b) => b.placedAtMs - a.placedAtMs);
-  const activeCount = sorted.filter((o) => !isPastStatus(getOrderStatus(o, nowMs))).length;
+  const activeCount = sorted.filter((o) => !isPastOrder(getOrderStatus(o, nowMs))).length;
   const filtered = sorted
-    .filter((o) => (tab === 'past') === isPastStatus(getOrderStatus(o, nowMs)))
+    .filter((o) => (tab === 'past') === isPastOrder(getOrderStatus(o, nowMs)))
     .filter((o) => storeFilter === 'all' || o.storeId === storeFilter)
     .filter((o) => statusFilter === 'All' || getOrderStatus(o, nowMs) === statusFilter);
 
@@ -81,16 +75,116 @@ export default function OrdersScreen({ navigation }) {
 
   const openReorder = (orderId) => {
     haptics.tap();
+    setMissingDocuments([]);
+    setReplacementFiles(new Map());
+    setDocumentError('');
     setReorderPreview({ orderId, ...previewReorder(orderId) });
   };
 
-  const confirmReorder = () => {
+  const selectReplacement = async (key) => {
+    if (reorderPending.current) return;
+    reorderPending.current = true;
+    setDocumentError('');
+    setCheckingDocuments(true);
+    try {
+      const file = await pickPrintDocument();
+      if (!file) return;
+      const issue = validateFile(file);
+      if (issue) {
+        setDocumentError(issue);
+        return;
+      }
+      setReplacementFiles((previous) => new Map(previous).set(key, file));
+    } catch {
+      setDocumentError('Could not open that file. Try another one.');
+    } finally {
+      reorderPending.current = false;
+      setCheckingDocuments(false);
+    }
+  };
+
+  const confirmReorder = async () => {
     const preview = reorderPreview;
+    if (!preview || reorderPending.current) return;
+    const latest = previewReorder(preview.orderId);
+    const changed = latest.items.length !== preview.items.length || latest.items.some((item, index) => {
+      const shown = preview.items[index];
+      return item.key !== shown?.key || item.unitPrice !== shown.unitPrice || item.qty !== shown.qty;
+    });
+    if (changed || (latest.conflict && (!preview.conflict || latest.storeName !== preview.storeName))) {
+      setReorderPreview({ orderId: preview.orderId, ...latest });
+      return;
+    }
+    const printJobs = latest.items.filter((item) => item.type === 'print');
+    let outcome;
+    if (printJobs.length) {
+      const issue = getPrintOrderIssue(printJobs, campus.printPrices.maxPages);
+      if (issue) {
+        setDocumentError(issue);
+        return;
+      }
+      reorderPending.current = true;
+      setCheckingDocuments(true);
+      setDocumentError('');
+      const replacements = new Map();
+      try {
+        const available = await Promise.all(printJobs.map((item) => (
+          replacementFiles.has(item.key) || canReusePrintDocument(item.file)
+        )));
+        const missing = printJobs.filter((_, index) => !available[index]);
+        if (missing.length) {
+          setMissingDocuments((previous) => [...new Set([...previous, ...missing.map((item) => item.key)])]);
+          return;
+        }
+        for (const item of printJobs) {
+          const file = replacementFiles.get(item.key);
+          if (!file) continue;
+          const key = 'print-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+          const reference = await savePrintDocument(file, key);
+          replacements.set(item.key, {
+            key,
+            name: file.name,
+            file: {
+              ...reference,
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.mimeType,
+              kind: fileKind(file),
+              pages: printOptionsFor(item).pages,
+            },
+          });
+        }
+        const current = previewReorder(preview.orderId);
+        if (current.conflict && (!preview.conflict || current.storeName !== preview.storeName)) {
+          setReorderPreview({ orderId: preview.orderId, ...current });
+          return;
+        }
+        outcome = reorder(preview.orderId, preview.conflict, replacements);
+        if (outcome.printIssue) {
+          setDocumentError(outcome.printIssue);
+          return;
+        }
+      } catch {
+        setDocumentError('Could not save the selected documents. Select them again and try again.');
+        return;
+      } finally {
+        if (!outcome?.added) {
+          await Promise.all([...replacements.values()].map(({ file }) => discardPrintDocument(file).catch(() => {})));
+        }
+        reorderPending.current = false;
+        setCheckingDocuments(false);
+      }
+    } else {
+      outcome = reorder(preview.orderId, preview.conflict);
+    }
     setReorderPreview(null);
-    const outcome = reorder(preview.orderId, preview.conflict);
     if (outcome.closed) {
       haptics.error();
       showToast({ message: `${outcome.reason} · ordering opens ${outcome.opensText}`, icon: 'moon', tone: 'error' });
+    } else if (outcome.printIssue) {
+      showToast({ message: outcome.printIssue, icon: 'alert-circle', tone: 'error' });
+    } else if (outcome.conflict) {
+      setReorderPreview({ orderId: preview.orderId, ...previewReorder(preview.orderId) });
     } else if (outcome.added > 0) {
       haptics.success();
       showToast({
@@ -108,27 +202,24 @@ export default function OrdersScreen({ navigation }) {
   const renderOrder = ({ item, index }) => {
     const store = getStore(item.storeId);
     const status = getOrderStatus(item, nowMs);
-    const past = isPastStatus(status);
+    const past = isPastOrder(status);
+    const breakLabel = deliveryBreakLabel(getOrderSlot(item));
     const count = item.items.reduce((sum, i) => sum + i.qty, 0);
     return (
       <StaggerItem index={index}>
-        <PressableScale
-          onPress={() => navigation.navigate('Tracking', { orderId: item.id })}
-          style={styles.card}
-          accessibilityLabel={`Order ${item.number} from ${store ? store.name : 'store'}, ${status}`}
-        >
+        <View style={styles.card}>
           <View style={styles.cardTop}>
             <LinearGradient colors={getCategoryColors(store?.category)} style={styles.storeTile}>
               <Ionicons name={getCategoryIcon(store?.category)} size={20} color={colors.textOnDark} />
             </LinearGradient>
             <View style={styles.cardInfo}>
-              <Text style={styles.storeName} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store ? store.name : 'Store'}</Text>
+              <Text style={styles.storeName} maxFontSizeMultiplier={MAX_FONT_SCALE}>{store ? store.name : 'Store'}</Text>
               <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>#{item.number} · {formatDate(item.placedAt)}</Text>
-              {getOrderSlot(item) ? (
-                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{getOrderSlot(item).label} break</Text>
+              {breakLabel ? (
+                <Text style={styles.meta} maxFontSizeMultiplier={MAX_FONT_SCALE}>{breakLabel}</Text>
               ) : null}
+              <Badge status={status} style={styles.status} />
             </View>
-            <Badge status={status} />
           </View>
           <View style={styles.divider} />
           <View style={styles.cardMiddle}>
@@ -138,14 +229,18 @@ export default function OrdersScreen({ navigation }) {
             </Text>
           </View>
           {item.rewardUsed ? (
-            <Text style={styles.rewardLine} maxFontSizeMultiplier={MAX_FONT_SCALE}>🎁 Free coffee applied</Text>
+            <Text style={styles.rewardLine} maxFontSizeMultiplier={MAX_FONT_SCALE}>Free coffee applied</Text>
           ) : null}
           <View style={styles.actions}>
             {past ? (
-              <AppButton title="Reorder" icon="refresh" small style={styles.action} onPress={() => openReorder(item.id)} />
+              <>
+                <AppButton title="View details" variant="secondary" small style={styles.action}
+                  onPress={() => navigation.navigate('Tracking', { orderId: item.id })} />
+                <AppButton title="Reorder" small style={styles.action} onPress={() => openReorder(item.id)} />
+              </>
             ) : (
               <AppButton
-                title="Track"
+                title="Track order"
                 icon="navigate-outline"
                 small
                 style={styles.action}
@@ -153,7 +248,7 @@ export default function OrdersScreen({ navigation }) {
               />
             )}
           </View>
-        </PressableScale>
+        </View>
       </StaggerItem>
     );
   };
@@ -168,8 +263,9 @@ export default function OrdersScreen({ navigation }) {
   const header = (
     <View style={styles.filters}>
       <SegmentedControl
+        compact
         options={[
-          { value: 'active', label: `Active${activeCount ? ` (${activeCount})` : ''}` },
+          { value: 'active', label: `Active (${activeCount})` },
           { value: 'past', label: 'Past' },
         ]}
         value={tab}
@@ -186,9 +282,9 @@ export default function OrdersScreen({ navigation }) {
         renderItem={({ item }) => {
           if (item.kind === 'divider') return <View style={styles.filterDivider} />;
           if (item.kind === 'store') {
-            return <Chip label={item.label} selected={storeFilter === item.id} onPress={() => pickFilter(setStoreFilter, item.id)} />;
+            return <Chip compact label={item.label} selected={storeFilter === item.id} onPress={() => pickFilter(setStoreFilter, item.id)} />;
           }
-          return <Chip label={item.label} selected={statusFilter === item.label} onPress={() => pickFilter(setStatusFilter, item.label)} />;
+          return <Chip compact label={item.label} selected={statusFilter === item.label} onPress={() => pickFilter(setStatusFilter, item.label)} />;
         }}
       />
     </View>
@@ -221,7 +317,7 @@ export default function OrdersScreen({ navigation }) {
             <EmptyState
               icon="bicycle-outline"
               title="No active orders"
-              subtitle="Orders on their way to you will show up here."
+              subtitle="New orders appear here until they are delivered or cancelled."
               actionLabel="Order something"
               onAction={() => navigation.navigate('Home')}
             />
@@ -236,28 +332,48 @@ export default function OrdersScreen({ navigation }) {
 
       <ConfirmModal
         visible={Boolean(reorderPreview)}
-        title={reorderPreview && reorderPreview.conflict ? 'Replace your bag?' : 'Reorder these items?'}
+        loading={checkingDocuments}
+        title={!reorderPreview?.items.length ? 'Items unavailable'
+          : missingDocuments.length ? 'Review print reorder'
+            : reorderPreview.conflict ? 'Replace your bag?' : 'Reorder these items?'}
         message={
-          reorderPreview && reorderPreview.conflict
+          reorderPreview?.conflict && reorderPreview.items.length
             ? `Your bag has items from ${reorderPreview.storeName}. It will be emptied first.`
-            : 'They will be added to your bag.'
+            : reorderPreview?.items.length ? 'Add these items at current prices, then review your bag.' : 'These items are currently unavailable.'
         }
         icon="refresh"
         tone={reorderPreview && reorderPreview.conflict ? 'warning' : 'primary'}
-        confirmLabel={reorderPreview && reorderPreview.items.length ? 'Add to bag' : 'OK'}
-        onConfirm={reorderPreview && reorderPreview.items.length ? confirmReorder : () => setReorderPreview(null)}
-        onCancel={() => setReorderPreview(null)}
+        confirmLabel={reorderPreview?.items.length ? 'Add to bag' : 'OK'}
+        onConfirm={reorderPreview?.items.length ? confirmReorder : () => setReorderPreview(null)}
+        onCancel={() => { if (!reorderPending.current) setReorderPreview(null); }}
       >
         {reorderPreview ? (
           <View style={styles.previewBox}>
+            {missingDocuments.length ? (
+              <Text style={styles.meta}>Some saved documents are unavailable. Select them again below. Your original printing settings will be kept.</Text>
+            ) : null}
+            {documentError ? <Text style={styles.skippedText} accessibilityLiveRegion="polite">{documentError}</Text> : null}
             <FlatList
               data={reorderPreview.items}
               keyExtractor={(item) => item.key}
-              scrollEnabled={false}
+              extraData={replacementFiles}
+              style={styles.previewItems}
               renderItem={({ item }) => (
                 <View style={styles.previewRow}>
                   <Text style={styles.previewQty}>{item.qty}×</Text>
-                  <Text style={styles.previewName} numberOfLines={1}>{item.name}</Text>
+                  <View style={styles.previewName}>
+                    <Text style={styles.previewLabel}>{replacementFiles.get(item.key)?.name || item.name}</Text>
+                    {bagItemDetails(item) ? <Text style={styles.meta}>{bagItemDetails(item)}</Text> : null}
+                    {missingDocuments.includes(item.key) ? (
+                      <AppButton
+                        small
+                        variant="secondary"
+                        disabled={checkingDocuments}
+                        title={replacementFiles.has(item.key) ? 'Change document' : 'Select document again'}
+                        onPress={() => selectReplacement(item.key)}
+                      />
+                    ) : null}
+                  </View>
                   <Text style={styles.previewPrice}>{formatMoney(item.unitPrice * item.qty)}</Text>
                 </View>
               )}
@@ -267,6 +383,9 @@ export default function OrdersScreen({ navigation }) {
                 <Ionicons name="alert-circle" size={16} color={colors.warningText} />
                 <Text style={styles.skippedText}>Out of stock, skipped: {reorderPreview.skipped.join(', ')}</Text>
               </View>
+            ) : null}
+            {reorderPreview.adjusted.length ? (
+              <Text style={styles.meta}>Options updated for {reorderPreview.adjusted.join(', ')}.</Text>
             ) : null}
           </View>
         ) : null}

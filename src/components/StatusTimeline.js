@@ -57,10 +57,7 @@ function PopCircle({ reached, style, children }) {
 }
 
 // Vertical order timeline: done = UA blue, current = cyan ring with a pulse, future = muted.
-// displayTimes: the times to SHOW per step (see getDisplayTimes), deliveredTo: "Building D, Room D.2.8".
-// A cancelled order keeps "Received" as done; the other steps are skipped (greyed).
-// The four steps are a fixed layout, but they are still rendered by a FlatList (scrollEnabled off, nested in a ScrollView).
-export default function StatusTimeline({ currentIndex = 0, displayTimes = [], deliveredTo = '', cancelled = false }) {
+export default function StatusTimeline({ currentIndex = 0, recordedTimes = [], preparationIcon, deliveryLocation, cancelled = false, cancelledTime }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
 
@@ -68,34 +65,26 @@ export default function StatusTimeline({ currentIndex = 0, displayTimes = [], de
     const { step, index: i, icon } = item;
     const isLast = i === STEPS.length - 1;
     const done = cancelled ? i === 0 : i < currentIndex;
-    const current = !cancelled && i === currentIndex;
-    const reached = done || current;
-    const finished = current && isLast;
+    const current = !cancelled && i === currentIndex && !isLast;
+    const finished = !cancelled && i === currentIndex && isLast;
+    const reached = done || current || finished;
     const iconColor = done || finished ? colors.textOnDark : current ? colors.primary : colors.textMuted;
-    const label = isLast && deliveredTo ? `Delivered to ${deliveredTo}` : step;
-
-    let timeText = 'Pending';
-    if (cancelled && !done) timeText = 'Skipped';
-    else if (reached && displayTimes[i]) {
-      if (i === 0) timeText = displayTimes[i];
-      else if (isLast) timeText = `${displayTimes[i]} break · simulated`;
-      else timeText = `${displayTimes[i]} · planned`;
-    }
+    const timeText = [cancelled && !done ? 'Skipped' : current ? 'In progress' : reached ? 'Completed' : 'Pending',
+      reached ? recordedTimes[i] : null].filter(Boolean).join(' · ');
 
     return (
-      <View style={styles.row}>
+      <View key={step} style={styles.row}>
         <View style={styles.rail}>
           <PopCircle reached={reached} style={[styles.circle, (done || finished) && styles.circleDone, current && !finished && styles.circleCurrent]}>
-            <Ionicons name={icon} size={18} color={iconColor} />
+            <Ionicons name={i === 1 && preparationIcon ? preparationIcon : icon} size={18} color={iconColor} />
             {current && !finished ? <PulseDot color={colors.accent} size={9} style={styles.pulse} /> : null}
           </PopCircle>
           {!isLast ? <Connector filled={!cancelled && i < currentIndex} /> : null}
         </View>
         <View style={styles.textBox}>
-          <Text style={[styles.step, !reached && styles.stepMuted]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{label}</Text>
+          <Text style={[styles.step, !reached && styles.stepMuted]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{isLast && deliveryLocation ? 'Delivered to ' + deliveryLocation : step}</Text>
           <Text style={[styles.time, current && !finished && styles.timeCurrent]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {timeText}
-            {current && !finished ? ' · In progress' : ''}
           </Text>
         </View>
       </View>
@@ -104,17 +93,13 @@ export default function StatusTimeline({ currentIndex = 0, displayTimes = [], de
 
   return (
     <View>
-      <FlatList
-        data={STEPS}
-        keyExtractor={(item) => item.step}
-        renderItem={renderStep}
-        scrollEnabled={false}
-        extraData={{ currentIndex, cancelled, displayTimes, deliveredTo }}
-      />
+      <FlatList data={STEPS} keyExtractor={(item) => item.step} renderItem={renderStep} scrollEnabled={false} />
       {cancelled ? (
         <View style={styles.cancelRow}>
           <Ionicons name="close-circle" size={20} color={colors.dangerText} />
-          <Text style={styles.cancelText} maxFontSizeMultiplier={MAX_FONT_SCALE}>Order cancelled</Text>
+          <Text style={styles.cancelText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {cancelledTime ? `Order cancelled · ${cancelledTime}` : 'Order cancelled'}
+          </Text>
         </View>
       ) : null}
     </View>

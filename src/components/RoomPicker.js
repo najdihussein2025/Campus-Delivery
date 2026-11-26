@@ -14,7 +14,7 @@ import useThemedStyles from '../hooks/useThemedStyles';
 import { useTheme } from '../context/ThemeContext';
 
 // Guided room input in the real UA format Building.Floor.Room with a live door-sign preview
-export default function RoomPicker({ buildings = [], value, onChange, errors = {} }) {
+export default function RoomPicker({ buildings = [], value, onChange, errors = {}, compact = false, resetRoomOnBuildingChange = false }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { buildingId, floor, roomNumber } = value;
@@ -26,9 +26,12 @@ export default function RoomPicker({ buildings = [], value, onChange, errors = {
     : `${building ? building.code : '?'}.${floor !== null && floor !== undefined ? floor : '?'}.${roomValid ? parseInt(roomNumber, 10) : '?'}`;
 
   const selectBuilding = (b) => {
+    if (b.id === buildingId) return;
     animateLayout();
     const keepFloor = b.floors.includes(floor) ? floor : null;
-    onChange({ ...value, buildingId: b.id, floor: keepFloor });
+    onChange(resetRoomOnBuildingChange
+      ? { buildingId: b.id, floor: null, roomNumber: '' }
+      : { ...value, buildingId: b.id, floor: keepFloor });
   };
 
   const renderBuilding = ({ item }) => {
@@ -38,9 +41,9 @@ export default function RoomPicker({ buildings = [], value, onChange, errors = {
         onPress={() => selectBuilding(item)}
         accessibilityLabel={`${item.name}, ${item.landmarks}`}
         accessibilityState={{ selected }}
-        style={[styles.building, selected && styles.buildingSelected]}
+        style={[styles.building, compact && styles.compactBuilding, selected && styles.buildingSelected]}
       >
-        <View style={[styles.codeCircle, selected && styles.codeCircleSelected]}>
+        <View style={[styles.codeCircle, compact && styles.compactCode, selected && styles.codeCircleSelected]}>
           <Text style={[styles.codeText, selected && styles.codeTextSelected]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {item.code}
           </Text>
@@ -98,9 +101,8 @@ export default function RoomPicker({ buildings = [], value, onChange, errors = {
           icon="keypad-outline"
           placeholder="e.g. 15"
           keyboardType="number-pad"
-          maxLength={2}
           value={roomNumber}
-          onChangeText={(text) => onChange({ ...value, roomNumber: text.replace(/[^0-9]/g, '') })}
+          onChangeText={(text) => onChange({ ...value, roomNumber: text })}
           error={errors.room}
           style={styles.roomInput}
           accessibilityLabel="Room number"

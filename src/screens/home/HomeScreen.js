@@ -2,87 +2,54 @@ import React, { useEffect, useState } from 'react';
 import { Animated, FlatList, RefreshControl, StatusBar, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import Reanimated, { Extrapolation, LinearTransition, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Reanimated, { LinearTransition } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../../context/AppContext';
 import AppInput from '../../components/AppInput';
 import Chip from '../../components/Chip';
 import ConfirmModal from '../../components/ConfirmModal';
-import DietChip from '../../components/DietChip';
 import SeasonBanner from '../../components/SeasonBanner';
 import EmptyState from '../../components/EmptyState';
 import ProductImage from '../../components/ProductImage';
+import BagAdditionNotice from '../../components/BagAdditionNotice';
 import SectionHeader from '../../components/SectionHeader';
 import SkeletonStoreCard from '../../components/SkeletonStoreCard';
 import StoreCard from '../../components/StoreCard';
 import WalletBanner from '../../components/WalletBanner';
-import { BumpBadge, FlyTarget, PressableScale, PulseDot, StaggerItem, animateLayout, useReduceMotion, useScreenFocusAnimation, useToast } from '../../components/motion';
-import { MAX_FONT_SCALE, spacing } from '../../theme/theme';
+import { BumpBadge, FlyTarget, PressableScale, PulseDot, StaggerItem, useReduceMotion, useScreenFocusAnimation, useToast } from '../../components/motion';
+import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
 import { getOrderStatus } from '../../utils/orderStatus';
 import { matchesDiet } from '../../utils/diet';
-import { formatTime, getGreeting, getNextAvailableSlot, getNow, getOrderingBlock, isStoreOpen, nextOrderingText, storeStatusLabel } from '../../utils/time';
+import { getGreeting, getNextAvailableSlot, getOrderingBlock, isStoreOpen, nextOrderingText, storeStatusLabel } from '../../utils/time';
 import { createStyles } from './HomeScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import useDietFilter from '../../hooks/useDietFilter';
 import { useTheme } from '../../context/ThemeContext';
 import { useNetwork } from '../../context/NetworkContext';
 
-const CATEGORIES = [
-  { key: 'All', icon: 'apps' },
-  { key: 'Food', icon: 'fast-food' },
-  { key: 'Drinks', icon: 'cafe' },
-  { key: 'Stationery', icon: 'book' },
-  { key: 'Printing', icon: 'print' },
-];
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const COLLAPSE = 22; // px of scrolling over which the header collapses
 const SKELETONS = [{ type: 'skeleton', id: 'sk1' }, { type: 'skeleton', id: 'sk2' }, { type: 'skeleton', id: 'sk3' }];
+const CATEGORIES = ['All', 'Food', 'Drinks', 'Stationery', 'Printing'];
 
-// Home: FlatList with ListHeaderComponent, RefreshControl, skeletons and a re-render timer (useEffect cleanup)
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation, route }) {
   const styles = useThemedStyles(createStyles);
   const { colors, isDark } = useTheme();
   const {
     campus, user, wallet, orders, cart, cartTotals, timeOffsetMs, refreshCampus,
-    getStore, getStoreLocation, getCampus, reorder, loyalty, visibleSeasons, dismissSeason,
+    getStore, getStoreLocation, getCampus, previewReorder, reorder, loyalty, visibleSeasons, dismissSeason,
   } = useApp();
   const diet = useDietFilter();
   const { isOnline } = useNetwork();
   const { showToast } = useToast();
   const { animatedStyle } = useScreenFocusAnimation();
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   const [conflict, setConflict] = useState(null);
   const [, setTick] = useState(0);
+  const [category, setCategory] = useState('All');
   const focused = useIsFocused();
   const reduceMotion = useReduceMotion();
-  const [barHeight, setBarHeight] = useState(150);
-  const scrollY = useSharedValue(0);
-  const onScroll = useAnimatedScrollHandler((e) => {
-    scrollY.value = e.contentOffset.y;
-  });
-
-  // Collapsing header: over the first 22 px of scrolling the greeting shrinks into a compact title, the date and campus
-  // lines fade out, the bag button stays put and the search bar stays pinned under the header (transform + opacity only).
-  const barStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -interpolate(scrollY.value, [0, COLLAPSE], [0, COLLAPSE], Extrapolation.CLAMP) }],
-  }));
-  const greetStyle = useAnimatedStyle(() => {
-    const t = interpolate(scrollY.value, [0, COLLAPSE], [0, 1], Extrapolation.CLAMP);
-    return reduceMotion
-      ? { transform: [{ translateY: t * COLLAPSE }] }
-      : { transform: [{ translateY: t * COLLAPSE * 0.9 }, { scale: 1 - t * 0.22 }], transformOrigin: 'left center' };
-  });
-  const fadeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, COLLAPSE * 0.6], [1, 0], Extrapolation.CLAMP),
-  }));
-  const bagStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(scrollY.value, [0, COLLAPSE], [0, COLLAPSE * 0.5], Extrapolation.CLAMP) }],
-  }));
-
-  // Re-render every 10 s so the clock, open badges and the active order banner stay live
+  // Keep store status and order updates current.
   useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 10000);
     return () => clearInterval(timer);
@@ -98,37 +65,28 @@ export default function HomeScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  const selectCategory = (key) => {
-    animateLayout();
-    setCategory(key);
-  };
-
   const nowMs = Date.now();
-  const now = getNow(timeOffsetMs);
   const firstName = user?.name.split(' ')[0] || 'there';
   const campusInfo = getCampus();
   const query = search.trim().toLowerCase();
-  const inCategory = (storeId) => category === 'All' || getStore(storeId)?.category === category;
 
-  const stores = campus.stores.filter((store) => {
-    if (!inCategory(store.id)) return false;
-    if (!query) return true;
-    return store.name.toLowerCase().includes(query);
-  });
-  // Products show up when searching or when a dietary filter is on
+  const inCategory = (store) => category === 'All' || store?.category === category;
+  const stores = campus.stores.filter((store) => inCategory(store) && store.name.toLowerCase().includes(query));
   const showProducts = Boolean(query) || diet.selected.length > 0;
   const productResults = showProducts
-    ? campus.products.filter(
-        (p) => inCategory(p.storeId) && (!query || p.name.toLowerCase().includes(query)) && matchesDiet(p, diet.selected)
+    ? campus.products.filter((p) =>
+        inCategory(getStore(p.storeId)) && p.name.toLowerCase().includes(query) && matchesDiet(p, diet.selected)
       )
     : [];
 
-  const listData = refreshing
+  const results = refreshing
     ? SKELETONS
     : [
         ...stores.map((store) => ({ type: 'store', id: store.id, store })),
         ...productResults.map((product) => ({ type: 'product', id: product.id, product })),
       ];
+  // The greeting is the list header, so the first data row has sticky index 1.
+  const listData = [{ type: 'search', id: 'search' }, { type: 'intro', id: 'intro' }, ...results];
 
   // Banner: the first break that is still possible. Uses the cart's store if the bag is not empty,
   // otherwise every store that is open right now (the one with the shortest prep time decides).
@@ -136,12 +94,15 @@ export default function HomeScreen({ navigation }) {
   const bannerStores = cartStore ? [cartStore] : campus.stores.filter((s) => isStoreOpen(s, timeOffsetMs));
   const available = getNextAvailableSlot(campus.deliverySlots, bannerStores, timeOffsetMs);
   const nextSlot = available ? available.slot : null;
-  const minutesLeft = available ? available.minutesLeft : 0;
-  const missedNote = available?.skipped ? `${available.skipped.label.split('–')[0]} break is too close to order` : '';
+  const minutesUntilStart = available ? available.minutesUntilStart : 0;
   const closedBlock = getOrderingBlock(timeOffsetMs, campus.deliverySlots);
 
   const activeOrder = orders.find((o) => !o.cancelled && getOrderStatus(o, nowMs) !== 'Delivered');
-  const lastDelivered = orders.find((o) => !o.cancelled && getOrderStatus(o, nowMs) === 'Delivered');
+  const lastDelivered = orders.find((o) =>
+    !o.cancelled && getOrderStatus(o, nowMs) === 'Delivered'
+    && o.storeId !== 'printing'
+    && previewReorder(o.id).items.length > 0
+  );
 
   const openStore = (store) => {
     if (store.id === 'printing') navigation.navigate('Print');
@@ -169,21 +130,51 @@ export default function HomeScreen({ navigation }) {
     navigation.navigate('Cart');
   };
 
-  const header = (
+  const intro = (
     <View>
       <WalletBanner
         nextSlot={nextSlot}
-        minutesLeft={minutesLeft}
-        missedNote={missedNote}
+        minutesUntilStart={minutesUntilStart}
         balance={wallet.balance}
         onTopUp={() => navigation.navigate('Wallet')}
-        emptyText={`No more breaks today – ordering opens ${nextOrderingText(campus.deliverySlots, timeOffsetMs)}`}
+        opensText={nextOrderingText(campus.deliverySlots, timeOffsetMs)}
         closedInfo={closedBlock}
-        stamps={loyalty}
-        onStamps={() => navigation.navigate('Loyalty')}
       />
+      <SectionHeader title="Campus stores" style={styles.sectionHeader} />
+      <FlatList
+        data={CATEGORIES}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyExtractor={(label) => label}
+        extraData={category}
+        style={styles.categories}
+        renderItem={({ item: label }) => (
+          <Chip label={label} compact selected={category === label} onPress={() => setCategory(label)} />
+        )}
+      />
+      {query && !refreshing ? (
+        <Text style={styles.resultCount} maxFontSizeMultiplier={MAX_FONT_SCALE} accessibilityLiveRegion="polite">
+          {results.length} {results.length === 1 ? 'result' : 'results'}
+        </Text>
+      ) : null}
+    </View>
+  );
 
-      <SeasonBanner seasons={visibleSeasons} onSelectTag={diet.turnOn} onDismiss={dismissSeason} />
+  const footer = (
+    <View>
+      {!refreshing && results.length === 0 ? (
+        <EmptyState
+          icon="search"
+          title="Nothing found"
+          subtitle={query ? 'No stores or products match your search in this category.' : 'No stores are listed in this category.'}
+          actionLabel={query ? 'Clear search' : 'Show all categories'}
+          onAction={() => {
+            if (query) setSearch('');
+            else setCategory('All');
+          }}
+        />
+      ) : null}
 
       {activeOrder ? (
         <PressableScale
@@ -225,80 +216,60 @@ export default function HomeScreen({ navigation }) {
         </View>
       ) : null}
 
-      <FlatList
-        data={CATEGORIES}
-        horizontal
-        style={styles.categoryRow}
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.key}
-        extraData={[category, diet.selected]}
-        renderItem={({ item }) => (
-          <Chip label={item.key} icon={item.icon} selected={category === item.key} onPress={() => selectCategory(item.key)} />
-        )}
-      />
-
-      <SectionHeader
-        title={showProducts ? `Results · ${stores.length + productResults.length}` : `Stores · ${stores.length}`}
-        style={styles.sectionHeader}
-      />
+      <SeasonBanner seasons={visibleSeasons} onSelectTag={diet.turnOn} onDismiss={dismissSeason} />
+      {diet.selected.length > 0 ? (
+        <Chip label="Clear seasonal filter" icon="close" onPress={diet.clear} style={styles.clearSeason} />
+      ) : null}
     </View>
   );
 
-  // Greeting + bag + search: pinned above the list (see the collapsing header above)
-  const topBar = (
-    <Reanimated.View style={[styles.topBar, barStyle]} onLayout={(e) => setBarHeight(e.nativeEvent.layout.height)}>
-      <View style={styles.topRow}>
-        <Reanimated.View style={[styles.greetingBox, greetStyle]}>
-          <Reanimated.Text style={[styles.caption, fadeStyle]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {DAYS[now.getDay()]} · {formatTime(now)}
-          </Reanimated.Text>
-          <Text style={styles.greeting} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            {getGreeting(timeOffsetMs)}, <Text style={styles.name}>{firstName}</Text>
+  const greeting = (
+    <View style={styles.topRow}>
+      <View style={styles.greetingBox}>
+        <Text style={styles.greeting} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+          {getGreeting(timeOffsetMs)}, <Text style={styles.name}>{firstName}</Text>
+        </Text>
+        <View style={styles.campusRow}>
+          <Ionicons name="location" size={14} color={colors.primaryText} />
+          <Text style={styles.campusText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+            {campusInfo ? `${campusInfo.name} · ${campusInfo.subtitle}` : 'Université Antonine'}
           </Text>
-          <Reanimated.View style={[styles.campusRow, fadeStyle]}>
-            <Ionicons name="location" size={14} color={colors.primaryText} />
-            <Text style={styles.campusText} numberOfLines={1} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {campusInfo ? `${campusInfo.name} · ${campusInfo.subtitle}` : 'Université Antonine'}
-            </Text>
-          </Reanimated.View>
-        </Reanimated.View>
-        <Reanimated.View style={bagStyle}>
-          <FlyTarget active={focused}>
-            <PressableScale
-              onPress={() => navigation.navigate('Cart')}
-              style={styles.bagButton}
-              accessibilityLabel={`Your bag, ${cartTotals.count} items`}
-            >
-              <Ionicons name="bag-handle-outline" size={24} color={colors.primaryText} />
-              <BumpBadge value={cartTotals.count} style={styles.bagBadge} />
-            </PressableScale>
-          </FlyTarget>
-        </Reanimated.View>
+        </View>
       </View>
-      <View style={styles.searchRow}>
-        <AppInput
-          icon="search"
-          placeholder="Search stores or products"
-          value={search}
-          onChangeText={setSearch}
-          clearable
-          onClear={() => setSearch('')}
-          autoCorrect={false}
-          returnKeyType="search"
-          style={styles.searchInput}
-        />
-        <DietChip selected={diet.selected} onToggle={diet.toggle} onClear={diet.clear} />
-      </View>
-    </Reanimated.View>
+      <PressableScale onPress={() => navigation.navigate('Notifications')} style={styles.headerButton} accessibilityLabel="Notifications">
+        <Ionicons name="notifications-outline" size={23} color={colors.primaryText} />
+      </PressableScale>
+      <FlyTarget active={focused}>
+        <PressableScale
+          onPress={() => navigation.navigate('Cart')}
+          style={styles.headerButton}
+          accessibilityLabel={`Your bag, ${cartTotals.count} items`}
+        >
+          <Ionicons name="bag-handle-outline" size={24} color={colors.primaryText} />
+          <BumpBadge value={cartTotals.count} style={styles.bagBadge} />
+        </PressableScale>
+      </FlyTarget>
+    </View>
   );
 
   const renderItem = ({ item, index }) => {
+    if (item.type === 'search') {
+      return (
+        <View style={styles.searchRow}>
+          <AppInput icon="search" placeholder="Search stores or products" accessibilityLabel="Search stores or products"
+            value={search} onChangeText={setSearch} clearable onClear={() => setSearch('')}
+            autoCorrect={false} returnKeyType="search" />
+        </View>
+      );
+    }
+    if (item.type === 'intro') return intro;
     if (item.type === 'skeleton') return <SkeletonStoreCard />;
     if (item.type === 'store') {
       return (
         <StoreCard
           store={item.store}
-          index={index}
+          index={index - 2}
+          freeCoffeeReady={item.store.id === 'coffee' && loyalty.rewards > 0}
           isOpen={isStoreOpen(item.store, timeOffsetMs)}
           statusLabel={storeStatusLabel(item.store, timeOffsetMs)}
           location={getStoreLocation(item.store)}
@@ -309,9 +280,9 @@ export default function HomeScreen({ navigation }) {
     const product = item.product;
     const store = getStore(product.storeId);
     return (
-      <StaggerItem index={index}>
+      <StaggerItem index={index - 2}>
         <PressableScale
-          onPress={() => navigation.navigate('ProductDetails', { productId: product.id })}
+          onPress={() => navigation.navigate('ProductDetails', { productId: product.id, bagFeedbackScope: route.key })}
           style={[styles.productRow, !product.inStock && styles.productRowDimmed]}
           accessibilityLabel={`${product.name} from ${store?.name}`}
         >
@@ -341,35 +312,19 @@ export default function HomeScreen({ navigation }) {
           data={listData}
           keyExtractor={(item) => `${item.type}-${item.id}`}
           renderItem={renderItem}
-          ListHeaderComponent={header}
-          ListEmptyComponent={
-            <EmptyState
-              icon="search"
-              title="Nothing found"
-              subtitle={
-                diet.selected.length > 0
-                  ? 'No store or product matches your search and filters.'
-                  : `No store or product matches "${search}".`
-              }
-              actionLabel={diet.selected.length > 0 ? 'Clear filters' : 'Clear search'}
-              onAction={() => {
-                setSearch('');
-                setCategory('All');
-                diet.clear();
-              }}
-            />
-          }
-          contentContainerStyle={[styles.content, { paddingTop: barHeight + spacing.sm }]}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
+          ListHeaderComponent={greeting}
+          ListFooterComponent={footer}
+          stickyHeaderIndices={[1]}
+          contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primaryText} colors={[colors.primary]} />
           }
         />
-        {topBar}
       </Animated.View>
+
+      {showProducts ? <BagAdditionNotice scope={route.key} focused={focused} onView={() => navigation.navigate('Cart')} /> : null}
 
       <ConfirmModal
         visible={!!conflict}

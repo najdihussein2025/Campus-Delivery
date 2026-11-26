@@ -1,3 +1,5 @@
+import { positiveWholeNumber } from './validation';
+
 export const MIN_ORDER = 200;
 export const FREE_DELIVERY_OVER = 1000;
 export const DELIVERY_FEE = 50;
@@ -13,7 +15,7 @@ export const calcCartTotals = (items, discount = 0) => {
   const gross = items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
   const applied = Math.min(Math.max(0, discount), gross);
   const subtotal = gross - applied;
-  const deliveryFee = subtotal === 0 || subtotal > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
+  const deliveryFee = gross === 0 || subtotal > FREE_DELIVERY_OVER ? 0 : DELIVERY_FEE;
   return {
     gross,
     discount: applied,
@@ -26,14 +28,15 @@ export const calcCartTotals = (items, discount = 0) => {
   };
 };
 
-export const calcPrintPrice = ({ pages, copies, color, binding }, printPrices) => {
-  const p = parseInt(pages, 10) || 0;
-  const c = parseInt(copies, 10) || 0;
+export const calcPrintPrice = ({ pages, copies, color, binding, doubleSided }, printPrices) => {
+  const p = positiveWholeNumber(pages);
+  const c = positiveWholeNumber(copies);
   const rate = color ? printPrices.color : printPrices.bw;
   // Nothing to print (0 or invalid pages / copies): no printing and no binding charge
-  if (p < 1 || c < 1) return { rate, printing: 0, bindingPrice: printPrices.binding[binding] || 0, bindingTotal: 0, total: 0 };
   const bindingPrice = printPrices.binding[binding] || 0;
-  const printing = p * c * rate;
-  const bindingTotal = bindingPrice * c;
-  return { rate, printing, bindingPrice, bindingTotal, total: printing + bindingTotal };
+  const printedPages = p * c;
+  const sheets = (doubleSided ? Math.ceil(p / 2) : p) * c;
+  const printing = printedPages * rate;
+  const bindingTotal = printedPages ? bindingPrice * c : 0;
+  return { rate, printedPages, sheets, printing, bindingPrice, bindingTotal, total: printing + bindingTotal };
 };

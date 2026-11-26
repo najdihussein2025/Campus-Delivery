@@ -3,6 +3,7 @@ import { fonts, radius, spacing } from '../theme/theme';
 
 export const createStyles = (c) => StyleSheet.create({
   chipOuter: { marginRight: spacing.sm, marginBottom: spacing.sm },
+  compactOuter: { marginRight: spacing.xs, marginBottom: 0 },
   // backgroundColor / borderColor are animated (cross-fade) in Chip.js
   chipInner: {
     flexDirection: 'row',
@@ -14,9 +15,11 @@ export const createStyles = (c) => StyleSheet.create({
     borderWidth: 1,
   },
   chipTall: { borderRadius: radius.md, paddingVertical: spacing.sm },
+  compactInner: { minWidth: 44, paddingHorizontal: spacing.sm },
   disabled: { opacity: 0.45 },
   icon: { marginRight: 6 },
   label: { fontFamily: fonts.bold, fontSize: 14, color: c.text },
+  compactLabel: { fontSize: 13 },
   subtitle: { fontFamily: fonts.regular, fontSize: 12, color: c.textMuted, marginTop: 1 },
   subtitleSelected: { color: 'rgba(255,255,255,0.85)' },
   count: {
