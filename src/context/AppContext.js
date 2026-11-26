@@ -7,7 +7,7 @@ import { bagItemDetails, getCartItemIssue, getPrintOrderIssue, prepareReorder } 
 import { DEFAULT_SPEED, buildStatusSchedule, getOrderStatus, secondsForSpeed } from '../utils/orderStatus';
 import { dateKey } from '../utils/calendar';
 import { findAccount, isRoomForBuilding, validateLogin, validatePrintJob } from '../utils/validation';
-import { formatTime, getNow, getOrderingBlock, getSlotState, isStoreOpen, offsetForDateTime, storeOpensText } from '../utils/time';
+import { formatTime, getNow, getOrderingBlock, getDeliverySchedule, isStoreOpen, offsetForDateTime, storeOpensText } from '../utils/time';
 import {
   coffeeCount, consumeReward, emptyLoyalty, getRewardCoffee, refundReward, settleDeliveredOrders, willCompleteCard,
 } from '../utils/loyalty';
@@ -49,7 +49,7 @@ const DEMO_USER = {
   name: 'Demo Student',
   email: 'student@ua.edu.lb',
   password: 'campus123',
-  studentId: '20231234',
+  studentId: '202312340',
   faculty: 'Faculty of Engineering and Technology',
   campusId: 'baabda',
   phone: '71123456',
@@ -60,8 +60,10 @@ const DEMO_LOCATION = { id: 'loc1', label: 'My Lab', buildingId: 'baabda-D', roo
 // Old buildings were "bA".."bF" with free-text rooms: map them to the real Hadat–Baabda buildings
 const LEGACY_BUILDINGS = { bA: 'baabda-A', bB: 'baabda-B', bC: 'baabda-C', bD: 'baabda-D', bE: 'baabda-G', bF: 'baabda-S' };
 
-const migrateUser = (u) => {
+const migrateUser = (u, registry) => {
   const next = { ...u, campusId: u.campusId || 'baabda' };
+  const record = registry?.find(({ legacyId }) => legacyId && legacyId === u.studentId);
+  if (record) next.studentId = record.id;
   if (u.email === DEMO_USER.email && u.faculty === 'Engineering') next.faculty = DEMO_USER.faculty;
   return next;
 };
@@ -222,18 +224,8 @@ export function AppProvider({ children }) {
       loyaltyData = bundle.loyalty;
       await writeJson(KEYS.demoSeeded, true);
     }
-    const now = Date.now();
     const orders = (data.orders || []).map(migrateOrder);
-    const rescheduled = [];
-    const updatedOrders = orders.map((order) => {
-      if (!order.deliveryWindowScheduled || ['Cancelled', 'Delivered'].includes(getOrderStatus(order, now))) return order;
-      const { deliveryWindowScheduled, ...rest } = order;
-      const statusSchedule = buildStatusSchedule(order.placedAtMs, order.stepSeconds || secondsForSpeed(DEFAULT_SPEED));
-      rescheduled.push(order);
-      return { ...rest, statusSchedule, notificationIds: [] };
-    });
-    await Promise.all(rescheduled.map((order) => cancelNotifications(order.notificationIds || [])));
-    return { data: { ...data, orders: updatedOrders }, loyalty: loyaltyData, rescheduled: rescheduled.length > 0 };
+    return { data: { ...data, orders }, loyalty: loyaltyData };
   };
 
   // Load campus data, accounts and the saved session once on mount
@@ -246,12 +238,11 @@ export function AppProvider({ children }) {
       setTrackingSpeedState(await readJson(KEYS.trackingSpeed, DEFAULT_SPEED));
       setDismissedSeasons(await readJson(KEYS.dismissedSeasons, []));
 
-      let storedUsers = await readJson(KEYS.users, null);
-      if (!storedUsers) {
-        storedUsers = [DEMO_USER];
+      const savedUsers = await readJson(KEYS.users, null);
+      const storedUsers = (savedUsers || [DEMO_USER]).map((account) => migrateUser(account, campusData.uaRegistry));
+      if (!savedUsers || storedUsers.some((account, index) => account.studentId !== savedUsers[index].studentId)) {
         await writeJson(KEYS.users, storedUsers);
       }
-      storedUsers = storedUsers.map(migrateUser);
       setUsers(storedUsers);
       setOnboardingDone(await readJson(KEYS.onboarding, false));
 
@@ -261,7 +252,6 @@ export function AppProvider({ children }) {
         const bundle = await loadBundle(sessionUser, campusData, offset);
         applyUserData(bundle.data, bundle.loyalty);
         setUser(sessionUser);
-        if (bundle.rescheduled) setTimeout(() => syncOrderNotifications(), 500);
       }
       setLoading(false);
     };
@@ -539,17 +529,16 @@ export function AppProvider({ children }) {
   }, [rewardAvailable]);
 
   // ---------- Orders ----------
-  const placeOrder = ({ buildingId, room, slotId, deliveryDate, payment, saveLocation, locationLabel, expectedPricing }) => {
-    if (!cart.items.length || cartRef.current !== cart || submittedCartRef.current === cart || getClosedBlock()) return null;
+  const placeOrder = ({ buildingId, room, slotId, deliveryDate, payment, saveLocation, locationLabel, expectedPricing }, placedAtMs = Date.now()) => {
+    if (!cart.items.length || cartRef.current !== cart || submittedCartRef.current === cart) return null;
     const currentCatalog = campusRef.current;
     const store = currentCatalog?.stores.find((entry) => entry.id === cart.storeId);
     const destination = currentCatalog?.buildings.find((building) => building.id === buildingId);
-    const placedAtMs = Date.now();
     const campusPlacedAt = placedAtMs + timeOffsetMs;
     const orderDate = dateKey(new Date(campusPlacedAt));
     if (destination?.campusId !== userCampusId || !isRoomForBuilding(destination, room)) return null;
     if ((payment !== 'wallet' && payment !== 'cash') || (deliveryDate && deliveryDate !== orderDate)) return null;
-    if (!store || !isStoreOpen(store, timeOffsetMs)) return null;
+    if (!store) return null;
     if (getPrintOrderIssue(cart.items, currentCatalog.printPrices.maxPages)) return null;
     if (cart.items.some((item) => getCartItemIssue(
       item, (id) => currentCatalog.products.find((product) => product.id === id),
@@ -562,12 +551,16 @@ export function AppProvider({ children }) {
     if (totals.missingForMinimum || (payment === 'wallet' && walletRef.current.balance < totals.total)) return null;
     if (expectedPricing && (expectedPricing.total !== totals.total || expectedPricing.discount !== totals.discount)) return null;
     const slotInfo = currentCatalog.deliverySlots.find((s) => s.id === slotId);
-    if (!slotInfo || getSlotState(slotInfo, store, timeOffsetMs).disabled) return null;
+    if (!slotInfo) return null;
+    const { disabled, preparing, onTheWay, delivered } = getDeliverySchedule(slotInfo, store, new Date(campusPlacedAt));
+    if (disabled) return null;
+    const scheduledDelivery = { preparing, onTheWay, delivered };
 
     const couriers = campus.couriers;
     // The status is time-based: these real-time timestamps drive both the app and the phone notifications
     const stepSeconds = secondsForSpeed(trackingSpeed);
-    const statusSchedule = buildStatusSchedule(placedAtMs, stepSeconds);
+    const simulatedTracking = timeOffsetMs !== 0;
+    const statusSchedule = simulatedTracking ? buildStatusSchedule(placedAtMs, stepSeconds) : scheduledDelivery;
     const order = {
       id: makeId('o'),
       number: String(placedAtMs).slice(-5),
@@ -592,6 +585,8 @@ export function AppProvider({ children }) {
       createdAt: placedAtMs,
       stepSeconds,
       statusSchedule,
+      scheduledDelivery,
+      simulatedTracking,
       notificationIds: [],
       rewardUsed: Boolean(redeemedCoffee),
       ...(redeemedCoffee ? { rewardItemKey: redeemedCoffee.item.key } : {}),

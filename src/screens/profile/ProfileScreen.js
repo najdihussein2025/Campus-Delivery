@@ -411,7 +411,7 @@ export default function ProfileScreen({ navigation }) {
               onChange={setTrackingSpeed}
             />
             <Text style={styles.hint} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              Simulated tracking starts when you place an order and advances at the selected speed.
+              With the demo clock set, new orders advance at the selected speed. Reset the clock to use scheduled tracking for new orders.
             </Text>
 
             <View style={styles.switchRow}>

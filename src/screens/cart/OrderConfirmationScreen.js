@@ -11,7 +11,7 @@ import { useTheme } from '../../context/ThemeContext';
 import useThemedStyles from '../../hooks/useThemedStyles';
 import { getCategoryIcon, MAX_FONT_SCALE, spacing } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { deliveryBreakLabel, deliveryDateLabel } from '../../utils/orderDetails';
+import { deliveryBreakLabel, deliveryDateLabel, scheduledEta } from '../../utils/orderDetails';
 import { formatFloorLong } from '../../utils/time';
 import { createStyles } from './OrderConfirmationScreen.styles';
 
@@ -77,6 +77,7 @@ export default function OrderConfirmationScreen({ navigation, route }) {
             <SummaryRow first icon={getCategoryIcon(store?.category)} label="Ordering from" value={store?.name} />
             <SummaryRow icon="time-outline" label="Scheduled delivery" value={deliveryBreakLabel(getOrderSlot(order))}>
               <Text style={styles.detail} maxFontSizeMultiplier={MAX_FONT_SCALE}>{deliveryDateLabel(order)}</Text>
+              {scheduledEta(order) ? <Text style={styles.detail} maxFontSizeMultiplier={MAX_FONT_SCALE}>Estimated arrival {scheduledEta(order)}</Text> : null}
             </SummaryRow>
             <SummaryRow icon="location-outline" label="Delivery location" value={building?.name}>
               <Text style={styles.detail} maxFontSizeMultiplier={MAX_FONT_SCALE}>{floor}</Text>

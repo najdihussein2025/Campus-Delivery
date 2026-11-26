@@ -123,51 +123,40 @@ export const nextOrderingText = (slots, timeOffsetMs) => {
   return `${describeDay(next, date)} at ${first}${getTeachingPeriod(next)?.estimated ? ' (dates may change)' : ''}`;
 };
 
-// Returns { disabled, reason } for one delivery slot.
-const getSlotStateAt = (slot, store, date) => {
+export const TRANSPORT_MINUTES = 3;
+
+// Evaluate the selected break against one campus-clock timestamp.
+export const getDeliverySchedule = (slot, store, date) => {
   if (!getDayStatus(date).open) return { disabled: true, reason: 'UA is closed today' };
-  if (store && !opensOnDay(store, date)) return { disabled: true, reason: 'Store closed today' };
+  if (!store || !isStoreOpenAt(store, date)) return { disabled: true, reason: 'Store closed' };
+  const now = date.getTime();
   const start = timeOnDay(date, slot.start);
-  const remaining = start - date.getTime();
-  if (remaining <= 0) return { disabled: true, reason: 'Passed' };
-  if (store && start >= timeOnDay(date, store.closeTime)) return { disabled: true, reason: 'Store closed' };
-  if (store && remaining < store.prepTime * MINUTE_MS) {
-    return { disabled: true, reason: `Too close – needs ${store.prepTime} min` };
+  const end = timeOnDay(date, slot.end);
+  if (now >= end) return { disabled: true, reason: 'Passed' };
+  const close = timeOnDay(date, store.closeTime);
+  const prep = store.prepTime * MINUTE_MS;
+  const transport = TRANSPORT_MINUTES * MINUTE_MS;
+  const duration = prep + transport;
+  if (start >= close) return { disabled: true, reason: 'Store closed' };
+  const deadline = Math.min(end - duration, close - prep);
+  const preparing = Math.max(now, start - duration);
+  const onTheWay = preparing + prep;
+  const delivered = onTheWay + transport;
+  if (now > deadline || delivered > end || onTheWay > close) {
+    return { disabled: true, reason: 'Too late for preparation and delivery' };
   }
-  return { disabled: false, reason: '' };
+  return { disabled: false, reason: '', deadline, preparing, onTheWay, delivered };
 };
 
 export const getSlotState = (slot, store, timeOffsetMs) =>
-  getSlotStateAt(slot, store, getNow(timeOffsetMs));
+  getDeliverySchedule(slot, store, getNow(timeOffsetMs));
 
-export const getNextSlot = (slots, timeOffsetMs) => {
-  const date = getNow(timeOffsetMs);
-  if (!getDayStatus(date).open) return null;
-  return slots.find((slot) => timeOnDay(date, slot.start) > date.getTime()) || null;
-};
-
-// First break a student can still order for, with countdowns to the cutoff and the start.
 export const getNextAvailableSlot = (slots, stores, timeOffsetMs) => {
   const date = getNow(timeOffsetMs);
-  const now = date.getTime();
-  if (!getDayStatus(date).open) return null;
-  const openStores = stores.filter((store) => isStoreOpenAt(store, date));
-  let skipped = null;
   for (const slot of slots) {
-    const start = timeOnDay(date, slot.start);
-    if (start <= now) continue;
-    const makers = openStores.filter((store) => !getSlotStateAt(slot, store, date).disabled);
-    if (makers.length) {
-      const prep = Math.min(...makers.map((store) => store.prepTime));
-      const minutesToStart = (start - now) / MINUTE_MS;
-      return {
-        slot,
-        minutesLeft: Math.ceil(minutesToStart - prep),
-        minutesUntilStart: Math.ceil(minutesToStart),
-        skipped,
-      };
-    }
-    if (!skipped) skipped = slot;
+    if (!stores.some((store) => !getDeliverySchedule(slot, store, date).disabled)) continue;
+    const remaining = timeOnDay(date, slot.start) - date.getTime();
+    return { slot, minutesUntilStart: Math.max(0, Math.ceil(remaining / MINUTE_MS)), ongoing: remaining <= 0 };
   }
   return null;
 };
@@ -192,11 +181,6 @@ export const formatFloorLong = (floor) => (floor === 0 ? 'Ground floor' : `${for
 export const minutesUntil = (hhmm, timeOffsetMs) => toMinutes(hhmm) - nowMinutes(timeOffsetMs);
 
 export const minutesToTime = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`;
-const fromMinutes = minutesToTime;
-
-// Latest time an order must be placed to make a slot ("Order by 11:00")
-export const orderByTime = (slot, store) => fromMinutes(toMinutes(slot.start) - (store ? store.prepTime : 0));
-
 export const dayLabel = (ms, timeOffsetMs = 0) => {
   const d = new Date(ms);
   const today = getNow(timeOffsetMs);

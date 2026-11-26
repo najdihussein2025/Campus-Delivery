@@ -79,11 +79,11 @@ Note: airplane mode also cuts Expo Go from the laptop, so reload the app afterwa
 
 | # | Step | Expected | Android | iPhone |
 | --- | --- | --- | --- | --- |
-| 7.1 | Sign up with ID `20240101` and the name "Rami Khoury" | "✓ Verified UA ID", faculty and campus filled and locked | ☐ | ☐ |
-| 7.2 | ID `20991234` or `19951234` | "UA IDs start with the year you joined…" | ☐ | ☐ |
-| 7.3 | ID `20240999` (not in the registry) | "This ID isn't in Antonine University's records…" | ☐ | ☐ |
-| 7.4 | ID `20240101` with the name "Sara Haddad" | "Name doesn't match the UA record for this ID" | ☐ | ☐ |
-| 7.5 | Create the account, log out, log in with the **UA ID** | Works; signing up again with the same ID says "An account already exists for this ID" | ☐ | ☐ |
+| 7.1 | Sign up with an unused ID such as 012345678 | Select faculty and campus manually, then create the account | ☐ | ☐ |
+| 7.2 | Enter an eight-digit ID | Student/staff ID must be exactly 9 digits | ☐ | ☐ |
+| 7.3 | Paste letters or punctuation into the ID field | Only numeric digits remain | ☐ | ☐ |
+| 7.4 | Sign up with a different email and an already registered ID | An account already exists for this ID | ☐ | ☐ |
+| 7.5 | Create the account, log out, log in with the **university email and password** | Works; signing up again with the same ID says "An account already exists for this ID" | ☐ | ☐ |
 
 Notes for the report: write the phone model, the OS version and anything that failed next to the step number.
 

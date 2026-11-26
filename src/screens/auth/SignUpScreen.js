@@ -9,8 +9,7 @@ import UALogo from '../../components/UALogo';
 import StepIndicator from '../../components/StepIndicator';
 import { AnimatedProgressBar, FadeInView, PressableScale, ShakeView, animateLayout } from '../../components/motion';
 import { useApp } from '../../context/AppContext';
-import { checkUaId, lookupUaId, normalizeEmail, passwordStrength, validateSignUp } from '../../utils/validation';
-import { getNow } from '../../utils/time';
+import { UA_ID_LENGTH, cleanUaId, normalizeEmail, passwordStrength, validateSignUp } from '../../utils/validation';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { createStyles } from './SignUpScreen.styles';
 import useThemedStyles from '../../hooks/useThemedStyles';
@@ -44,7 +43,7 @@ const pick = (errors, fields) => {
 export default function SignUpScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors, isDark } = useTheme();
-  const { campus, users, signUp, timeOffsetMs } = useApp();
+  const { campus, users, signUp } = useApp();
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [step, setStep] = useState(0);
@@ -63,29 +62,21 @@ export default function SignUpScreen({ navigation }) {
   const update = (field) => (value) => setForm((prev) => ({ ...prev, [field]: value }));
   const strength = passwordStrength(form.password);
 
-  // Mock UA registry (campus.json → uaRegistry). A found, unused ID fills and locks faculty + campus.
-  const registry = campus.uaRegistry || [];
-  const year = getNow(timeOffsetMs).getFullYear();
-  const record = form.studentId.length === 8 ? lookupUaId(registry, form.studentId) : null;
-  const idTaken = Boolean(record) && users.some((u) => u.studentId === form.studentId);
-  const verified = Boolean(record) && !idTaken && checkUaId(form.studentId, form.name, registry, users, year) === '';
-
   const fullForm = () => ({
     ...form,
     email: normalizeEmail(form.email),
-    ...(record && !idTaken ? { faculty: record.faculty, campusId: record.campusId } : {}),
   });
 
   // Validate one field when it loses focus (only if the user typed something)
   const checkField = (field) => () => {
     if (field === 'email' && form.email) update('email')(normalizeEmail(form.email));
     if (!form[field]) return;
-    const found = validateSignUp(fullForm(), users, registry, year);
+    const found = validateSignUp(fullForm(), users);
     setErrors((prev) => ({ ...prev, [field]: found[field] }));
   };
 
   const validateStep = (index) => {
-    const found = pick(validateSignUp(fullForm(), users, registry, year), STEP_FIELDS[index]);
+    const found = pick(validateSignUp(fullForm(), users), STEP_FIELDS[index]);
     setErrors(found);
     if (Object.keys(found).length) {
       shakeRef.current?.shake();
@@ -212,25 +203,18 @@ export default function SignUpScreen({ navigation }) {
         ref={refs.studentId}
         label="Student / staff ID"
         icon="card-outline"
-        placeholder="8 digits"
+        placeholder={`${UA_ID_LENGTH} digits`}
+        accessibilityHint="Enter the nine digits on your student or staff card"
         keyboardType="number-pad"
-        maxLength={8}
+        maxLength={UA_ID_LENGTH}
         returnKeyType="next"
         onSubmitEditing={() => refs.phone.current?.focus()}
         onBlur={checkField('studentId')}
         value={form.studentId}
-        onChangeText={update('studentId')}
+        onChangeText={(value) => update('studentId')(cleanUaId(value))}
         error={errors.studentId}
       />
-      {verified ? (
-        <View style={styles.verified} accessibilityLabel="Verified UA ID">
-          <Text style={styles.verifiedText} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-            ✓ Verified UA ID · {record.role === 'staff' ? 'staff' : 'student'} record found (mock registry)
-          </Text>
-        </View>
-      ) : null}
-
-      <Text style={styles.label} maxFontSizeMultiplier={MAX_FONT_SCALE}>Faculty{verified ? ' (from your UA record)' : ''}</Text>
+      <Text style={styles.label} maxFontSizeMultiplier={MAX_FONT_SCALE}>Faculty</Text>
       <FlatList
         data={campus.faculties}
         keyExtractor={(item) => item}
@@ -240,8 +224,7 @@ export default function SignUpScreen({ navigation }) {
         renderItem={({ item }) => (
           <Chip
             label={item.replace('Faculty of ', '')}
-            selected={(verified ? record.faculty : form.faculty) === item}
-            disabled={verified}
+            selected={form.faculty === item}
             onPress={() => {
               update('faculty')(item);
               setErrors((prev) => ({ ...prev, faculty: undefined }));
@@ -263,8 +246,7 @@ export default function SignUpScreen({ navigation }) {
             label={item.name}
             subtitle={item.subtitle}
             icon="location-outline"
-            selected={(verified ? record.campusId : form.campusId) === item.id}
-            disabled={verified}
+            selected={form.campusId === item.id}
             onPress={() => {
               animateLayout();
               update('campusId')(item.id);

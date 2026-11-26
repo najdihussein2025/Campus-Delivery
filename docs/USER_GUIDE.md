@@ -24,7 +24,7 @@ If the university Wi-Fi blocks the connection, ask the team to start the app wit
 - **Log in:** type your university email and your password. You can type only your username (for example `maya`): the app adds `@ua.edu.lb`.
 - **Sign up** (2 steps):
   1. Name, university email (must end with **@ua.edu.lb**), password (at least 6 characters, typed twice).
-  2. Your **UA ID** (8 digits; the first 4 are the year you joined Antonine University, e.g. `20231234`), Lebanese phone (`03xxxxxx`, `7Xxxxxxx` or `81xxxxxx`). The app checks the ID against Antonine University's records: if it is found you see **✓ Verified UA ID** and your faculty and campus are filled in for you. The name you typed must match the record, and one ID can only have one account. If you see "This ID isn't in Antonine University's records", check your student card.
+  2. Your **UA ID** (exactly 9 digits and unused by another account), Lebanese phone (such as 71123456), faculty, and campus.
 - An email can only be registered once. New accounts receive a **$10.00 welcome credit**.
 - Red messages under a field tell you exactly what to fix.
 

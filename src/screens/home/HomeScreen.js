@@ -135,6 +135,7 @@ export default function HomeScreen({ navigation, route }) {
       <WalletBanner
         nextSlot={nextSlot}
         minutesUntilStart={minutesUntilStart}
+        ongoing={available?.ongoing}
         balance={wallet.balance}
         onTopUp={() => navigation.navigate('Wallet')}
         opensText={nextOrderingText(campus.deliverySlots, timeOffsetMs)}

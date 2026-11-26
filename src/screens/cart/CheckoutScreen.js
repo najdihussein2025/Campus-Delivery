@@ -15,7 +15,7 @@ import StickyBar from '../../components/StickyBar';
 import { PressableScale, ShakeView, StaggerItem, animateLayout, useReduceMotion, useToast } from '../../components/motion';
 import { MAX_FONT_SCALE } from '../../theme/theme';
 import { formatMoney } from '../../utils/money';
-import { closedReason, getNow, getSlotState, isStoreOpen, orderByTime } from '../../utils/time';
+import { closedReason, formatTime, getDeliverySchedule, getNow, getSlotState, isStoreOpen, TRANSPORT_MINUTES } from '../../utils/time';
 import { dateKey } from '../../utils/calendar';
 import { bagItemDetails, getCartItemIssue, getPrintOrderIssue } from '../../utils/cart';
 import { isRoomForBuilding, makeRoomCode, validateRoomParts } from '../../utils/validation';
@@ -28,15 +28,15 @@ import { useNetwork } from '../../context/NetworkContext';
 const STEPS = ['Location', 'Delivery', 'Payment'];
 const deliveryDateFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
 
-export default function CheckoutScreen({ navigation, route }) {
+export default function CheckoutScreen({ navigation }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const { isOnline } = useNetwork();
   const { showToast } = useToast();
   const headerHeight = useHeaderHeight();
   const {
-    campus, cart, cartTotals, wallet, savedLocations, timeOffsetMs, userCampusId, campusBuildings,
-    getStore, getProduct, getBuilding, formatLocation, rewardApplied,
+    campus, cart: currentCart, cartTotals: currentTotals, wallet: currentWallet, savedLocations, timeOffsetMs, userCampusId, campusBuildings,
+    getStore, getProduct, getBuilding, formatLocation, rewardApplied: currentRewardApplied, placeOrder,
   } = useApp();
   const reduceMotion = useReduceMotion();
 
@@ -54,23 +54,24 @@ export default function CheckoutScreen({ navigation, route }) {
   const listRef = useRef(null);
   const [errors, setErrors] = useState({});
   const [reviewedPricing, setReviewedPricing] = useState(null);
+  // Keep Checkout stable while the successful order clears the live Bag.
+  const [confirmedCheckout, setConfirmedCheckout] = useState(null);
+  const { cart, cartTotals, wallet, rewardApplied } = confirmedCheckout ?? {
+    cart: currentCart, cartTotals: currentTotals, wallet: currentWallet, rewardApplied: currentRewardApplied,
+  };
   const [tick, setTick] = useState(0);
   const shakeRef = useRef(null);
   const submitting = useRef(false);
-  const processingError = route.params?.processingError;
 
   const store = getStore(cart.storeId);
-  const storeOpen = store ? isStoreOpen(store, timeOffsetMs) : false;
+  const storeOpen = Boolean(store && isStoreOpen(store, timeOffsetMs));
   const missing = cartTotals.total - wallet.balance;
   const walletShort = payment === 'wallet' && missing > 0;
 
   const now = getNow(timeOffsetMs);
   const today = dateKey(now);
   const deliveryDateLabel = deliveryDateFormat.format(now);
-  const slotStates = campus.deliverySlots.map((slot) => {
-    const state = getSlotState(slot, store, timeOffsetMs);
-    return { slot, state: !storeOpen && !state.disabled ? { disabled: true, reason: 'Store closed' } : state };
-  });
+  const slotStates = campus.deliverySlots.map((slot) => ({ slot, state: getDeliverySchedule(slot, store, now) }));
   const availableSlots = slotStates.filter(({ state }) => !state.disabled);
   const slot = delivery?.date === today ? availableSlots.find((entry) => entry.slot.id === delivery.id)?.slot : null;
 
@@ -94,13 +95,6 @@ export default function CheckoutScreen({ navigation, route }) {
     }, 200);
     return () => clearTimeout(timer);
   }, [openStep, availableSlots.length, reduceMotion]);
-
-  useEffect(() => {
-    if (!processingError) return;
-    submitting.current = false;
-    navigation.setParams({ processingError: undefined });
-    showToast({ message: processingError, icon: 'alert-circle', tone: 'error' });
-  }, [navigation, processingError, showToast]);
 
   if (cart.items.length === 0) {
     return (
@@ -178,7 +172,7 @@ export default function CheckoutScreen({ navigation, route }) {
     goToStep(locationDone && slot ? null : !locationDone ? 0 : 1);
   };
 
-  const checkoutIssue = () => {
+  const checkoutIssue = (at = getNow(timeOffsetMs)) => {
     if (!isOnline) return "You're offline. Reconnect to place your order.";
     if (!store) return 'This store is no longer available.';
     if (!isStoreOpen(store, timeOffsetMs)) return closedReason(store, campus.deliverySlots, timeOffsetMs);
@@ -187,10 +181,10 @@ export default function CheckoutScreen({ navigation, route }) {
     if (cart.items.some((item) => getCartItemIssue(item, getProduct, campus.printPrices.maxPages, cart.storeId))) {
       return 'Review the unavailable or invalid items in your bag.';
     }
-    if (!campus.deliverySlots.some((item) => !getSlotState(item, store, timeOffsetMs).disabled)) return 'No delivery slots available.';
+    if (!campus.deliverySlots.some((item) => !getDeliverySchedule(item, store, at).disabled)) return 'No delivery slots available.';
     if (cartTotals.missingForMinimum > 0) return `Add ${formatMoney(cartTotals.missingForMinimum)} more to reach the $2.00 minimum.`;
     if (!locationDone) return 'Choose your delivery location to continue.';
-    if (!slot || today !== dateKey(getNow(timeOffsetMs)) || getSlotState(slot, store, timeOffsetMs).disabled) {
+    if (!slot || today !== dateKey(at) || getDeliverySchedule(slot, store, at).disabled) {
       return 'Choose a delivery break to continue.';
     }
     if (!payment) return 'Choose a payment method to continue.';
@@ -208,16 +202,18 @@ export default function CheckoutScreen({ navigation, route }) {
 
   const confirmOrder = () => {
     if (!reviewedPricing || submitting.current) return;
-    if (checkoutIssue()) {
+    const confirmedAt = Date.now();
+    if (checkoutIssue(new Date(confirmedAt + timeOffsetMs))) {
       setReviewedPricing(null);
       setTick((n) => n + 1);
       return;
     }
     submitting.current = true;
+    setConfirmedCheckout({ cart, cartTotals, wallet, rewardApplied });
     setReviewedPricing(null);
-    navigation.push('OrderProcessing', {
-      checkoutKey: route.key,
-      request: {
+    let order;
+    try {
+      order = placeOrder({
         buildingId: location.buildingId,
         room: location.room,
         slotId: slot.id,
@@ -226,8 +222,18 @@ export default function CheckoutScreen({ navigation, route }) {
         saveLocation: location.saveLocation,
         locationLabel: location.label,
         expectedPricing: reviewedPricing,
-      },
-    });
+      }, confirmedAt);
+    } catch (error) {
+      console.log('Checkout failed', error.message);
+    }
+    if (!order) {
+      submitting.current = false;
+      setConfirmedCheckout(null);
+      setTick((n) => n + 1);
+      showToast({ message: 'Could not place the order. Check your bag, delivery slot and payment.', icon: 'alert-circle', tone: 'error' });
+      return;
+    }
+    navigation.replace('OrderProcessing', { order });
   };
 
   // ----- Step header (number/check + title + summary or edit link) -----
@@ -261,7 +267,10 @@ export default function CheckoutScreen({ navigation, route }) {
   };
 
   const whereSummary = locationDone ? formatLocation(location.buildingId, location.room) : 'Not set yet';
-  const whenSummary = slot ? `${deliveryDateLabel} \u00b7 ${slot.label}` : 'Not set yet';
+  const selectedSchedule = availableSlots.find((entry) => entry.slot === slot)?.state;
+  const whenSummary = selectedSchedule
+    ? `${deliveryDateLabel} \u00b7 ${slot.label} \u00b7 ETA ${formatTime(new Date(selectedSchedule.delivered))}`
+    : 'Not set yet';
   const paySummary = payment === 'wallet' ? 'Campus wallet' : payment === 'cash' ? 'Cash on delivery' : 'Not set yet';
 
   const whereContent = (
@@ -354,6 +363,11 @@ export default function CheckoutScreen({ navigation, route }) {
               {deliveryDateLabel} {'\u00b7'} {store ? `${store.name} needs ${store.prepTime} min to prepare.` : ''}
             </Text>
           ) : null}
+          {openStep === 1 && store && availableSlots.length > 0 ? (
+            <Text style={styles.stepHelp} maxFontSizeMultiplier={MAX_FONT_SCALE}>
+              {store.prepTime} min preparation + {TRANSPORT_MINUTES} min transportation
+            </Text>
+          ) : null}
           {openStep === 1 && !availableSlots.length ? (
             <Text style={styles.stepHelp} accessibilityLiveRegion="polite" maxFontSizeMultiplier={MAX_FONT_SCALE}>No delivery slots available.</Text>
           ) : null}
@@ -411,7 +425,7 @@ export default function CheckoutScreen({ navigation, route }) {
           <View style={styles.slotInfo}>
             <Text style={[styles.slotLabel, state.disabled && styles.textMuted]} maxFontSizeMultiplier={MAX_FONT_SCALE}>{item.label}</Text>
             <Text style={[styles.slotReason, !state.disabled && styles.slotAvailable]} maxFontSizeMultiplier={MAX_FONT_SCALE}>
-              {state.disabled ? state.reason : `Order by ${orderByTime(item, store)}`}
+              {state.disabled ? state.reason : `Order by ${formatTime(new Date(state.deadline))}, ETA ${formatTime(new Date(state.delivered))}`}
             </Text>
           </View>
           {selected ? <Ionicons name="checkmark-circle" size={24} color={colors.primaryText} /> : null}

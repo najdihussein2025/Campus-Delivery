@@ -61,7 +61,7 @@ function CountdownRing({ minutesLeft, children }) {
   );
 }
 
-export default function WalletBanner({ nextSlot, minutesUntilStart, balance, onTopUp, opensText, closedInfo }) {
+export default function WalletBanner({ nextSlot, minutesUntilStart, ongoing, balance, onTopUp, opensText, closedInfo }) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useTheme();
   const showRing = !closedInfo && nextSlot && typeof minutesUntilStart === 'number';
@@ -78,7 +78,7 @@ export default function WalletBanner({ nextSlot, minutesUntilStart, balance, onT
           </Text>
           <Text style={styles.countdown} maxFontSizeMultiplier={MAX_FONT_SCALE}>
             {!closedInfo && nextSlot
-              ? `Starts in ${formatOrderDuration(minutesUntilStart)}`
+              ? ongoing ? 'Break in progress. Ordering available' : `Starts in ${formatOrderDuration(minutesUntilStart)}`
               : `Ordering opens ${closedInfo?.opensText || opensText}`}
           </Text>
         </View>

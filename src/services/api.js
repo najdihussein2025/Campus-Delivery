@@ -7,6 +7,26 @@ export const API_URL = '';
 const COLLECTIONS = ['campuses', 'stores', 'products', 'buildings', 'deliverySlots', 'printPrices', 'couriers', 'faculties', 'seasons', 'uaRegistry', 'calendar'];
 const CACHE_KEY = 'campusgo:catalogCache';
 
+// Upgrade only IDs with an explicit match in the bundled mock registry.
+const mockIds = new Map(localData.uaRegistry.map(({ legacyId, id }) => [legacyId, id]));
+const legacyIds = new Map(localData.uaRegistry.map(({ legacyId, id }) => [id, legacyId]));
+const upgradeMockRegistry = (data) => {
+  const records = data.uaRegistry;
+  if (!Array.isArray(records)) return { ...data, uaRegistry: localData.uaRegistry };
+  const ids = new Set(records.map(({ id }) => id));
+  return {
+    ...data,
+    uaRegistry: records.flatMap((record) => {
+      const id = mockIds.get(record.id);
+      if (!id) {
+        const legacyId = legacyIds.get(record.id);
+        return [legacyId && !record.legacyId ? { ...record, legacyId } : record];
+      }
+      return ids.has(id) ? [] : [{ ...record, id, legacyId: record.id }];
+    }),
+  };
+};
+
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const timeout = (ms) =>
@@ -48,10 +68,12 @@ export const loadCampusData = async () => {
     COLLECTIONS.forEach((name, i) => {
       data[name] = results[i];
     });
-    writeCache(data);
-    return data;
+    const upgraded = upgradeMockRegistry(data);
+    writeCache(upgraded);
+    return upgraded;
   } catch (error) {
     console.log('API unavailable, using saved data:', error.message);
-    return (await readCache()) || localData;
+    const cached = await readCache();
+    return cached ? upgradeMockRegistry(cached) : localData;
   }
 };
